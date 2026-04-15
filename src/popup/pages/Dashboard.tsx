@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { AppView, DashboardTab, PullRequest, Platform } from '@/shared/types';
+import type { AppView, DashboardTab, PullRequest } from '@/shared/types';
 import { getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, getSettings } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
@@ -23,9 +23,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [hasWatchedRepos, setHasWatchedRepos] = useState(true);
   const [stalePRDays, setStalePRDays] = useState(45);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const fetchFromAPI = useCallback(async () => {
     const accounts = await getAccounts();
@@ -75,6 +75,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     setPRs(allPRs);
+    setLastUpdated(Date.now());
     await saveCachedPRs(allPRs);
   }, []);
 
@@ -88,6 +89,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       const cached = await getCachedPRs();
       if (cached && cached.prs.length > 0) {
         setPRs(cached.prs);
+        setLastUpdated(cached.updatedAt);
         setHasWatchedRepos(true);
         setLoading(false);
 
@@ -121,19 +123,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     return true;
   });
 
-  // Filter by platform
-  const filteredByPlatform = platformFilter === 'all'
-    ? filteredByTab
-    : filteredByTab.filter((pr) => pr.platform === platformFilter);
-
   // Filter by search
   const filtered = search.trim()
-    ? filteredByPlatform.filter(
+    ? filteredByTab.filter(
         (pr) =>
           pr.title.toLowerCase().includes(search.toLowerCase()) ||
           pr.repoFullName.toLowerCase().includes(search.toLowerCase()),
       )
-    : filteredByPlatform;
+    : filteredByTab;
 
   const tabCounts: Record<DashboardTab, number> = {
     mine: prs.filter((pr) => pr.isAuthor).length,
@@ -176,28 +173,30 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
         />
-        {(['all', 'github', 'gitlab', 'bitbucket'] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPlatformFilter(p)}
-            className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
-              platformFilter === p
-                ? 'bg-radar-900 text-radar-400 border-radar-600'
-                : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600'
-            }`}
-          >
-            {p === 'all' ? 'All' : p === 'github' ? 'GH' : p === 'gitlab' ? 'GL' : 'BB'}
-          </button>
-        ))}
+        {/* Refresh button */}
+        <button
+          onClick={() => { setRefreshing(true); fetchFromAPI().finally(() => setRefreshing(false)); }}
+          disabled={refreshing}
+          className="text-[11px] px-2 py-1 rounded-full border border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400 transition-colors disabled:opacity-50"
+          title="Refresh now"
+        >
+          &#x21BB;
+        </button>
       </div>
 
-      {/* Refreshing indicator */}
-      {refreshing && (
-        <div className="flex items-center justify-center gap-2 py-1.5 bg-radar-950/50 border-b border-gray-800">
-          <div className="animate-spin rounded-full h-3 w-3 border border-radar-400 border-t-transparent" />
-          <span className="text-[10px] text-radar-400">Updating...</span>
-        </div>
-      )}
+      {/* Status bar */}
+      <div className="flex items-center justify-center gap-2 py-1 border-b border-gray-800 min-h-[24px]">
+        {refreshing ? (
+          <>
+            <div className="animate-spin rounded-full h-3 w-3 border border-radar-400 border-t-transparent" />
+            <span className="text-[10px] text-radar-400">Updating...</span>
+          </>
+        ) : lastUpdated ? (
+          <span className="text-[10px] text-gray-600">
+            Updated {getTimeAgoShort(lastUpdated)}
+          </span>
+        ) : null}
+      </div>
 
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">
@@ -251,4 +250,15 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       </div>
     </div>
   );
+}
+
+function getTimeAgoShort(ts: number): string {
+  const diff = Date.now() - ts;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 10) return 'just now';
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
 }

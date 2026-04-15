@@ -38,11 +38,6 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
                 Author
               </span>
             )}
-            {pr.isMerged && (
-              <span className="text-[9px] px-1.5 py-px rounded bg-emerald-900/50 text-emerald-400 font-medium">
-                Merged
-              </span>
-            )}
             {pr.isReviewRequested && !pr.hasReviewed && (
               <span className="text-[9px] px-1.5 py-px rounded bg-amber-900/50 text-amber-400 font-medium">
                 Review
@@ -98,10 +93,11 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
 
         <span
           className="text-[10px] text-gray-600 ml-auto"
-          title={isStale ? 'This PR is stale — consider closing it' : pr.isBot ? 'This PR was created by a bot' : undefined}
+          title={pr.isMerged ? 'This PR was merged — tracking CI' : isStale ? 'This PR is stale — consider closing it' : pr.isBot ? 'This PR was created by a bot' : undefined}
         >
-          {pr.isBot && <span className="mr-1">&#x1F916;</span>}
-          {isStale && <span className="mr-1">&#x1F4A4;</span>}
+          {pr.isMerged && <span className="mr-1">&#x1F500;</span>}
+          {pr.isBot && !pr.isMerged && <span className="mr-1">&#x1F916;</span>}
+          {isStale && !pr.isMerged && <span className="mr-1">&#x1F4A4;</span>}
           {timeAgo}
         </span>
       </div>

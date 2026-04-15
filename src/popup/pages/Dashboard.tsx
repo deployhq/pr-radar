@@ -97,13 +97,21 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   });
 
   // Filter by search
-  const filtered = search.trim()
+  const searched = search.trim()
     ? filteredByTab.filter(
         (pr) =>
           pr.title.toLowerCase().includes(search.toLowerCase()) ||
           pr.repoFullName.toLowerCase().includes(search.toLowerCase()),
       )
     : filteredByTab;
+
+  // Sort by priority: actionable items first, then by date
+  const filtered = [...searched].sort((a, b) => {
+    const pa = prPriority(a);
+    const pb = prPriority(b);
+    if (pa !== pb) return pa - pb;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
 
   const tabCounts: Record<DashboardTab, number> = {
     mine: prs.filter((pr) => pr.isAuthor).length,
@@ -223,6 +231,17 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       </div>
     </div>
   );
+}
+
+function prPriority(pr: PullRequest): number {
+  if (pr.isMerged || pr.isDraft) return 90;
+  if (pr.isBot) return 80;
+  if (pr.ciStatus === 'failed') return 0;
+  if (pr.reviewStatus === 'changes_requested') return 1;
+  if (pr.unresolvedCommentCount > 0) return 2;
+  if (pr.ciStatus === 'running') return 3;
+  if (pr.ciStatus === 'pending') return 4;
+  return 10;
 }
 
 function getTimeAgoShort(ts: number): string {

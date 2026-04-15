@@ -1,6 +1,6 @@
 # PR Radar
 
-**All your PRs in one place.** CI status, unresolved comments, deployments, and sound alerts — right from your browser toolbar.
+**All your PRs in one place.** CI status, unresolved comments, deployments, and sound alerts — right from your browser toolbar. No tab required.
 
 Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme).
 
@@ -8,13 +8,15 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 
 - **Unified PR dashboard** — See all open PRs across your repos in one popup
 - **CI status at a glance** — Know instantly if your checks passed, failed, or are running
-- **Unresolved comments** — See how many review threads still need attention
-- **Deployment previews** — View deployment status and environment URLs directly
-- **Sound & desktop notifications** — Get alerted when CI finishes (no tab required)
+- **Unresolved comments** — Accurate count of unresolved review threads
+- **Deployment previews** — See deployment status and click through to environment URLs
+- **Sound & desktop notifications** — Get alerted when CI finishes, no tab required
 - **Review tracking** — See which PRs need your review, and which you've already reviewed
-- **Stale PR detection** — Old PRs are dimmed with a nudge to close them
+- **Stale PR detection** — Old PRs are dimmed with a nudge to close them (configurable)
 - **Background polling** — Works without any tab open, using a personal access token
-- **Privacy-first** — Your token stays on your device. No backend, no tracking.
+- **Green badge** — Toolbar icon shows pass/fail/running count at a glance
+- **Instant load** — Cached data shown immediately, refreshes in background
+- **Privacy-first** — Your token stays on your device. No backend, no tracking
 
 ### Platforms
 
@@ -31,8 +33,8 @@ Coming soon.
 ### Manual install (development)
 
 ```bash
-git clone https://github.com/deployhq/prbell.git
-cd prbell
+git clone https://github.com/deployhq/pr-radar.git
+cd pr-radar
 npm install
 npm run build
 ```
@@ -44,8 +46,8 @@ npm run build
 ## Setup
 
 1. Click the PR Radar icon in your toolbar
-2. Click **"Create a token"** — it opens GitHub with the right scopes pre-filled (`repo` + `read:org`)
-3. Paste the token and connect
+2. Click **"Create a token"** — opens GitHub with the right scopes pre-filled (`repo` + `read:org`)
+3. Paste the token and connect — you're taken straight to the dashboard
 4. Go to **Watched Repos** and select the repos you want to monitor
 5. Done — your PRs appear instantly
 
@@ -62,26 +64,29 @@ The popup shows cached data instantly and refreshes in the background — no loa
 | Info | Source |
 |------|--------|
 | CI status | GitHub Check Runs + Commit Status API |
-| Unresolved comments | GitHub GraphQL API (reviewThreads.isResolved) |
+| Unresolved comments | GitHub GraphQL API (`reviewThreads.isResolved`) |
 | Review state | Approved / Changes requested / Reviewed by you |
 | Deployment | GitHub Deployments API with environment URL |
-| Stale indicator | Based on last update time (configurable) |
+| Stale indicator | Based on last update time (configurable threshold) |
 
-### Badge states
+### Toolbar badge
 
 | Badge | Meaning |
 |-------|---------|
-| Blue `...` | CI running on your PRs |
-| Red number | Count of your PRs with failed CI |
-| Clear | All clear |
+| Green number | PRs with CI passed |
+| Red number | PRs with CI failed |
+| Blue `...` | CI running |
+| Clear | No active PRs |
 | Gray `?` | Polling error |
+
+Stale PRs are excluded from the badge count.
 
 ## Settings
 
 - **Desktop notifications** — Toggle on/off
 - **Sound alerts** — Choose from Ding, Bell, or Chime
 - **Poll interval** — 30s, 1m, 2m, or 5m
-- **Stale PR threshold** — Dim PRs older than 14/30/45/60/90 days
+- **Stale PR threshold** — Dim PRs older than 14/30/45/60/90 days (or never)
 - **Test button** — Verify notifications and sound work
 
 ## Tech stack

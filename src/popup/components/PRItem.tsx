@@ -11,7 +11,7 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
   const platformStyle = PLATFORM_COLORS[pr.platform];
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
-  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged;
+  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
 
   return (
     <a

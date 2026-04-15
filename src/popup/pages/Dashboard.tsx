@@ -92,7 +92,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
     if (tab === 'mine') return pr.isAuthor;
-    if (tab === 'review') return pr.isReviewRequested;
+    if (tab === 'review') return pr.isReviewRequested && !pr.isDraft;
     return true;
   });
 
@@ -107,7 +107,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   const tabCounts: Record<DashboardTab, number> = {
     mine: prs.filter((pr) => pr.isAuthor).length,
-    review: prs.filter((pr) => pr.isReviewRequested).length,
+    review: prs.filter((pr) => pr.isReviewRequested && !pr.isDraft).length,
     all: prs.length,
   };
 

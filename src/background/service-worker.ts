@@ -213,7 +213,7 @@ async function pollPRs() {
     const staleMs = settings.stalePRDays > 0 ? settings.stalePRDays * 86400000 : 0;
     const now = Date.now();
     const myPRs = allPRs.filter((pr) =>
-      pr.isAuthor && !pr.isMerged && (!staleMs || (now - new Date(pr.updatedAt).getTime()) < staleMs),
+      pr.isAuthor && !pr.isMerged && !pr.isDraft && (!staleMs || (now - new Date(pr.updatedAt).getTime()) < staleMs),
     );
     const failedCount = myPRs.filter((pr) => pr.ciStatus === 'failed').length;
     const passedCount = myPRs.filter((pr) => pr.ciStatus === 'passed').length;

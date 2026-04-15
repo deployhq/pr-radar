@@ -2,6 +2,8 @@
 
 **All your PRs in one place.** CI status, unresolved comments, deployments, and sound alerts — right from your browser toolbar. No tab required.
 
+<img width="1280" height="800" alt="screenshot" src="https://github.com/user-attachments/assets/a440620e-e7ee-4acf-a6bb-a112b23d2ba2" />
+
 Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme).
 
 ## Features

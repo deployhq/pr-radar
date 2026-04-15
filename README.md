@@ -16,7 +16,7 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 - **Review tracking** — See which PRs need your review, and which you've already reviewed
 - **Stale PR detection** — Old PRs are dimmed with a nudge to close them (configurable)
 - **Background polling** — Works without any tab open, using a personal access token
-- **Green badge** — Toolbar icon shows pass/fail/running count at a glance
+- **Toolbar badge** — Icon shows pass/fail/running count at a glance
 - **Instant load** — Cached data shown immediately, refreshes in background
 - **Privacy-first** — Your token stays on your device. No backend, no tracking
 
@@ -30,7 +30,7 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 
 ### Chrome Web Store
 
-Coming soon.
+[Install PR Radar](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh) — free, no account required.
 
 ### Manual install (development)
 
@@ -122,4 +122,4 @@ MIT
 
 ---
 
-Made with love by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme) — automated deployments made simple.
+Made with <3 by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme) — automated deployments made simple.

@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppView, DashboardTab, PullRequest } from '@/shared/types';
-import { getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, getSettings } from '@/shared/storage';
-import * as github from '@/shared/api/github';
-import * as gitlab from '@/shared/api/gitlab';
-import * as bitbucket from '@/shared/api/bitbucket';
+import { getWatchedRepos, getCachedPRs, getSettings } from '@/shared/storage';
 import PRItem from '../components/PRItem';
 
 interface DashboardProps {
@@ -27,94 +24,64 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [stalePRDays, setStalePRDays] = useState(45);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
-  const fetchFromAPI = useCallback(async () => {
-    const accounts = await getAccounts();
+  const loadFromCache = useCallback(async () => {
+    const cached = await getCachedPRs();
+    if (cached && cached.prs.length > 0) {
+      setPRs(cached.prs);
+      setLastUpdated(cached.updatedAt);
+      setHasWatchedRepos(true);
+      return true;
+    }
+    // Check if we simply have no repos selected
     const watchedRepos = await getWatchedRepos();
     const enabledRepos = watchedRepos.filter((r) => r.enabled);
-
     setHasWatchedRepos(enabledRepos.length > 0);
+    return false;
+  }, []);
 
-    if (enabledRepos.length === 0) {
-      setPRs([]);
-      await saveCachedPRs([]);
-      return;
-    }
-
-    const allPRs: PullRequest[] = [];
-
-    for (const account of accounts) {
-      const repos = enabledRepos.filter((r) => r.platform === account.platform);
-
-      if (repos.length === 0) continue;
-
-      try {
-        if (account.platform === 'github') {
-          for (const repo of repos) {
-            const repoPRs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
-            allPRs.push(...repoPRs);
-          }
-        } else if (account.platform === 'gitlab') {
-          for (const repo of repos) {
-            const repoPRs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
-            allPRs.push(...repoPRs);
-          }
-        } else if (account.platform === 'bitbucket') {
-          for (const repo of repos) {
-            const repoPRs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
-            allPRs.push(...repoPRs);
-          }
-        }
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        if (errMsg.includes('401') || errMsg.includes('403')) {
-          setError(`${account.platform} token expired or invalid. Reconnect in Settings.`);
-        }
-        console.error(`Failed to fetch PRs from ${account.platform}:`, err);
-      }
-    }
-
-    allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    setPRs(allPRs);
-    setLastUpdated(Date.now());
-    await saveCachedPRs(allPRs);
+  const triggerBackgroundRefresh = useCallback(() => {
+    setRefreshing(true);
+    chrome.runtime.sendMessage({ type: 'POLL_NOW' });
   }, []);
 
   useEffect(() => {
     async function init() {
-      // Load settings
       const settings = await getSettings();
       setStalePRDays(settings.stalePRDays);
 
-      // 1. Show cached data instantly
-      const cached = await getCachedPRs();
-      if (cached && cached.prs.length > 0) {
-        setPRs(cached.prs);
-        setLastUpdated(cached.updatedAt);
-        setHasWatchedRepos(true);
-        setLoading(false);
+      const hadCache = await loadFromCache();
+      setLoading(false);
 
-        // 2. Refresh from API in background
-        setRefreshing(true);
-        try {
-          await fetchFromAPI();
-        } catch {
-          // Keep showing cached data
-        } finally {
-          setRefreshing(false);
-        }
+      // Ask the service worker to refresh — it will update chrome.storage
+      if (hadCache) {
+        triggerBackgroundRefresh();
       } else {
-        // No cache — full load
-        try {
-          await fetchFromAPI();
-        } catch {
-          setError('Failed to fetch pull requests');
-        } finally {
-          setLoading(false);
-        }
+        // No cache — trigger poll and wait for result
+        triggerBackgroundRefresh();
       }
     }
     init();
-  }, [fetchFromAPI]);
+  }, [loadFromCache, triggerBackgroundRefresh]);
+
+  // Listen for storage changes from the service worker's poll
+  useEffect(() => {
+    function onStorageChange(changes: { [key: string]: chrome.storage.StorageChange }) {
+      if (changes['pr_radar_pr_cache']) {
+        const newCache = changes['pr_radar_pr_cache'].newValue;
+        if (newCache && newCache.prs) {
+          setPRs(newCache.prs);
+          setLastUpdated(newCache.updatedAt);
+          setHasWatchedRepos(true);
+        }
+        setRefreshing(false);
+        setLoading(false);
+        setError('');
+      }
+    }
+
+    chrome.storage.local.onChanged.addListener(onStorageChange);
+    return () => chrome.storage.local.onChanged.removeListener(onStorageChange);
+  }, []);
 
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
@@ -175,7 +142,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         />
         {/* Refresh button */}
         <button
-          onClick={() => { setRefreshing(true); fetchFromAPI().finally(() => setRefreshing(false)); }}
+          onClick={() => triggerBackgroundRefresh()}
           disabled={refreshing}
           className="text-[11px] px-2 py-1 rounded-full border border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400 transition-colors disabled:opacity-50"
           title="Refresh now"
@@ -208,7 +175,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           <div className="px-4 py-8 text-center">
             <p className="text-sm text-red-400">{error}</p>
             <button
-              onClick={() => { setError(''); setRefreshing(true); fetchFromAPI().finally(() => setRefreshing(false)); }}
+              onClick={() => { setError(''); triggerBackgroundRefresh(); }}
               className="mt-2 text-xs text-radar-400 hover:underline"
             >
               Retry

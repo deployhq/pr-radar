@@ -9,7 +9,7 @@ chrome.runtime.onMessage.addListener((message) => {
     const src = SOUNDS[message.soundId];
     if (src) {
       const audio = new Audio(chrome.runtime.getURL(src));
-      audio.volume = 0.7;
+      audio.volume = typeof message.volume === 'number' ? message.volume : 0.7;
       audio.play().catch(() => {});
     }
   }

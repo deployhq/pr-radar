@@ -16,9 +16,7 @@
     "offscreen"
   ],
   "host_permissions": [
-    "https://api.github.com/*",
-    "https://gitlab.com/api/*",
-    "https://bitbucket.org/api/*"
+    "https://api.github.com/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.ts",

@@ -7,6 +7,7 @@ import * as bitbucket from '@/shared/api/bitbucket';
 
 const ALARM_NAME = 'pr-radar-poll';
 const STATUS_CACHE_KEY = 'pr_radar_last_statuses';
+const COMMENT_CACHE_KEY = 'pr_radar_last_comments';
 
 // === Persisted status tracking ===
 // Service workers get killed by Chrome — in-memory maps don't survive.
@@ -19,6 +20,15 @@ async function getLastStatuses(): Promise<Record<string, CIStatus>> {
 
 async function saveLastStatuses(statuses: Record<string, CIStatus>): Promise<void> {
   await chrome.storage.local.set({ [STATUS_CACHE_KEY]: statuses });
+}
+
+async function getLastCommentCounts(): Promise<Record<string, number>> {
+  const result = await chrome.storage.local.get(COMMENT_CACHE_KEY);
+  return result[COMMENT_CACHE_KEY] ?? {};
+}
+
+async function saveLastCommentCounts(counts: Record<string, number>): Promise<void> {
+  await chrome.storage.local.set({ [COMMENT_CACHE_KEY]: counts });
 }
 
 // === Lifecycle ===
@@ -47,7 +57,7 @@ chrome.runtime.onMessage.addListener((message: Message) => {
     });
     const settings = getSettings();
     settings.then((s) => {
-      if (s.soundEnabled) playSound(s.soundId);
+      if (s.soundEnabled) playSound(s.soundId, s.soundVolume);
     });
   }
 });
@@ -122,6 +132,26 @@ async function pollPRs() {
 
     await saveLastStatuses(newStatuses);
 
+    // Check for new unresolved comments on the user's PRs
+    const settings0 = await getSettings();
+    if (settings0.notifyOnComments) {
+      const lastComments = await getLastCommentCounts();
+      const newComments: Record<string, number> = {};
+
+      for (const pr of allPRs) {
+        if (!pr.isAuthor) continue;
+        if (staleThreshold && (Date.now() - new Date(pr.updatedAt).getTime()) > staleThreshold) continue;
+
+        const prevCount = lastComments[pr.id];
+        if (prevCount !== undefined && pr.unresolvedCommentCount > prevCount) {
+          notifyNewComments(pr, pr.unresolvedCommentCount - prevCount);
+        }
+        newComments[pr.id] = pr.unresolvedCommentCount;
+      }
+
+      await saveLastCommentCounts(newComments);
+    }
+
     // Cache PRs for instant popup load
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     await saveCachedPRs(allPRs);
@@ -170,7 +200,24 @@ async function notifyCIChange(pr: PullRequest) {
   }
 
   if (settings.soundEnabled && (pr.ciStatus === 'passed' || pr.ciStatus === 'failed')) {
-    playSound(settings.soundId);
+    playSound(settings.soundId, settings.soundVolume);
+  }
+}
+
+async function notifyNewComments(pr: PullRequest, newCount: number) {
+  const settings = await getSettings();
+
+  if (settings.notificationsEnabled) {
+    chrome.notifications.create(`pr-radar-comment-${pr.id}-${Date.now()}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+      title: `${newCount} new unresolved comment${newCount > 1 ? 's' : ''}`,
+      message: `${pr.repoFullName} #${pr.number}\n${pr.title}`,
+    });
+  }
+
+  if (settings.soundEnabled) {
+    playSound(settings.soundId, settings.soundVolume);
   }
 }
 
@@ -190,12 +237,12 @@ async function ensureOffscreen() {
   });
 }
 
-async function playSound(soundId: string) {
+async function playSound(soundId: string, volume?: number) {
   try {
     await ensureOffscreen();
     // Small delay to let the offscreen document initialize its listener
     await new Promise((r) => setTimeout(r, 100));
-    await chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId });
+    await chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId, volume: volume ?? 0.7 });
   } catch {
     // Offscreen document not ready — ignore
   }

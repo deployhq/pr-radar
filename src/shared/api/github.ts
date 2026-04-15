@@ -39,6 +39,7 @@ interface GHPullRequest {
 interface GHReview {
   state: string;
   user: GHUser;
+  commit_id: string;
 }
 
 export async function getAuthenticatedUser(token: string): Promise<{ login: string; avatar_url: string }> {
@@ -123,8 +124,12 @@ async function hydratePR(
   const reviewStatus = deriveReviewStatus(reviews);
   const approvalCount = reviews.filter((r) => r.state === 'APPROVED').length;
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
+  // Only count reviews on the current head commit — stale reviews (on older commits)
+  // shouldn't dim the PR since new code may need re-review.
   const hasReviewed = reviews.some(
-    (r) => r.user.login === username && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED'),
+    (r) => r.user.login === username
+      && r.commit_id === pr.head.sha
+      && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED'),
   );
 
   return {

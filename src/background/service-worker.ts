@@ -159,9 +159,10 @@ async function pollPRs() {
     const openIds = new Set(allPRs.map((pr) => pr.id));
 
     if (cached) {
-      // Find authored PRs that disappeared from the open list
+      // Find PRs that disappeared from the open list (authored, reviewed, or review-requested)
       const disappeared = cached.prs.filter(
-        (pr) => pr.isAuthor && !pr.isMerged && !openIds.has(pr.id),
+        (pr) => !pr.isMerged && !openIds.has(pr.id)
+          && (pr.isAuthor || pr.isReviewRequested || pr.hasReviewed),
       );
 
       for (const pr of disappeared) {

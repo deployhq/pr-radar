@@ -24,7 +24,12 @@ export default function Header({ view, onNavigate }: HeaderProps) {
         )}
         <span className="font-bold text-[15px] text-gray-100">{title}</span>
         {!showBack && (
-          <span className="text-[10px] text-gray-500 font-normal">by DeployHQ</span>
+          <a
+            href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=header"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-gray-500 hover:text-gray-400 font-normal transition-colors"
+          >by DeployHQ</a>
         )}
       </div>
       {!showBack && (

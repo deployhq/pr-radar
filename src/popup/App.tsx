@@ -48,9 +48,9 @@ export default function App() {
         {view.type === 'repos' && <Repos />}
       </div>
       <footer className="flex items-center justify-center gap-1.5 py-2.5 border-t border-gray-800 text-[11px] text-gray-500">
-        Made with love by{' '}
+        Made with &lt;3 by{' '}
         <a
-          href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=extension&utm_campaign=footer"
+          href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=footer"
           target="_blank"
           rel="noopener noreferrer"
           className="text-radar-400 hover:underline"

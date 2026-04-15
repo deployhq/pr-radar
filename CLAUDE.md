@@ -2,7 +2,7 @@
 
 ## Overview
 
-PRBell - a free Chrome extension (Manifest V3) that provides a unified PR dashboard across GitHub, GitLab, and Bitbucket. Shows CI status, unresolved comments, review state, and sound notifications. Free, by DeployHQ.
+PR Radar - a free Chrome extension (Manifest V3) that provides a unified PR dashboard across GitHub, GitLab, and Bitbucket. Shows CI status, unresolved comments, review state, and sound notifications. Free, by DeployHQ.
 
 ## Commands
 

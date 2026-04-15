@@ -1,7 +1,7 @@
 {
-  "name": "prbell",
+  "name": "pr-radar",
   "version": "0.1.0",
-  "description": "PRBell - All your PRs in one place. CI status, comments, sound alerts. Free, by DeployHQ.",
+  "description": "PR Radar - All your PRs in one place. CI status, comments, sound alerts. Free, by DeployHQ.",
   "private": true,
   "type": "module",
   "scripts": {

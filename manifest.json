@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "PRBell - PR Dashboard & CI Notifications",
-  "description": "All your PRs in one place. CI status, unresolved comments, sound alerts. GitHub, GitLab & Bitbucket. Free, by DeployHQ.",
+  "name": "PR Radar - PR Dashboard & CI Notifications",
+  "description": "All your PRs in one place. CI status, unresolved comments, sound alerts for GitHub, GitLab & Bitbucket. Free, by DeployHQ.",
   "version": "0.1.0",
   "icons": {
     "16": "icons/icon-16.png",

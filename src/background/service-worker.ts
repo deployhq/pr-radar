@@ -5,10 +5,21 @@ import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
 
-const ALARM_NAME = 'prbell-poll';
+const ALARM_NAME = 'pr-radar-poll';
+const STATUS_CACHE_KEY = 'pr_radar_last_statuses';
 
-// Track last known CI statuses to detect changes
-const lastKnownStatuses = new Map<string, CIStatus>();
+// === Persisted status tracking ===
+// Service workers get killed by Chrome — in-memory maps don't survive.
+// Persist to chrome.storage so we can detect changes across restarts.
+
+async function getLastStatuses(): Promise<Record<string, CIStatus>> {
+  const result = await chrome.storage.local.get(STATUS_CACHE_KEY);
+  return result[STATUS_CACHE_KEY] ?? {};
+}
+
+async function saveLastStatuses(statuses: Record<string, CIStatus>): Promise<void> {
+  await chrome.storage.local.set({ [STATUS_CACHE_KEY]: statuses });
+}
 
 // === Lifecycle ===
 
@@ -27,6 +38,17 @@ chrome.runtime.onMessage.addListener((message: Message) => {
     pollPRs();
   } else if (message.type === 'REFRESH_SETTINGS') {
     setupPolling();
+  } else if (message.type === 'TEST_NOTIFICATION') {
+    chrome.notifications.create(`pr-radar-test-${Date.now()}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+      title: 'CI Passed',
+      message: 'deployhq/pr-radar #1\nThis is a test notification',
+    });
+    const settings = getSettings();
+    settings.then((s) => {
+      if (s.soundEnabled) playSound(s.soundId);
+    });
   }
 });
 
@@ -82,15 +104,20 @@ async function pollPRs() {
     }
 
     // Check for CI status changes on the user's PRs
+    const lastStatuses = await getLastStatuses();
+    const newStatuses: Record<string, CIStatus> = {};
+
     for (const pr of allPRs) {
       if (!pr.isAuthor) continue;
 
-      const prevStatus = lastKnownStatuses.get(pr.id);
+      const prevStatus = lastStatuses[pr.id];
       if (prevStatus && prevStatus !== pr.ciStatus) {
         notifyCIChange(pr);
       }
-      lastKnownStatuses.set(pr.id, pr.ciStatus);
+      newStatuses[pr.id] = pr.ciStatus;
     }
+
+    await saveLastStatuses(newStatuses);
 
     // Cache PRs for instant popup load
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
@@ -122,7 +149,7 @@ async function notifyCIChange(pr: PullRequest) {
         : pr.ciStatus === 'failed' ? 'CI Failed'
           : `CI ${CI_STATUS_LABELS[pr.ciStatus]}`;
 
-    chrome.notifications.create(`prbell-${pr.id}-${Date.now()}`, {
+    chrome.notifications.create(`pr-radar-${pr.id}-${Date.now()}`, {
       type: 'basic',
       iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
       title,
@@ -137,26 +164,29 @@ async function notifyCIChange(pr: PullRequest) {
 
 // === Sound (via offscreen document) ===
 
-let offscreenReady = false;
-
 async function ensureOffscreen() {
-  if (offscreenReady) return;
-  try {
-    await chrome.offscreen.createDocument({
-      url: 'offscreen.html',
-      reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
-      justification: 'Play notification sounds',
-    });
-    offscreenReady = true;
-  } catch {
-    // Already exists
-    offscreenReady = true;
-  }
+  // Check if offscreen document already exists
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+  });
+  if (existingContexts.length > 0) return;
+
+  await chrome.offscreen.createDocument({
+    url: chrome.runtime.getURL('offscreen.html'),
+    reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
+    justification: 'Play notification sounds',
+  });
 }
 
 async function playSound(soundId: string) {
-  await ensureOffscreen();
-  chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId });
+  try {
+    await ensureOffscreen();
+    // Small delay to let the offscreen document initialize its listener
+    await new Promise((r) => setTimeout(r, 100));
+    await chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId });
+  } catch {
+    // Offscreen document not ready — ignore
+  }
 }
 
 // === Badge ===

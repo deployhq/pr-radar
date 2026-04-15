@@ -8,7 +8,7 @@ const config: Config = {
         sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Helvetica', 'Arial', 'sans-serif'],
       },
       colors: {
-        prbell: {
+        radar: {
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',

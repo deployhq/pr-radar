@@ -51,7 +51,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
   if (!settings) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-prbell-500 border-t-transparent" />
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
       </div>
     );
   }
@@ -92,6 +92,19 @@ export default function Settings({ onNavigate }: SettingsProps) {
           description="Notify when new comments appear"
         >
           <Toggle checked={settings.notifyOnComments} onChange={(v) => handleToggle('notifyOnComments', v)} />
+        </SettingRow>
+        <SettingRow
+          label="Test"
+          description="Send a test notification"
+        >
+          <button
+            onClick={() => {
+              chrome.runtime.sendMessage({ type: 'TEST_NOTIFICATION' });
+            }}
+            className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Test
+          </button>
         </SettingRow>
       </Section>
 
@@ -137,7 +150,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
             >
               <button
                 onClick={() => onNavigate({ type: 'setup' })}
-                className="text-[11px] text-prbell-400 hover:underline"
+                className="text-[11px] text-radar-400 hover:underline"
               >
                 Connect
               </button>
@@ -184,7 +197,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
     <button
       onClick={() => onChange(!checked)}
       className={`relative w-9 h-5 rounded-full transition-colors ${
-        checked ? 'bg-prbell-600' : 'bg-gray-700'
+        checked ? 'bg-radar-600' : 'bg-gray-700'
       }`}
     >
       <span

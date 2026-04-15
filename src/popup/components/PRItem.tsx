@@ -28,8 +28,18 @@ export default function PRItem({ pr }: PRItemProps) {
           <div className="text-[13px] text-gray-200 font-medium leading-tight truncate">
             {pr.title}
           </div>
-          <div className="text-[11px] text-gray-500 mt-0.5">
-            {pr.repoFullName} #{pr.number}
+          <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
+            <span>{pr.repoFullName} #{pr.number}</span>
+            {pr.isAuthor && (
+              <span className="text-[9px] px-1.5 py-px rounded bg-radar-900/50 text-radar-400 font-medium">
+                Author
+              </span>
+            )}
+            {pr.isReviewRequested && (
+              <span className="text-[9px] px-1.5 py-px rounded bg-amber-900/50 text-amber-400 font-medium">
+                Review
+              </span>
+            )}
           </div>
         </div>
       </div>

@@ -27,7 +27,7 @@ export default function App() {
   if (loading || !view) {
     return (
       <div className="flex items-center justify-center h-[520px] bg-gray-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-prbell-500 border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-radar-500 border-t-transparent" />
       </div>
     );
   }
@@ -48,12 +48,12 @@ export default function App() {
         {view.type === 'repos' && <Repos />}
       </div>
       <footer className="flex items-center justify-center gap-1.5 py-2.5 border-t border-gray-800 text-[11px] text-gray-500">
-        Free, by{' '}
+        Made with love by{' '}
         <a
-          href="https://www.deployhq.com"
+          href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=extension&utm_campaign=footer"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-prbell-400 hover:underline"
+          className="text-radar-400 hover:underline"
         >
           DeployHQ
         </a>

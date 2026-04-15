@@ -60,4 +60,5 @@ export type DashboardTab = 'mine' | 'review' | 'all';
 export type Message =
   | { type: 'POLL_NOW' }
   | { type: 'REFRESH_SETTINGS' }
-  | { type: 'GET_PRS'; payload: { tab: DashboardTab } };
+  | { type: 'GET_PRS'; payload: { tab: DashboardTab } }
+  | { type: 'TEST_NOTIFICATION' };

@@ -7,7 +7,7 @@ interface HeaderProps {
 
 export default function Header({ view, onNavigate }: HeaderProps) {
   const showBack = view.type === 'settings' || view.type === 'repos';
-  const title = view.type === 'settings' ? 'Settings' : view.type === 'repos' ? 'Watched Repos' : 'PRBell';
+  const title = view.type === 'settings' ? 'Settings' : view.type === 'repos' ? 'Watched Repos' : 'PR Radar';
 
   return (
     <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-800">
@@ -20,7 +20,7 @@ export default function Header({ view, onNavigate }: HeaderProps) {
             &larr;
           </button>
         ) : (
-          <span className="text-lg">&#x1F514;</span>
+          <span className="text-lg">&#x1F4E1;</span>
         )}
         <span className="font-bold text-[15px] text-gray-100">{title}</span>
       </div>

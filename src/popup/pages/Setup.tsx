@@ -21,7 +21,7 @@ const PLATFORMS: PlatformConfig[] = [
   {
     platform: 'github',
     placeholder: 'ghp_xxxxxxxxxxxx',
-    helpUrl: 'https://github.com/settings/tokens/new?scopes=repo,read:org&description=PRBell',
+    helpUrl: 'https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR Radar',
     helpLabel: 'Create a token (pre-filled with the right scopes)',
     comingSoon: false,
   },
@@ -82,8 +82,8 @@ export default function Setup({ onComplete }: SetupProps) {
   return (
     <div className="px-5 py-6">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-2xl">&#x1F514;</span>
-        <h1 className="text-lg font-bold text-gray-100">PRBell</h1>
+        <span className="text-2xl">&#x1F4E1;</span>
+        <h1 className="text-lg font-bold text-gray-100">PR Radar</h1>
       </div>
       <p className="text-[13px] text-gray-500 mb-6 leading-relaxed">
         Connect your accounts to see all PRs in one place. Your tokens stay on your device.
@@ -143,14 +143,14 @@ export default function Setup({ onComplete }: SetupProps) {
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder={cfg.placeholder}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-prbell-500"
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
                     autoFocus
                   />
                   <a
                     href={cfg.helpUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[11px] text-prbell-400 hover:underline block"
+                    className="text-[11px] text-radar-400 hover:underline block"
                   >
                     {cfg.helpLabel} &rarr;
                   </a>
@@ -158,7 +158,7 @@ export default function Setup({ onComplete }: SetupProps) {
                   <button
                     onClick={() => handleConnect(cfg.platform)}
                     disabled={loading || !token.trim()}
-                    className="w-full py-2 bg-prbell-600 hover:bg-prbell-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+                    className="w-full py-2 bg-radar-600 hover:bg-radar-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     {loading ? 'Verifying...' : 'Connect'}
                   </button>

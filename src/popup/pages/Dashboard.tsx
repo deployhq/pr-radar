@@ -146,14 +146,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             onClick={() => onNavigate({ type: 'dashboard', tab: t.id })}
             className={`flex-1 py-2.5 text-center text-xs border-b-2 transition-colors ${
               tab === t.id
-                ? 'text-prbell-400 border-prbell-400'
+                ? 'text-radar-400 border-radar-400'
                 : 'text-gray-500 border-transparent hover:text-gray-400'
             }`}
           >
             {t.label}
             <span
               className={`ml-1 px-1.5 py-px rounded-full text-[11px] ${
-                tab === t.id ? 'bg-prbell-900 text-prbell-400' : 'bg-gray-800 text-gray-500'
+                tab === t.id ? 'bg-radar-900 text-radar-400' : 'bg-gray-800 text-gray-500'
               }`}
             >
               {tabCounts[t.id]}
@@ -169,7 +169,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           placeholder="Search PRs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-prbell-500"
+          className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
         />
         {(['all', 'github', 'gitlab', 'bitbucket'] as const).map((p) => (
           <button
@@ -177,7 +177,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             onClick={() => setPlatformFilter(p)}
             className={`text-[11px] px-2.5 py-1 rounded-full border whitespace-nowrap transition-colors ${
               platformFilter === p
-                ? 'bg-prbell-900 text-prbell-400 border-prbell-600'
+                ? 'bg-radar-900 text-radar-400 border-radar-600'
                 : 'bg-gray-800 text-gray-500 border-gray-700 hover:border-gray-600'
             }`}
           >
@@ -188,9 +188,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
       {/* Refreshing indicator */}
       {refreshing && (
-        <div className="flex items-center justify-center gap-2 py-1.5 bg-prbell-950/50 border-b border-gray-800">
-          <div className="animate-spin rounded-full h-3 w-3 border border-prbell-400 border-t-transparent" />
-          <span className="text-[10px] text-prbell-400">Updating...</span>
+        <div className="flex items-center justify-center gap-2 py-1.5 bg-radar-950/50 border-b border-gray-800">
+          <div className="animate-spin rounded-full h-3 w-3 border border-radar-400 border-t-transparent" />
+          <span className="text-[10px] text-radar-400">Updating...</span>
         </div>
       )}
 
@@ -198,14 +198,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-prbell-500 border-t-transparent" />
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="px-4 py-8 text-center">
             <p className="text-sm text-red-400">{error}</p>
             <button
               onClick={() => { setError(''); setRefreshing(true); fetchFromAPI().finally(() => setRefreshing(false)); }}
-              className="mt-2 text-xs text-prbell-400 hover:underline"
+              className="mt-2 text-xs text-radar-400 hover:underline"
             >
               Retry
             </button>
@@ -219,7 +219,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             </p>
             <button
               onClick={() => onNavigate({ type: 'repos' })}
-              className="mt-3 text-xs bg-prbell-600 hover:bg-prbell-700 text-white px-4 py-1.5 rounded-md transition-colors"
+              className="mt-3 text-xs bg-radar-600 hover:bg-radar-700 text-white px-4 py-1.5 rounded-md transition-colors"
             >
               Select repos
             </button>

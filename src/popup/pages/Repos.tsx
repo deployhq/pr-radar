@@ -100,7 +100,7 @@ export default function Repos() {
             placeholder="Filter repos..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-prbell-500"
+            className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
           />
         </div>
         <div className="flex items-center justify-between mt-2">
@@ -110,7 +110,7 @@ export default function Repos() {
           {repos.length > 0 && (
             <button
               onClick={handleSelectAll}
-              className="text-[11px] text-prbell-400 hover:underline"
+              className="text-[11px] text-radar-400 hover:underline"
             >
               {allEnabled ? 'Deselect all' : 'Select all'}
             </button>
@@ -121,7 +121,7 @@ export default function Repos() {
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-6 w-6 border-2 border-prbell-500 border-t-transparent" />
+            <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-8 text-center text-xs text-gray-500">
@@ -130,27 +130,27 @@ export default function Repos() {
         ) : (
           <div className="px-4">
             {filtered.map((repo) => (
-              <div
+              <button
                 key={`${repo.platform}:${repo.fullName}`}
-                className="flex items-center gap-3 py-2 border-b border-gray-800"
+                onClick={() => handleToggle(repo.fullName, repo.platform)}
+                className="flex items-center gap-3 py-2 border-b border-gray-800 w-full text-left hover:bg-gray-800/30 transition-colors"
               >
-                <button
-                  onClick={() => handleToggle(repo.fullName, repo.platform)}
+                <span
                   className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[10px] border transition-colors ${
                     repo.enabled
-                      ? 'bg-prbell-600 border-prbell-600 text-white'
+                      ? 'bg-radar-600 border-radar-600 text-white'
                       : 'bg-gray-800 border-gray-600'
                   }`}
                 >
                   {repo.enabled ? '\u2713' : ''}
-                </button>
+                </span>
                 <span className="flex-1 text-[13px] text-gray-200 truncate">
                   {repo.fullName}
                 </span>
                 <span className="text-[10px] text-gray-600">
                   {PLATFORM_LABELS[repo.platform]}
                 </span>
-              </div>
+              </button>
             ))}
 
             {/* Token scope callout */}
@@ -158,14 +158,14 @@ export default function Repos() {
               <p className="text-[11px] text-gray-400 leading-relaxed">
                 <span className="text-gray-300 font-medium">Missing repos?</span>{' '}
                 We recommend using a <span className="text-gray-300">classic token</span> with
-                the <code className="text-prbell-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
+                the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
                 Fine-grained tokens may not show all org repos.
               </p>
               <a
-                href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=PRBell"
+                href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR+Radar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block mt-2 text-[11px] text-prbell-400 hover:underline"
+                className="inline-block mt-2 text-[11px] text-radar-400 hover:underline"
               >
                 Create a classic token &rarr;
               </a>

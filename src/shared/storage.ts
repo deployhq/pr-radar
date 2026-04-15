@@ -1,9 +1,9 @@
 import type { PlatformAccount, WatchedRepo, Platform } from './types';
 import type { SoundId } from './constants';
 
-const ACCOUNTS_KEY = 'prbell_accounts';
-const SETTINGS_KEY = 'prbell_settings';
-const REPOS_KEY = 'prbell_repos';
+const ACCOUNTS_KEY = 'pr_radar_accounts';
+const SETTINGS_KEY = 'pr_radar_settings';
+const REPOS_KEY = 'pr_radar_repos';
 
 // === Settings ===
 
@@ -82,7 +82,7 @@ export async function saveWatchedRepos(repos: WatchedRepo[]): Promise<void> {
 
 import type { PullRequest } from './types';
 
-const PR_CACHE_KEY = 'prbell_pr_cache';
+const PR_CACHE_KEY = 'pr_radar_pr_cache';
 
 interface PRCache {
   prs: PullRequest[];

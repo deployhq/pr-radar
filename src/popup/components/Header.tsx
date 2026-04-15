@@ -20,7 +20,7 @@ export default function Header({ view, onNavigate }: HeaderProps) {
             &larr;
           </button>
         ) : (
-          <span className="text-lg">&#x1F4E1;</span>
+          <img src={chrome.runtime.getURL('icons/icon-48.png')} alt="" className="w-5 h-5 rounded" />
         )}
         <span className="font-bold text-[15px] text-gray-100">{title}</span>
         {!showBack && (

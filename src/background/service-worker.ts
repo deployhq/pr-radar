@@ -103,12 +103,15 @@ async function pollPRs() {
       }
     }
 
-    // Check for CI status changes on the user's PRs
+    // Check for CI status changes on the user's PRs (skip stale)
+    const staleDays = (await getSettings()).stalePRDays;
+    const staleThreshold = staleDays > 0 ? staleDays * 86400000 : 0;
     const lastStatuses = await getLastStatuses();
     const newStatuses: Record<string, CIStatus> = {};
 
     for (const pr of allPRs) {
       if (!pr.isAuthor) continue;
+      if (staleThreshold && (Date.now() - new Date(pr.updatedAt).getTime()) > staleThreshold) continue;
 
       const prevStatus = lastStatuses[pr.id];
       if (prevStatus && prevStatus !== pr.ciStatus) {
@@ -123,12 +126,21 @@ async function pollPRs() {
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     await saveCachedPRs(allPRs);
 
-    // Update badge based on aggregate state
-    const myPRs = allPRs.filter((pr) => pr.isAuthor);
-    if (myPRs.some((pr) => pr.ciStatus === 'failed')) {
-      updateBadge('failed', myPRs.filter((pr) => pr.ciStatus === 'failed').length);
+    // Update badge based on aggregate state (exclude stale PRs)
+    const settings = await getSettings();
+    const staleMs = settings.stalePRDays > 0 ? settings.stalePRDays * 86400000 : 0;
+    const now = Date.now();
+    const myPRs = allPRs.filter((pr) =>
+      pr.isAuthor && (!staleMs || (now - new Date(pr.updatedAt).getTime()) < staleMs),
+    );
+    const failedCount = myPRs.filter((pr) => pr.ciStatus === 'failed').length;
+    const passedCount = myPRs.filter((pr) => pr.ciStatus === 'passed').length;
+    if (failedCount > 0) {
+      updateBadge('failed', failedCount);
     } else if (myPRs.some((pr) => pr.ciStatus === 'running')) {
       updateBadge('running');
+    } else if (passedCount > 0) {
+      updateBadge('passed', passedCount);
     } else {
       updateBadge('ok');
     }
@@ -191,7 +203,7 @@ async function playSound(soundId: string) {
 
 // === Badge ===
 
-type BadgeState = 'running' | 'failed' | 'ok' | 'error' | 'disconnected';
+type BadgeState = 'running' | 'failed' | 'passed' | 'ok' | 'error' | 'disconnected';
 
 function updateBadge(state: BadgeState, count?: number) {
   switch (state) {
@@ -202,6 +214,10 @@ function updateBadge(state: BadgeState, count?: number) {
     case 'failed':
       chrome.action.setBadgeText({ text: count ? String(count) : '!' });
       chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      break;
+    case 'passed':
+      chrome.action.setBadgeText({ text: count ? String(count) : '\u2713' });
+      chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
       break;
     case 'error':
       chrome.action.setBadgeText({ text: '?' });

@@ -128,10 +128,10 @@ async function hydratePR(
   username: string,
 ): Promise<PullRequest> {
   // Fetch CI status, reviews, unresolved threads, and deployments in parallel
-  const [ciResult, reviews, unresolvedCommentCount, deployment] = await Promise.all([
+  const [ciResult, reviews, graphqlDetails, deployment] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr.head.sha),
     ghFetch<GHReview[]>(`/repos/${repoFullName}/pulls/${pr.number}/reviews`, token),
-    countUnresolvedThreads(token, repoFullName, pr.number),
+    fetchGraphQLDetails(token, repoFullName, pr.number),
     fetchDeployment(token, repoFullName, pr.head.sha),
   ]);
 
@@ -160,8 +160,8 @@ async function hydratePR(
     reviewStatus,
     approvalCount,
     approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
-    unresolvedCommentCount,
-    hasConflicts: pr.mergeable_state === 'dirty',
+    unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
+    hasConflicts: graphqlDetails.hasConflicts,
     isAuthor: pr.user.login === username,
     isBot: pr.user.type === 'Bot',
     isReviewRequested,
@@ -298,13 +298,19 @@ async function fetchDeployment(
   }
 }
 
-async function countUnresolvedThreads(token: string, repoFullName: string, prNumber: number): Promise<number> {
-  // GitHub REST API doesn't expose resolved/unresolved state for review threads.
-  // Use the GraphQL API which has isResolved on reviewThreads.
+interface GraphQLPRDetails {
+  unresolvedCommentCount: number;
+  hasConflicts: boolean;
+}
+
+async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber: number): Promise<GraphQLPRDetails> {
+  // GitHub REST API doesn't expose resolved/unresolved state or mergeable status reliably.
+  // Use GraphQL which has isResolved on reviewThreads and mergeable on pullRequest.
   const [owner, repo] = repoFullName.split('/');
   const query = `query {
     repository(owner: "${owner}", name: "${repo}") {
       pullRequest(number: ${prNumber}) {
+        mergeable
         reviewThreads(first: 100) {
           nodes { isResolved }
         }
@@ -321,11 +327,14 @@ async function countUnresolvedThreads(token: string, repoFullName: string, prNum
       },
       body: JSON.stringify({ query }),
     });
-    if (!res.ok) return 0;
+    if (!res.ok) return { unresolvedCommentCount: 0, hasConflicts: false };
     const data = await res.json();
-    const threads = data?.data?.repository?.pullRequest?.reviewThreads?.nodes ?? [];
-    return threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
+    const pr = data?.data?.repository?.pullRequest;
+    const threads = pr?.reviewThreads?.nodes ?? [];
+    const unresolvedCommentCount = threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
+    const hasConflicts = pr?.mergeable === 'CONFLICTING';
+    return { unresolvedCommentCount, hasConflicts };
   } catch {
-    return 0;
+    return { unresolvedCommentCount: 0, hasConflicts: false };
   }
 }

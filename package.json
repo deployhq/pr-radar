@@ -4,6 +4,16 @@
   "description": "PR Radar - All your PRs in one place. CI status, comments, sound alerts. Free, by DeployHQ.",
   "private": true,
   "type": "module",
+  "license": "MIT",
+  "author": "DeployHQ (https://www.deployhq.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deployhq/pr-radar.git"
+  },
+  "homepage": "https://github.com/deployhq/pr-radar#readme",
+  "bugs": {
+    "url": "https://github.com/deployhq/pr-radar/issues"
+  },
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "tsc && vite build",

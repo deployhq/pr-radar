@@ -103,6 +103,8 @@ npm run dev          # Build in watch mode
 npm run build        # Production build
 npm run lint         # ESLint
 npm run typecheck    # TypeScript check
+npm test             # Run tests
+npm run test:watch   # Run tests in watch mode
 ```
 
 ## Privacy

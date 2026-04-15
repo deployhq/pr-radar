@@ -125,6 +125,7 @@ async function hydrateMR(
     unresolvedCommentCount,
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
+    isBot: false,
     isReviewRequested,
     hasReviewed: false,
   };

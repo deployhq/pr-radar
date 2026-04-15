@@ -11,7 +11,7 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
   const platformStyle = PLATFORM_COLORS[pr.platform];
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
-  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale;
+  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot;
 
   return (
     <a
@@ -93,8 +93,9 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
 
         <span
           className="text-[10px] text-gray-600 ml-auto"
-          title={isStale ? 'This PR is stale — consider closing it' : undefined}
+          title={isStale ? 'This PR is stale — consider closing it' : pr.isBot ? 'This PR was created by a bot' : undefined}
         >
+          {pr.isBot && <span className="mr-1">&#x1F916;</span>}
           {isStale && <span className="mr-1">&#x1F4A4;</span>}
           {timeAgo}
         </span>

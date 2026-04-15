@@ -34,6 +34,7 @@ export interface PullRequest {
   unresolvedCommentCount: number;
   hasConflicts: boolean;
   isAuthor: boolean;
+  isBot: boolean;
   isReviewRequested: boolean;
   hasReviewed: boolean;
   deployment?: {

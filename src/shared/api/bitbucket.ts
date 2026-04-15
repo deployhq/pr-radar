@@ -114,6 +114,7 @@ async function hydratePR(
     unresolvedCommentCount,
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
+    isBot: false,
     isReviewRequested,
     hasReviewed: false,
   };

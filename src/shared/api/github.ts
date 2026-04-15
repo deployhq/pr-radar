@@ -19,6 +19,7 @@ async function ghFetch<T>(path: string, token: string): Promise<T> {
 interface GHUser {
   login: string;
   avatar_url: string;
+  type?: string;
 }
 
 interface GHPullRequest {
@@ -145,6 +146,7 @@ async function hydratePR(
     unresolvedCommentCount,
     hasConflicts: pr.mergeable_state === 'dirty',
     isAuthor: pr.user.login === username,
+    isBot: pr.user.type === 'Bot',
     isReviewRequested,
     hasReviewed,
     deployment,

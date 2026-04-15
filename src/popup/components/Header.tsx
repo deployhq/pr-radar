@@ -28,7 +28,7 @@ export default function Header({ view, onNavigate }: HeaderProps) {
             href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=header"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[10px] text-gray-500 hover:text-gray-400 font-normal transition-colors"
+            className="text-[10px] text-gray-500 visited:text-gray-500 hover:text-gray-400 font-normal transition-colors"
           >by DeployHQ</a>
         )}
       </div>

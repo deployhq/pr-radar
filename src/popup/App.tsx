@@ -35,7 +35,7 @@ export default function App() {
   const showHeader = view.type !== 'setup';
 
   return (
-    <div className="min-h-[520px] flex flex-col bg-gray-950 text-gray-200">
+    <div className="min-h-[520px] flex flex-col bg-gray-950 text-gray-200 rounded-xl overflow-hidden">
       {showHeader && <Header view={view} onNavigate={setView} />}
       <div className="flex-1 overflow-y-auto">
         {view.type === 'setup' && (
@@ -53,7 +53,7 @@ export default function App() {
           href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=footer"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-radar-400 hover:underline"
+          className="text-radar-400 visited:text-radar-400 hover:underline"
         >
           DeployHQ
         </a>

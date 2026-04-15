@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import type { Platform, PlatformAccount } from '@/shared/types';
 import { PLATFORM_LABELS } from '@/shared/constants';
-import { saveAccount, getAccounts } from '@/shared/storage';
+import { saveAccount } from '@/shared/storage';
+import PlatformIcon from '../components/PlatformIcon';
 import * as github from '@/shared/api/github';
-import * as gitlab from '@/shared/api/gitlab';
-import * as bitbucket from '@/shared/api/bitbucket';
 
 interface SetupProps {
   onComplete: () => void;
@@ -12,38 +11,43 @@ interface SetupProps {
 
 interface PlatformConfig {
   platform: Platform;
-  icon: string;
   placeholder: string;
   helpUrl: string;
   helpLabel: string;
+  comingSoon: boolean;
 }
 
 const PLATFORMS: PlatformConfig[] = [
   {
     platform: 'github',
-    icon: '\u25CF',
     placeholder: 'ghp_xxxxxxxxxxxx',
-    helpUrl: 'https://github.com/settings/tokens',
-    helpLabel: 'Create a token with repo scope',
+    helpUrl: 'https://github.com/settings/tokens/new?scopes=repo,read:org&description=PRBell',
+    helpLabel: 'Create a token (pre-filled with the right scopes)',
+    comingSoon: false,
   },
   {
     platform: 'gitlab',
-    icon: '\u25B2',
     placeholder: 'glpat-xxxxxxxxxxxx',
     helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens',
     helpLabel: 'Create a token with read_api scope',
+    comingSoon: true,
   },
   {
     platform: 'bitbucket',
-    icon: '\u25C8',
     placeholder: 'App password',
     helpUrl: 'https://bitbucket.org/account/settings/app-passwords/',
     helpLabel: 'Create an app password with read permissions',
+    comingSoon: true,
   },
 ];
 
+const ICON_COLORS: Record<Platform, string> = {
+  github: 'text-white',
+  gitlab: 'text-orange-500',
+  bitbucket: 'text-blue-500',
+};
+
 export default function Setup({ onComplete }: SetupProps) {
-  const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(new Set());
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
@@ -61,26 +65,19 @@ export default function Setup({ onComplete }: SetupProps) {
       if (platform === 'github') {
         const user = await github.getAuthenticatedUser(token.trim());
         account = { platform, token: token.trim(), username: user.login, avatarUrl: user.avatar_url };
-      } else if (platform === 'gitlab') {
-        const user = await gitlab.getAuthenticatedUser(token.trim());
-        account = { platform, token: token.trim(), username: user.username, avatarUrl: user.avatar_url };
       } else {
-        const user = await bitbucket.getAuthenticatedUser(token.trim());
-        account = { platform, token: token.trim(), username: user.nickname, avatarUrl: user.avatar };
+        // GitLab/Bitbucket coming soon
+        return;
       }
 
       await saveAccount(account);
-      setConnectedPlatforms((prev) => new Set([...prev, platform]));
-      setConnectingPlatform(null);
-      setToken('');
+      onComplete();
     } catch {
       setError('Invalid token. Please check and try again.');
     } finally {
       setLoading(false);
     }
   }
-
-  const hasAnyConnection = connectedPlatforms.size > 0;
 
   return (
     <div className="px-5 py-6">
@@ -94,43 +91,44 @@ export default function Setup({ onComplete }: SetupProps) {
 
       <div className="space-y-3">
         {PLATFORMS.map((cfg) => {
-          const isConnected = connectedPlatforms.has(cfg.platform);
           const isExpanded = connectingPlatform === cfg.platform;
 
           return (
             <div
               key={cfg.platform}
               className={`rounded-xl border transition-colors ${
-                isConnected
-                  ? 'border-emerald-800 bg-emerald-950/30'
+                cfg.comingSoon
+                  ? 'border-gray-800 bg-gray-800/30 opacity-60'
                   : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
               }`}
             >
               <button
                 className="flex items-center gap-3 w-full px-4 py-3.5"
                 onClick={() => {
-                  if (isConnected) return;
+                  if (cfg.comingSoon) return;
                   setConnectingPlatform(isExpanded ? null : cfg.platform);
                   setToken('');
                   setError('');
                 }}
-                disabled={isConnected}
+                disabled={cfg.comingSoon}
               >
-                <span className="text-xl w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg">
-                  {cfg.icon}
+                <span className="w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg">
+                  <PlatformIcon platform={cfg.platform} size={20} className={ICON_COLORS[cfg.platform]} />
                 </span>
                 <div className="flex-1 text-left">
                   <div className="text-sm font-semibold text-gray-200">
                     {PLATFORM_LABELS[cfg.platform]}
                   </div>
-                  {isConnected ? (
-                    <div className="text-[11px] text-emerald-400">Connected</div>
+                  {cfg.comingSoon ? (
+                    <div className="text-[11px] text-gray-600">Coming soon</div>
                   ) : (
                     <div className="text-[11px] text-gray-500">Not connected</div>
                   )}
                 </div>
-                {isConnected ? (
-                  <span className="text-emerald-400 text-sm">&#10003;</span>
+                {cfg.comingSoon ? (
+                  <span className="text-[11px] px-3 py-1 rounded-md border border-gray-700 text-gray-600">
+                    Soon
+                  </span>
                 ) : (
                   <span className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400">
                     Connect
@@ -138,7 +136,7 @@ export default function Setup({ onComplete }: SetupProps) {
                 )}
               </button>
 
-              {isExpanded && (
+              {isExpanded && !cfg.comingSoon && (
                 <div className="px-4 pb-4 space-y-2">
                   <input
                     type="password"
@@ -171,17 +169,6 @@ export default function Setup({ onComplete }: SetupProps) {
         })}
       </div>
 
-      {hasAnyConnection && (
-        <button
-          onClick={async () => {
-            const accounts = await getAccounts();
-            if (accounts.length > 0) onComplete();
-          }}
-          className="w-full mt-6 py-2.5 bg-prbell-600 hover:bg-prbell-700 text-white text-sm font-semibold rounded-lg transition-colors"
-        >
-          Continue &rarr;
-        </button>
-      )}
     </div>
   );
 }

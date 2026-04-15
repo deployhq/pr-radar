@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, saveCachedPRs } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -91,6 +91,10 @@ async function pollPRs() {
       }
       lastKnownStatuses.set(pr.id, pr.ciStatus);
     }
+
+    // Cache PRs for instant popup load
+    allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    await saveCachedPRs(allPRs);
 
     // Update badge based on aggregate state
     const myPRs = allPRs.filter((pr) => pr.isAuthor);

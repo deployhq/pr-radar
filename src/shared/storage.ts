@@ -78,6 +78,28 @@ export async function saveWatchedRepos(repos: WatchedRepo[]): Promise<void> {
   await chrome.storage.local.set({ [REPOS_KEY]: repos });
 }
 
+// === PR cache ===
+
+import type { PullRequest } from './types';
+
+const PR_CACHE_KEY = 'prbell_pr_cache';
+
+interface PRCache {
+  prs: PullRequest[];
+  updatedAt: number;
+}
+
+export async function getCachedPRs(): Promise<PRCache | null> {
+  const result = await chrome.storage.local.get(PR_CACHE_KEY);
+  return result[PR_CACHE_KEY] ?? null;
+}
+
+export async function saveCachedPRs(prs: PullRequest[]): Promise<void> {
+  await chrome.storage.local.set({
+    [PR_CACHE_KEY]: { prs, updatedAt: Date.now() } satisfies PRCache,
+  });
+}
+
 export async function clearAll(): Promise<void> {
-  await chrome.storage.local.remove([ACCOUNTS_KEY, SETTINGS_KEY, REPOS_KEY]);
+  await chrome.storage.local.remove([ACCOUNTS_KEY, SETTINGS_KEY, REPOS_KEY, PR_CACHE_KEY]);
 }

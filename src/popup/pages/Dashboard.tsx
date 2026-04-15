@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppView, DashboardTab, PullRequest, Platform } from '@/shared/types';
-import { getAccounts, getWatchedRepos } from '@/shared/storage';
+import { getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -20,61 +20,94 @@ const TABS: { id: DashboardTab; label: string }[] = [
 export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [prs, setPRs] = useState<PullRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
+  const [hasWatchedRepos, setHasWatchedRepos] = useState(true);
 
-  const fetchPRs = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchFromAPI = useCallback(async () => {
+    const accounts = await getAccounts();
+    const watchedRepos = await getWatchedRepos();
+    const enabledRepos = watchedRepos.filter((r) => r.enabled);
 
-    try {
-      const accounts = await getAccounts();
-      const watchedRepos = await getWatchedRepos();
-      const enabledRepos = watchedRepos.filter((r) => r.enabled);
+    setHasWatchedRepos(enabledRepos.length > 0);
 
-      const allPRs: PullRequest[] = [];
-
-      for (const account of accounts) {
-        const repos = enabledRepos.filter((r) => r.platform === account.platform);
-
-        if (repos.length === 0) continue;
-
-        try {
-          if (account.platform === 'github') {
-            for (const repo of repos) {
-              const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
-              allPRs.push(...prs);
-            }
-          } else if (account.platform === 'gitlab') {
-            for (const repo of repos) {
-              const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
-              allPRs.push(...prs);
-            }
-          } else if (account.platform === 'bitbucket') {
-            for (const repo of repos) {
-              const prs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
-              allPRs.push(...prs);
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to fetch PRs from ${account.platform}:`, err);
-        }
-      }
-
-      // Sort by most recently updated
-      allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      setPRs(allPRs);
-    } catch {
-      setError('Failed to fetch pull requests');
-    } finally {
-      setLoading(false);
+    if (enabledRepos.length === 0) {
+      setPRs([]);
+      await saveCachedPRs([]);
+      return;
     }
+
+    const allPRs: PullRequest[] = [];
+
+    for (const account of accounts) {
+      const repos = enabledRepos.filter((r) => r.platform === account.platform);
+
+      if (repos.length === 0) continue;
+
+      try {
+        if (account.platform === 'github') {
+          for (const repo of repos) {
+            const repoPRs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...repoPRs);
+          }
+        } else if (account.platform === 'gitlab') {
+          for (const repo of repos) {
+            const repoPRs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...repoPRs);
+          }
+        } else if (account.platform === 'bitbucket') {
+          for (const repo of repos) {
+            const repoPRs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...repoPRs);
+          }
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg.includes('401') || errMsg.includes('403')) {
+          setError(`${account.platform} token expired or invalid. Reconnect in Settings.`);
+        }
+        console.error(`Failed to fetch PRs from ${account.platform}:`, err);
+      }
+    }
+
+    allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    setPRs(allPRs);
+    await saveCachedPRs(allPRs);
   }, []);
 
   useEffect(() => {
-    fetchPRs();
-  }, [fetchPRs]);
+    async function init() {
+      // 1. Show cached data instantly
+      const cached = await getCachedPRs();
+      if (cached && cached.prs.length > 0) {
+        setPRs(cached.prs);
+        setHasWatchedRepos(true);
+        setLoading(false);
+
+        // 2. Refresh from API in background
+        setRefreshing(true);
+        try {
+          await fetchFromAPI();
+        } catch {
+          // Keep showing cached data
+        } finally {
+          setRefreshing(false);
+        }
+      } else {
+        // No cache — full load
+        try {
+          await fetchFromAPI();
+        } catch {
+          setError('Failed to fetch pull requests');
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+    init();
+  }, [fetchFromAPI]);
 
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
@@ -153,6 +186,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         ))}
       </div>
 
+      {/* Refreshing indicator */}
+      {refreshing && (
+        <div className="flex items-center justify-center gap-2 py-1.5 bg-prbell-950/50 border-b border-gray-800">
+          <div className="animate-spin rounded-full h-3 w-3 border border-prbell-400 border-t-transparent" />
+          <span className="text-[10px] text-prbell-400">Updating...</span>
+        </div>
+      )}
+
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -163,10 +204,24 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           <div className="px-4 py-8 text-center">
             <p className="text-sm text-red-400">{error}</p>
             <button
-              onClick={fetchPRs}
+              onClick={() => { setError(''); setRefreshing(true); fetchFromAPI().finally(() => setRefreshing(false)); }}
               className="mt-2 text-xs text-prbell-400 hover:underline"
             >
               Retry
+            </button>
+          </div>
+        ) : !hasWatchedRepos ? (
+          <div className="px-5 py-12 text-center">
+            <div className="text-3xl mb-3">&#x1F4E1;</div>
+            <p className="text-sm font-medium text-gray-200">No repos selected</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Choose which repos to watch to see their PRs here
+            </p>
+            <button
+              onClick={() => onNavigate({ type: 'repos' })}
+              className="mt-3 text-xs bg-prbell-600 hover:bg-prbell-700 text-white px-4 py-1.5 rounded-md transition-colors"
+            >
+              Select repos
             </button>
           </div>
         ) : filtered.length === 0 ? (
@@ -182,7 +237,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
                 ? "You're all caught up!"
                 : search
                   ? 'Try a different search'
-                  : 'PRs from your watched repos will appear here'}
+                  : "You're all clear — no open PRs on your watched repos"}
             </p>
           </div>
         ) : (

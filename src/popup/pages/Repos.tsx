@@ -83,6 +83,13 @@ export default function Repos() {
     : repos;
 
   const enabledCount = repos.filter((r) => r.enabled).length;
+  const allEnabled = repos.length > 0 && repos.every((r) => r.enabled);
+
+  async function handleSelectAll() {
+    const updated = repos.map((r) => ({ ...r, enabled: !allEnabled }));
+    setRepos(updated);
+    await saveWatchedRepos(updated);
+  }
 
   return (
     <div className="flex flex-col flex-1">
@@ -96,9 +103,19 @@ export default function Repos() {
             className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-prbell-500"
           />
         </div>
-        <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
-          Select which repos to monitor ({enabledCount} watched). Fewer repos = faster updates.
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-[11px] text-gray-500">
+            {enabledCount} of {repos.length} repos watched
+          </p>
+          {repos.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className="text-[11px] text-prbell-400 hover:underline"
+            >
+              {allEnabled ? 'Deselect all' : 'Select all'}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -135,6 +152,24 @@ export default function Repos() {
                 </span>
               </div>
             ))}
+
+            {/* Token scope callout */}
+            <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                <span className="text-gray-300 font-medium">Missing repos?</span>{' '}
+                We recommend using a <span className="text-gray-300">classic token</span> with
+                the <code className="text-prbell-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
+                Fine-grained tokens may not show all org repos.
+              </p>
+              <a
+                href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=PRBell"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 text-[11px] text-prbell-400 hover:underline"
+              >
+                Create a classic token &rarr;
+              </a>
+            </div>
           </div>
         )}
       </div>

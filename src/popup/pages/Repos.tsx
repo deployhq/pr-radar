@@ -76,6 +76,7 @@ export default function Repos() {
     );
     setRepos(updated);
     await saveWatchedRepos(updated);
+    chrome.runtime.sendMessage({ type: 'POLL_NOW' });
   }
 
   const filtered = filter.trim()
@@ -89,6 +90,7 @@ export default function Repos() {
     const updated = repos.map((r) => ({ ...r, enabled: !allEnabled }));
     setRepos(updated);
     await saveWatchedRepos(updated);
+    chrome.runtime.sendMessage({ type: 'POLL_NOW' });
   }
 
   return (

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 440px;
+    height: 280px;
+    background: linear-gradient(135deg, #1a0e2e 0%, #0d1117 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    gap: 14px;
+  }
+
+  .icon-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #f0f0f0;
+  }
+
+  p {
+    font-size: 14px;
+    color: #9ca3af;
+    text-align: center;
+    max-width: 360px;
+    line-height: 1.5;
+  }
+
+  .badges {
+    display: flex;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .badge-amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  .by {
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .by span { color: #a78bfa; }
+</style>
+</head>
+<body>
+  <div class="icon-row">
+    <img class="icon" src="../icons/icon-128.png" alt="PR Radar">
+    <h1>PR Radar</h1>
+  </div>
+  <p>All your PRs in one place. CI status, comments, deployments, and sound alerts.</p>
+  <div class="badges">
+    <span class="badge badge-green">✓ Passed</span>
+    <span class="badge badge-red">✗ Failed</span>
+    <span class="badge badge-blue">● Running</span>
+    <span class="badge badge-amber">💬 3</span>
+  </div>
+  <div class="by">Free & open source by <span>DeployHQ</span></div>
+</body>
+</html>

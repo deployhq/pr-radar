@@ -1,0 +1,181 @@
+import type { PullRequest, CIStatus, Message } from '@/shared/types';
+import { CI_STATUS_LABELS } from '@/shared/constants';
+import { getSettings, getAccounts, getWatchedRepos } from '@/shared/storage';
+import * as github from '@/shared/api/github';
+import * as gitlab from '@/shared/api/gitlab';
+import * as bitbucket from '@/shared/api/bitbucket';
+
+const ALARM_NAME = 'prbell-poll';
+
+// Track last known CI statuses to detect changes
+const lastKnownStatuses = new Map<string, CIStatus>();
+
+// === Lifecycle ===
+
+chrome.runtime.onInstalled.addListener(() => {
+  setupPolling();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === ALARM_NAME) {
+    pollPRs();
+  }
+});
+
+chrome.runtime.onMessage.addListener((message: Message) => {
+  if (message.type === 'POLL_NOW') {
+    pollPRs();
+  } else if (message.type === 'REFRESH_SETTINGS') {
+    setupPolling();
+  }
+});
+
+// === Polling setup ===
+
+async function setupPolling() {
+  const settings = await getSettings();
+  const periodInMinutes = Math.max(settings.pollIntervalSeconds / 60, 0.5);
+
+  await chrome.alarms.clear(ALARM_NAME);
+  chrome.alarms.create(ALARM_NAME, { periodInMinutes });
+}
+
+// === Main poll loop ===
+
+async function pollPRs() {
+  const accounts = await getAccounts();
+  if (accounts.length === 0) {
+    updateBadge('disconnected');
+    return;
+  }
+
+  const watchedRepos = await getWatchedRepos();
+  const enabledRepos = watchedRepos.filter((r) => r.enabled);
+
+  if (enabledRepos.length === 0) {
+    updateBadge('ok');
+    return;
+  }
+
+  try {
+    const allPRs: PullRequest[] = [];
+
+    for (const account of accounts) {
+      const repos = enabledRepos.filter((r) => r.platform === account.platform);
+
+      for (const repo of repos) {
+        try {
+          if (account.platform === 'github') {
+            const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...prs);
+          } else if (account.platform === 'gitlab') {
+            const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...prs);
+          } else if (account.platform === 'bitbucket') {
+            const prs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
+            allPRs.push(...prs);
+          }
+        } catch (err) {
+          console.error(`Failed to poll ${repo.fullName}:`, err);
+        }
+      }
+    }
+
+    // Check for CI status changes on the user's PRs
+    for (const pr of allPRs) {
+      if (!pr.isAuthor) continue;
+
+      const prevStatus = lastKnownStatuses.get(pr.id);
+      if (prevStatus && prevStatus !== pr.ciStatus) {
+        notifyCIChange(pr);
+      }
+      lastKnownStatuses.set(pr.id, pr.ciStatus);
+    }
+
+    // Update badge based on aggregate state
+    const myPRs = allPRs.filter((pr) => pr.isAuthor);
+    if (myPRs.some((pr) => pr.ciStatus === 'failed')) {
+      updateBadge('failed', myPRs.filter((pr) => pr.ciStatus === 'failed').length);
+    } else if (myPRs.some((pr) => pr.ciStatus === 'running')) {
+      updateBadge('running');
+    } else {
+      updateBadge('ok');
+    }
+  } catch (err) {
+    console.error('Poll error:', err);
+    updateBadge('error');
+  }
+}
+
+// === Notifications ===
+
+async function notifyCIChange(pr: PullRequest) {
+  const settings = await getSettings();
+
+  if (settings.notificationsEnabled) {
+    const title =
+      pr.ciStatus === 'passed' ? 'CI Passed'
+        : pr.ciStatus === 'failed' ? 'CI Failed'
+          : `CI ${CI_STATUS_LABELS[pr.ciStatus]}`;
+
+    chrome.notifications.create(`prbell-${pr.id}-${Date.now()}`, {
+      type: 'basic',
+      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+      title,
+      message: `${pr.repoFullName} #${pr.number}\n${pr.title}`,
+    });
+  }
+
+  if (settings.soundEnabled && (pr.ciStatus === 'passed' || pr.ciStatus === 'failed')) {
+    playSound(settings.soundId);
+  }
+}
+
+// === Sound (via offscreen document) ===
+
+let offscreenReady = false;
+
+async function ensureOffscreen() {
+  if (offscreenReady) return;
+  try {
+    await chrome.offscreen.createDocument({
+      url: 'offscreen.html',
+      reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
+      justification: 'Play notification sounds',
+    });
+    offscreenReady = true;
+  } catch {
+    // Already exists
+    offscreenReady = true;
+  }
+}
+
+async function playSound(soundId: string) {
+  await ensureOffscreen();
+  chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId });
+}
+
+// === Badge ===
+
+type BadgeState = 'running' | 'failed' | 'ok' | 'error' | 'disconnected';
+
+function updateBadge(state: BadgeState, count?: number) {
+  switch (state) {
+    case 'running':
+      chrome.action.setBadgeText({ text: '...' });
+      chrome.action.setBadgeBackgroundColor({ color: '#3b82f6' });
+      break;
+    case 'failed':
+      chrome.action.setBadgeText({ text: count ? String(count) : '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      break;
+    case 'error':
+      chrome.action.setBadgeText({ text: '?' });
+      chrome.action.setBadgeBackgroundColor({ color: '#6b7280' });
+      break;
+    case 'ok':
+    case 'disconnected':
+      chrome.action.setBadgeText({ text: '' });
+      break;
+  }
+}

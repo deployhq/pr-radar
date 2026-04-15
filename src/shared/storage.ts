@@ -1,0 +1,83 @@
+import type { PlatformAccount, WatchedRepo, Platform } from './types';
+import type { SoundId } from './constants';
+
+const ACCOUNTS_KEY = 'prbell_accounts';
+const SETTINGS_KEY = 'prbell_settings';
+const REPOS_KEY = 'prbell_repos';
+
+// === Settings ===
+
+export interface Settings {
+  pollIntervalSeconds: number;
+  notificationsEnabled: boolean;
+  soundEnabled: boolean;
+  soundId: SoundId;
+  soundVolume: number;
+  notifyOnComments: boolean;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  pollIntervalSeconds: 60,
+  notificationsEnabled: true,
+  soundEnabled: true,
+  soundId: 'ding',
+  soundVolume: 0.7,
+  notifyOnComments: false,
+};
+
+export async function getSettings(): Promise<Settings> {
+  const result = await chrome.storage.local.get(SETTINGS_KEY);
+  return { ...DEFAULT_SETTINGS, ...result[SETTINGS_KEY] };
+}
+
+export async function saveSettings(settings: Partial<Settings>): Promise<void> {
+  const current = await getSettings();
+  await chrome.storage.local.set({
+    [SETTINGS_KEY]: { ...current, ...settings },
+  });
+}
+
+// === Accounts ===
+
+export async function getAccounts(): Promise<PlatformAccount[]> {
+  const result = await chrome.storage.local.get(ACCOUNTS_KEY);
+  return result[ACCOUNTS_KEY] ?? [];
+}
+
+export async function saveAccount(account: PlatformAccount): Promise<void> {
+  const accounts = await getAccounts();
+  const idx = accounts.findIndex((a) => a.platform === account.platform);
+  if (idx >= 0) {
+    accounts[idx] = account;
+  } else {
+    accounts.push(account);
+  }
+  await chrome.storage.local.set({ [ACCOUNTS_KEY]: accounts });
+}
+
+export async function removeAccount(platform: Platform): Promise<void> {
+  const accounts = await getAccounts();
+  await chrome.storage.local.set({
+    [ACCOUNTS_KEY]: accounts.filter((a) => a.platform !== platform),
+  });
+}
+
+export async function getAccount(platform: Platform): Promise<PlatformAccount | null> {
+  const accounts = await getAccounts();
+  return accounts.find((a) => a.platform === platform) ?? null;
+}
+
+// === Watched repos ===
+
+export async function getWatchedRepos(): Promise<WatchedRepo[]> {
+  const result = await chrome.storage.local.get(REPOS_KEY);
+  return result[REPOS_KEY] ?? [];
+}
+
+export async function saveWatchedRepos(repos: WatchedRepo[]): Promise<void> {
+  await chrome.storage.local.set({ [REPOS_KEY]: repos });
+}
+
+export async function clearAll(): Promise<void> {
+  await chrome.storage.local.remove([ACCOUNTS_KEY, SETTINGS_KEY, REPOS_KEY]);
+}

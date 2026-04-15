@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "PRBell - PR Dashboard & CI Notifications",
+  "description": "All your PRs in one place. CI status, unresolved comments, sound alerts. GitHub, GitLab & Bitbucket. Free, by DeployHQ.",
+  "version": "0.1.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://gitlab.com/api/*",
+    "https://bitbucket.org/api/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  }
+}

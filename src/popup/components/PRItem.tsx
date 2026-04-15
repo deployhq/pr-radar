@@ -39,7 +39,7 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
               </span>
             )}
             {pr.isMerged && (
-              <span className="text-[9px] px-1.5 py-px rounded bg-purple-900/50 text-purple-400 font-medium">
+              <span className="text-[9px] px-1.5 py-px rounded bg-emerald-900/50 text-emerald-400 font-medium">
                 Merged
               </span>
             )}

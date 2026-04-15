@@ -36,7 +36,7 @@ interface GHPullRequest {
   requested_reviewers?: GHUser[];
 }
 
-interface GHReview {
+export interface GHReview {
   state: string;
   user: GHUser;
   commit_id: string;
@@ -124,13 +124,7 @@ async function hydratePR(
   const reviewStatus = deriveReviewStatus(reviews);
   const approvalCount = reviews.filter((r) => r.state === 'APPROVED').length;
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
-  // Only count reviews on the current head commit — stale reviews (on older commits)
-  // shouldn't dim the PR since new code may need re-review.
-  const hasReviewed = reviews.some(
-    (r) => r.user.login === username
-      && r.commit_id === pr.head.sha
-      && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED'),
-  );
+  const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 
   return {
     id: `github-${repoFullName}-${pr.number}`,
@@ -208,7 +202,16 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
   }
 }
 
-function deriveReviewStatus(reviews: GHReview[]): ReviewStatus {
+/** Only count reviews on the current head commit — stale reviews on older commits don't count. */
+export function checkHasReviewed(reviews: GHReview[], username: string, headSha: string): boolean {
+  return reviews.some(
+    (r) => r.user.login === username
+      && r.commit_id === headSha
+      && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED'),
+  );
+}
+
+export function deriveReviewStatus(reviews: GHReview[]): ReviewStatus {
   if (!reviews.length) return 'none';
 
   // Get latest review per user

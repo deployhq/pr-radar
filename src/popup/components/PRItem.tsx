@@ -55,7 +55,7 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
       <div className="flex items-center gap-2 mt-1.5 ml-[30px] flex-wrap">
         {pr.isDraft && <Badge className="bg-gray-800 text-gray-500">Draft</Badge>}
 
-        <CIBadge status={pr.ciStatus} />
+        <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} />
 
         {pr.approvalCount > 0 && (
           <Badge className="bg-emerald-900/50 text-emerald-400">

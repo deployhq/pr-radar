@@ -194,8 +194,8 @@ async function pollPRs() {
           const account = accounts.find((a) => a.platform === 'github');
           if (account) {
             try {
-              const ciStatus = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
-              allPRs.push({ ...pr, ciStatus });
+              const ciResult = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
+              allPRs.push({ ...pr, ciStatus: ciResult.status, ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined });
             } catch {
               allPRs.push(pr); // keep with old status
             }

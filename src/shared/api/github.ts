@@ -100,7 +100,7 @@ export async function checkIfMerged(token: string, repoFullName: string, prNumbe
   }
 }
 
-export async function refreshCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIStatus> {
+export async function refreshCIStatus(token: string, repoFullName: string, headSha: string): Promise<{ status: CIStatus; failedChecks: string[] }> {
   return fetchCIStatus(token, repoFullName, headSha);
 }
 
@@ -128,7 +128,7 @@ async function hydratePR(
   username: string,
 ): Promise<PullRequest> {
   // Fetch CI status, reviews, unresolved threads, and deployments in parallel
-  const [ciStatus, reviews, unresolvedCommentCount, deployment] = await Promise.all([
+  const [ciResult, reviews, unresolvedCommentCount, deployment] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr.head.sha),
     ghFetch<GHReview[]>(`/repos/${repoFullName}/pulls/${pr.number}/reviews`, token),
     countUnresolvedThreads(token, repoFullName, pr.number),
@@ -153,7 +153,8 @@ async function hydratePR(
     isDraft: pr.draft,
     createdAt: pr.created_at,
     updatedAt: pr.updated_at,
-    ciStatus,
+    ciStatus: ciResult.status,
+    ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined,
     reviewStatus,
     approvalCount,
     unresolvedCommentCount,
@@ -167,7 +168,12 @@ async function hydratePR(
   };
 }
 
-async function fetchCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIStatus> {
+interface CIResult {
+  status: CIStatus;
+  failedChecks: string[];
+}
+
+async function fetchCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIResult> {
   try {
     // Use the combined status endpoint for the PR's head commit
     const [combinedStatus, checkRuns] = await Promise.all([
@@ -175,7 +181,7 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
         `/repos/${repoFullName}/commits/${headSha}/status`,
         token,
       ),
-      ghFetch<{ total_count: number; check_runs: { status: string; conclusion: string | null }[] }>(
+      ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null }[] }>(
         `/repos/${repoFullName}/commits/${headSha}/check-runs`,
         token,
       ),
@@ -185,36 +191,41 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
     if (checkRuns.total_count > 0) {
       const runs = checkRuns.check_runs;
 
-      const hasFailure = runs.some(
+      const failedRuns = runs.filter(
         (r) => r.conclusion === 'failure' || r.conclusion === 'timed_out',
       );
-      if (hasFailure) return 'failed';
+      if (failedRuns.length > 0) {
+        return { status: 'failed', failedChecks: failedRuns.map((r) => r.name) };
+      }
 
       const hasRunning = runs.some(
         (r) => r.status === 'in_progress' || r.status === 'queued',
       );
-      if (hasRunning) return 'running';
+      if (hasRunning) return { status: 'running', failedChecks: [] };
 
       const allDone = runs.every((r) => r.status === 'completed');
       if (allDone) {
-        const allSuccess = runs.every(
-          (r) => r.conclusion === 'success' || r.conclusion === 'neutral' || r.conclusion === 'skipped',
+        const nonSuccess = runs.filter(
+          (r) => r.conclusion !== 'success' && r.conclusion !== 'neutral' && r.conclusion !== 'skipped',
         );
-        return allSuccess ? 'passed' : 'failed';
+        if (nonSuccess.length > 0) {
+          return { status: 'failed', failedChecks: nonSuccess.map((r) => r.name) };
+        }
+        return { status: 'passed', failedChecks: [] };
       }
 
-      return 'pending';
+      return { status: 'pending', failedChecks: [] };
     }
 
     // Fall back to legacy commit status API
     switch (combinedStatus.state) {
-      case 'success': return 'passed';
-      case 'failure': case 'error': return 'failed';
-      case 'pending': return 'running';
-      default: return 'unknown';
+      case 'success': return { status: 'passed', failedChecks: [] };
+      case 'failure': case 'error': return { status: 'failed', failedChecks: [] };
+      case 'pending': return { status: 'running', failedChecks: [] };
+      default: return { status: 'unknown', failedChecks: [] };
     }
   } catch {
-    return 'unknown';
+    return { status: 'unknown', failedChecks: [] };
   }
 }
 

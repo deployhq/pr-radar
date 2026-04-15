@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppView, DashboardTab, PullRequest, Platform } from '@/shared/types';
-import { getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs } from '@/shared/storage';
+import { getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, getSettings } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -25,6 +25,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [search, setSearch] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [hasWatchedRepos, setHasWatchedRepos] = useState(true);
+  const [stalePRDays, setStalePRDays] = useState(45);
 
   const fetchFromAPI = useCallback(async () => {
     const accounts = await getAccounts();
@@ -79,6 +80,10 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   useEffect(() => {
     async function init() {
+      // Load settings
+      const settings = await getSettings();
+      setStalePRDays(settings.stalePRDays);
+
       // 1. Show cached data instantly
       const cached = await getCachedPRs();
       if (cached && cached.prs.length > 0) {
@@ -241,7 +246,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             </p>
           </div>
         ) : (
-          filtered.map((pr) => <PRItem key={pr.id} pr={pr} />)
+          filtered.map((pr) => <PRItem key={pr.id} pr={pr} stalePRDays={stalePRDays} />)
         )}
       </div>
     </div>

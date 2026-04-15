@@ -23,6 +23,9 @@ export default function Header({ view, onNavigate }: HeaderProps) {
           <span className="text-lg">&#x1F4E1;</span>
         )}
         <span className="font-bold text-[15px] text-gray-100">{title}</span>
+        {!showBack && (
+          <span className="text-[10px] text-gray-500 font-normal">by DeployHQ</span>
+        )}
       </div>
       {!showBack && (
         <div className="flex items-center gap-3">

@@ -14,6 +14,7 @@ export interface Settings {
   soundId: SoundId;
   soundVolume: number;
   notifyOnComments: boolean;
+  stalePRDays: number;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +24,7 @@ const DEFAULT_SETTINGS: Settings = {
   soundId: 'ding',
   soundVolume: 0.7,
   notifyOnComments: false,
+  stalePRDays: 45,
 };
 
 export async function getSettings(): Promise<Settings> {

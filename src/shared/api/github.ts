@@ -41,13 +41,6 @@ interface GHReview {
   user: GHUser;
 }
 
-interface GHComment {
-  id: number;
-  in_reply_to_id?: number;
-  body: string;
-  user: GHUser;
-}
-
 export async function getAuthenticatedUser(token: string): Promise<{ login: string; avatar_url: string }> {
   return ghFetch('/user', token);
 }
@@ -119,17 +112,20 @@ async function hydratePR(
   pr: GHPullRequest,
   username: string,
 ): Promise<PullRequest> {
-  // Fetch CI status, reviews, and comments in parallel
-  const [ciStatus, reviews, comments] = await Promise.all([
+  // Fetch CI status, reviews, unresolved threads, and deployments in parallel
+  const [ciStatus, reviews, unresolvedCommentCount, deployment] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr.head.sha),
     ghFetch<GHReview[]>(`/repos/${repoFullName}/pulls/${pr.number}/reviews`, token),
-    ghFetch<GHComment[]>(`/repos/${repoFullName}/pulls/${pr.number}/comments`, token),
+    countUnresolvedThreads(token, repoFullName, pr.number),
+    fetchDeployment(token, repoFullName, pr.head.sha),
   ]);
 
   const reviewStatus = deriveReviewStatus(reviews);
   const approvalCount = reviews.filter((r) => r.state === 'APPROVED').length;
-  const unresolvedCommentCount = countUnresolvedComments(comments);
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
+  const hasReviewed = reviews.some(
+    (r) => r.user.login === username && (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED' || r.state === 'COMMENTED'),
+  );
 
   return {
     id: `github-${repoFullName}-${pr.number}`,
@@ -151,6 +147,8 @@ async function hydratePR(
     hasConflicts: pr.mergeable_state === 'dirty',
     isAuthor: pr.user.login === username,
     isReviewRequested,
+    hasReviewed,
+    deployment,
   };
 }
 
@@ -222,9 +220,74 @@ function deriveReviewStatus(reviews: GHReview[]): ReviewStatus {
   return 'pending';
 }
 
-function countUnresolvedComments(comments: GHComment[]): number {
-  // PR review comments that haven't been replied to are considered "unresolved"
-  // GitHub doesn't have native resolved/unresolved tracking in the API,
-  // so we count top-level review comments (those without in_reply_to_id)
-  return comments.filter((c) => !c.in_reply_to_id).length;
+async function fetchDeployment(
+  token: string,
+  repoFullName: string,
+  headSha: string,
+): Promise<PullRequest['deployment']> {
+  try {
+    // Get deployments for this specific SHA
+    const deployments = await ghFetch<{ id: number; environment: string }[]>(
+      `/repos/${repoFullName}/deployments?sha=${headSha}&per_page=1`,
+      token,
+    );
+
+    if (!deployments.length) return undefined;
+
+    const deployment = deployments[0];
+    const statuses = await ghFetch<{ state: string; environment_url?: string }[]>(
+      `/repos/${repoFullName}/deployments/${deployment.id}/statuses?per_page=1`,
+      token,
+    );
+
+    if (!statuses.length) {
+      return { environment: deployment.environment, status: 'pending' };
+    }
+
+    const latest = statuses[0];
+    const status = latest.state === 'success' ? 'success'
+      : latest.state === 'failure' || latest.state === 'error' ? 'failure'
+        : latest.state === 'inactive' ? 'inactive'
+          : 'pending';
+
+    return {
+      environment: deployment.environment,
+      status,
+      url: latest.environment_url || undefined,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+async function countUnresolvedThreads(token: string, repoFullName: string, prNumber: number): Promise<number> {
+  // GitHub REST API doesn't expose resolved/unresolved state for review threads.
+  // Use the GraphQL API which has isResolved on reviewThreads.
+  const [owner, repo] = repoFullName.split('/');
+  const query = `query {
+    repository(owner: "${owner}", name: "${repo}") {
+      pullRequest(number: ${prNumber}) {
+        reviewThreads(first: 100) {
+          nodes { isResolved }
+        }
+      }
+    }
+  }`;
+
+  try {
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const threads = data?.data?.repository?.pullRequest?.reviewThreads?.nodes ?? [];
+    return threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
+  } catch {
+    return 0;
+  }
 }

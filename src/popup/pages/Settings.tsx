@@ -108,6 +108,27 @@ export default function Settings({ onNavigate }: SettingsProps) {
         </SettingRow>
       </Section>
 
+      {/* Display */}
+      <Section title="Display">
+        <SettingRow
+          label="Dim stale PRs after"
+          description="Older PRs appear faded"
+        >
+          <select
+            value={settings.stalePRDays}
+            onChange={(e) => handleChange('stalePRDays', Number(e.target.value))}
+            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
+          >
+            <option value={14}>14 days</option>
+            <option value={30}>30 days</option>
+            <option value={45}>45 days</option>
+            <option value={60}>60 days</option>
+            <option value={90}>90 days</option>
+            <option value={0}>Never</option>
+          </select>
+        </SettingRow>
+      </Section>
+
       {/* Polling */}
       <Section title="Polling">
         <SettingRow label="Check interval">

@@ -115,6 +115,7 @@ async function hydratePR(
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
     isReviewRequested,
+    hasReviewed: false,
   };
 }
 

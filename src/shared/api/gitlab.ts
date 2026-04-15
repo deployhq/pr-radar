@@ -126,6 +126,7 @@ async function hydrateMR(
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
     isReviewRequested,
+    hasReviewed: false,
   };
 }
 

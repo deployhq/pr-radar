@@ -35,6 +35,12 @@ export interface PullRequest {
   hasConflicts: boolean;
   isAuthor: boolean;
   isReviewRequested: boolean;
+  hasReviewed: boolean;
+  deployment?: {
+    environment: string;
+    status: 'success' | 'failure' | 'pending' | 'inactive';
+    url?: string;
+  };
 }
 
 // === Watched repos ===

@@ -107,8 +107,8 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   // Sort by priority: actionable items first, then by date
   const filtered = [...searched].sort((a, b) => {
-    const pa = prPriority(a);
-    const pb = prPriority(b);
+    const pa = prPriority(a, stalePRDays);
+    const pb = prPriority(b, stalePRDays);
     if (pa !== pb) return pa - pb;
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
@@ -233,8 +233,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   );
 }
 
-function prPriority(pr: PullRequest): number {
-  if (pr.isMerged || pr.isDraft) return 90;
+function prPriority(pr: PullRequest, stalePRDays: number): number {
+  const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
+  if (pr.isMerged || pr.isDraft || isStale) return 90;
   if (pr.isBot) return 80;
   if (pr.ciStatus === 'failed') return 0;
   if (pr.reviewStatus === 'changes_requested') return 1;

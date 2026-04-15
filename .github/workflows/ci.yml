@@ -21,3 +21,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+      - name: Create extension ZIP
+        run: cd dist && zip -r ../extension.zip .
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-radar-extension
+          path: extension.zip

@@ -1,0 +1,36 @@
+name: Update latest release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Create ZIP
+        run: cd dist && zip -r ../extension.zip .
+
+      - name: Update latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build (main)
+          body: |
+            This is an automated build from the latest `main` branch.
+            Download `extension.zip`, unpack it, and load it in `chrome://extensions/` with Developer mode enabled.
+          files: extension.zip
+          prerelease: true
+          make_latest: false

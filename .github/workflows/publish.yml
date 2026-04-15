@@ -30,3 +30,9 @@ jobs:
           CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
           CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: extension.zip
+          generate_release_notes: true

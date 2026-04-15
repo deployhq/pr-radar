@@ -58,9 +58,11 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
         <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} />
 
         {pr.approvalCount > 0 && (
-          <Badge className="bg-emerald-900/50 text-emerald-400">
-            &#10003; {pr.approvalCount} approved
-          </Badge>
+          <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}>
+            <Badge className="bg-emerald-900/50 text-emerald-400">
+              &#10003; {pr.approvalCount} approved
+            </Badge>
+          </span>
         )}
 
         {pr.reviewStatus === 'changes_requested' && (

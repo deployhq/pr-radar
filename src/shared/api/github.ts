@@ -136,7 +136,9 @@ async function hydratePR(
   ]);
 
   const reviewStatus = deriveReviewStatus(reviews);
-  const approvalCount = reviews.filter((r) => r.state === 'APPROVED').length;
+  const approvals = reviews.filter((r) => r.state === 'APPROVED');
+  const approvalCount = approvals.length;
+  const approvedBy = [...new Set(approvals.map((r) => r.user.login))];
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
   const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 
@@ -157,6 +159,7 @@ async function hydratePR(
     ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined,
     reviewStatus,
     approvalCount,
+    approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
     unresolvedCommentCount,
     hasConflicts: pr.mergeable_state === 'dirty',
     isAuthor: pr.user.login === username,

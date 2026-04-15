@@ -32,6 +32,7 @@ export interface PullRequest {
   ciUrl?: string;
   reviewStatus: ReviewStatus;
   approvalCount: number;
+  approvedBy?: string[];
   unresolvedCommentCount: number;
   hasConflicts: boolean;
   isAuthor: boolean;

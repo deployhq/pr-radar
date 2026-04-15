@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, saveCachedPRs } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -153,6 +153,56 @@ async function pollPRs() {
       await saveLastCommentCounts(newComments);
     }
 
+    // Track recently merged PRs — keep them visible while CI runs
+    const MERGED_TTL = 30 * 60 * 1000; // 30 minutes
+    const cached = await getCachedPRs();
+    const openIds = new Set(allPRs.map((pr) => pr.id));
+
+    if (cached) {
+      // Find authored PRs that disappeared from the open list
+      const disappeared = cached.prs.filter(
+        (pr) => pr.isAuthor && !pr.isMerged && !openIds.has(pr.id),
+      );
+
+      for (const pr of disappeared) {
+        if (pr.platform !== 'github' || !pr.headSha) continue;
+        const account = accounts.find((a) => a.platform === 'github');
+        if (!account) continue;
+
+        try {
+          const merged = await github.checkIfMerged(account.token, pr.repoFullName, pr.number);
+          if (merged) {
+            allPRs.push({ ...pr, isMerged: true, mergedAt: Date.now() });
+          }
+        } catch {
+          // PR might have been deleted — skip it
+        }
+      }
+
+      // Keep existing merged PRs that haven't expired and whose CI hasn't settled
+      const existingMerged = cached.prs.filter((pr) => pr.isMerged && pr.mergedAt);
+      for (const pr of existingMerged) {
+        if (openIds.has(pr.id)) continue; // reopened
+        if (allPRs.some((p) => p.id === pr.id)) continue; // already re-added above
+
+        const elapsed = Date.now() - (pr.mergedAt ?? 0);
+        if (elapsed > MERGED_TTL) continue; // expired
+
+        // Refresh CI status
+        if (pr.platform === 'github' && pr.headSha) {
+          const account = accounts.find((a) => a.platform === 'github');
+          if (account) {
+            try {
+              const ciStatus = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
+              allPRs.push({ ...pr, ciStatus });
+            } catch {
+              allPRs.push(pr); // keep with old status
+            }
+          }
+        }
+      }
+    }
+
     // Cache PRs for instant popup load
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     await saveCachedPRs(allPRs);
@@ -162,7 +212,7 @@ async function pollPRs() {
     const staleMs = settings.stalePRDays > 0 ? settings.stalePRDays * 86400000 : 0;
     const now = Date.now();
     const myPRs = allPRs.filter((pr) =>
-      pr.isAuthor && (!staleMs || (now - new Date(pr.updatedAt).getTime()) < staleMs),
+      pr.isAuthor && !pr.isMerged && (!staleMs || (now - new Date(pr.updatedAt).getTime()) < staleMs),
     );
     const failedCount = myPRs.filter((pr) => pr.ciStatus === 'failed').length;
     const passedCount = myPRs.filter((pr) => pr.ciStatus === 'passed').length;

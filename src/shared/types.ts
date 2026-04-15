@@ -37,6 +37,9 @@ export interface PullRequest {
   isBot: boolean;
   isReviewRequested: boolean;
   hasReviewed: boolean;
+  isMerged?: boolean;
+  mergedAt?: number;
+  headSha?: string;
   deployment?: {
     environment: string;
     status: 'success' | 'failure' | 'pending' | 'inactive';

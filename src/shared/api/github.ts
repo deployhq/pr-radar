@@ -91,6 +91,19 @@ export async function getUserRepos(token: string): Promise<{ full_name: string }
   }
 }
 
+export async function checkIfMerged(token: string, repoFullName: string, prNumber: number): Promise<boolean> {
+  try {
+    const pr = await ghFetch<{ merged: boolean }>(`/repos/${repoFullName}/pulls/${prNumber}`, token);
+    return pr.merged;
+  } catch {
+    return false;
+  }
+}
+
+export async function refreshCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIStatus> {
+  return fetchCIStatus(token, repoFullName, headSha);
+}
+
 export async function fetchPullRequests(
   token: string,
   repoFullName: string,
@@ -149,6 +162,7 @@ async function hydratePR(
     isBot: pr.user.type === 'Bot',
     isReviewRequested,
     hasReviewed,
+    headSha: pr.head.sha,
     deployment,
   };
 }

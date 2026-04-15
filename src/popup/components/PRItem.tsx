@@ -11,7 +11,7 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
   const platformStyle = PLATFORM_COLORS[pr.platform];
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
-  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot;
+  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged;
 
   return (
     <a
@@ -36,6 +36,11 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
             {pr.isAuthor && (
               <span className="text-[9px] px-1.5 py-px rounded bg-radar-900/50 text-radar-400 font-medium">
                 Author
+              </span>
+            )}
+            {pr.isMerged && (
+              <span className="text-[9px] px-1.5 py-px rounded bg-purple-900/50 text-purple-400 font-medium">
+                Merged
               </span>
             )}
             {pr.isReviewRequested && !pr.hasReviewed && (

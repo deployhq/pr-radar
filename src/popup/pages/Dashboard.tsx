@@ -41,8 +41,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   const triggerBackgroundRefresh = useCallback(() => {
     setRefreshing(true);
-    chrome.runtime.sendMessage({ type: 'POLL_NOW' });
-  }, []);
+    // The service worker responds when pollPRs() finishes — this covers
+    // early-return paths (no accounts, no repos, errors) that don't write
+    // to the PR cache and therefore wouldn't trigger onChanged.
+    chrome.runtime.sendMessage({ type: 'POLL_NOW' }, () => {
+      setRefreshing(false);
+      loadFromCache();
+    });
+  }, [loadFromCache]);
 
   useEffect(() => {
     async function init() {

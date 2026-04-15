@@ -43,9 +43,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((message: Message) => {
+chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   if (message.type === 'POLL_NOW') {
-    pollPRs();
+    pollPRs().then(() => sendResponse({ done: true }));
+    return true; // keep channel open for async sendResponse
   } else if (message.type === 'REFRESH_SETTINGS') {
     setupPolling();
   } else if (message.type === 'TEST_NOTIFICATION') {

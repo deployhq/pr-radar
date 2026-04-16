@@ -14,6 +14,7 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 - **Deployment previews** — See deployment status and click through to environment URLs
 - **Sound & desktop notifications** — Get alerted when CI finishes, no tab required
 - **Review tracking** — See which PRs need your review, and which you've already reviewed
+- **Pinned repos** — Star your favorite repos so their PRs always appear at the top
 - **Stale PR detection** — Old PRs are dimmed with a nudge to close them (configurable)
 - **Background polling** — Works without any tab open, using a personal access token
 - **Toolbar badge** — Icon shows pass/fail/running count at a glance

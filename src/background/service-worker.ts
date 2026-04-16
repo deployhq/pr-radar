@@ -58,22 +58,52 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
         sendResponse({ success: false, message: 'Account not found' });
         return;
       }
+      let result: { success: boolean; message: string };
       if (platform === 'github') {
-        const result = await github.mergePullRequest(account.token, repoFullName, prNumber);
-        sendResponse(result);
-        if (result.success) pollPRs(); // refresh data
+        result = await github.mergePullRequest(account.token, repoFullName, prNumber);
+      } else if (platform === 'gitlab') {
+        result = await gitlab.mergeMergeRequest(account.token, repoFullName, prNumber);
       } else {
-        sendResponse({ success: false, message: 'Merge not supported for this platform yet' });
+        result = await bitbucket.mergePullRequest(account.token, repoFullName, prNumber);
+      }
+      sendResponse(result);
+      if (result.success) pollPRs(); // refresh data
+    })();
+    return true;
+  } else if (message.type === 'DELETE_BRANCH') {
+    const { platform, repoFullName, branch } = message.payload;
+    (async () => {
+      const accounts = await getAccounts();
+      const account = accounts.find((a) => a.platform === platform);
+      if (!account) {
+        sendResponse({ success: false, message: 'Account not found' });
+        return;
+      }
+      if (platform === 'github') {
+        const result = await github.deleteBranch(account.token, repoFullName, branch);
+        sendResponse(result);
+      } else {
+        sendResponse({ success: false, message: 'Not supported for this platform' });
       }
     })();
     return true;
   } else if (message.type === 'TEST_NOTIFICATION') {
-    chrome.notifications.create(`pr-radar-test-${Date.now()}`, {
-      type: 'basic',
-      iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-      title: 'CI Passed',
-      message: 'deployhq/pr-radar #1\nThis is a test notification',
-    });
+    chrome.notifications.create(
+      `pr-radar-test-${Date.now()}`,
+      {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
+        title: 'CI Passed',
+        message: 'deployhq/pr-radar #1 — This is a test notification',
+      },
+      (notificationId) => {
+        if (chrome.runtime.lastError) {
+          console.error('[PR Radar] Notification error:', chrome.runtime.lastError.message);
+        } else {
+          console.log('[PR Radar] Notification created:', notificationId);
+        }
+      },
+    );
     const settings = getSettings();
     settings.then((s) => {
       if (s.soundEnabled) playSound(s.soundId, s.soundVolume);
@@ -184,12 +214,18 @@ async function pollPRs() {
       );
 
       for (const pr of disappeared) {
-        if (pr.platform !== 'github' || !pr.headSha) continue;
-        const account = accounts.find((a) => a.platform === 'github');
+        const account = accounts.find((a) => a.platform === pr.platform);
         if (!account) continue;
 
         try {
-          const merged = await github.checkIfMerged(account.token, pr.repoFullName, pr.number);
+          let merged = false;
+          if (pr.platform === 'github') {
+            merged = await github.checkIfMerged(account.token, pr.repoFullName, pr.number);
+          } else if (pr.platform === 'gitlab') {
+            merged = await gitlab.checkIfMerged(account.token, pr.repoFullName, pr.number);
+          } else if (pr.platform === 'bitbucket') {
+            merged = await bitbucket.checkIfMerged(account.token, pr.repoFullName, pr.number);
+          }
           if (merged) {
             allPRs.push({ ...pr, isMerged: true, mergedAt: Date.now() });
           }

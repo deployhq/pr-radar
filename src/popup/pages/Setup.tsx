@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Platform, PlatformAccount } from '@/shared/types';
 import { PLATFORM_LABELS } from '@/shared/constants';
-import { saveAccount } from '@/shared/storage';
+import { getAccounts, saveAccount } from '@/shared/storage';
 import PlatformIcon from '../components/PlatformIcon';
 import * as github from '@/shared/api/github';
+import * as gitlab from '@/shared/api/gitlab';
+import * as bitbucket from '@/shared/api/bitbucket';
 
 interface SetupProps {
   onComplete: () => void;
@@ -28,16 +30,16 @@ const PLATFORMS: PlatformConfig[] = [
   {
     platform: 'gitlab',
     placeholder: 'glpat-xxxxxxxxxxxx',
-    helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens',
+    helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens?scopes=read_api',
     helpLabel: 'Create a token with read_api scope',
-    comingSoon: true,
+    comingSoon: false,
   },
   {
     platform: 'bitbucket',
-    placeholder: 'App password',
-    helpUrl: 'https://bitbucket.org/account/settings/app-passwords/',
-    helpLabel: 'Create an app password with read permissions',
-    comingSoon: true,
+    placeholder: 'API token',
+    helpUrl: 'https://id.atlassian.com/manage-profile/security/api-tokens',
+    helpLabel: 'Create an API token with repository and pull request read scopes',
+    comingSoon: false,
   },
 ];
 
@@ -50,8 +52,16 @@ const ICON_COLORS: Record<Platform, string> = {
 export default function Setup({ onComplete }: SetupProps) {
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
   const [token, setToken] = useState('');
+  const [bbEmail, setBbEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<Map<Platform, string>>(new Map());
+
+  useEffect(() => {
+    getAccounts().then((accounts) => {
+      setConnectedPlatforms(new Map(accounts.map((a) => [a.platform, a.username])));
+    });
+  }, []);
 
   async function handleConnect(platform: Platform) {
     if (!token.trim()) return;
@@ -65,9 +75,18 @@ export default function Setup({ onComplete }: SetupProps) {
       if (platform === 'github') {
         const user = await github.getAuthenticatedUser(token.trim());
         account = { platform, token: token.trim(), username: user.login, avatarUrl: user.avatar_url };
+      } else if (platform === 'gitlab') {
+        const user = await gitlab.getAuthenticatedUser(token.trim());
+        account = { platform, token: token.trim(), username: user.username, avatarUrl: user.avatar_url };
       } else {
-        // GitLab/Bitbucket coming soon
-        return;
+        if (!bbEmail.trim()) {
+          setError('Email is required for Bitbucket.');
+          setLoading(false);
+          return;
+        }
+        const encodedToken = btoa(`${bbEmail.trim()}:${token.trim()}`);
+        const user = await bitbucket.getAuthenticatedUser(encodedToken);
+        account = { platform, token: encodedToken, username: user.nickname, avatarUrl: user.avatar };
       }
 
       await saveAccount(account);
@@ -92,6 +111,8 @@ export default function Setup({ onComplete }: SetupProps) {
       <div className="space-y-3">
         {PLATFORMS.map((cfg) => {
           const isExpanded = connectingPlatform === cfg.platform;
+          const connectedUser = connectedPlatforms.get(cfg.platform);
+          const isConnected = !!connectedUser;
 
           return (
             <div
@@ -99,18 +120,21 @@ export default function Setup({ onComplete }: SetupProps) {
               className={`rounded-xl border transition-colors ${
                 cfg.comingSoon
                   ? 'border-gray-800 bg-gray-800/30 opacity-60'
-                  : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                  : isConnected
+                    ? 'border-emerald-800/50 bg-emerald-900/10'
+                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
               }`}
             >
               <button
                 className="flex items-center gap-3 w-full px-4 py-3.5"
                 onClick={() => {
-                  if (cfg.comingSoon) return;
+                  if (cfg.comingSoon || isConnected) return;
                   setConnectingPlatform(isExpanded ? null : cfg.platform);
                   setToken('');
+                  setBbEmail('');
                   setError('');
                 }}
-                disabled={cfg.comingSoon}
+                disabled={cfg.comingSoon || isConnected}
               >
                 <span className="w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg">
                   <PlatformIcon platform={cfg.platform} size={20} className={ICON_COLORS[cfg.platform]} />
@@ -121,6 +145,8 @@ export default function Setup({ onComplete }: SetupProps) {
                   </div>
                   {cfg.comingSoon ? (
                     <div className="text-[11px] text-gray-600">Coming soon</div>
+                  ) : isConnected ? (
+                    <div className="text-[11px] text-emerald-400">Connected as @{connectedUser}</div>
                   ) : (
                     <div className="text-[11px] text-gray-500">Not connected</div>
                   )}
@@ -128,6 +154,10 @@ export default function Setup({ onComplete }: SetupProps) {
                 {cfg.comingSoon ? (
                   <span className="text-[11px] px-3 py-1 rounded-md border border-gray-700 text-gray-600">
                     Soon
+                  </span>
+                ) : isConnected ? (
+                  <span className="text-[11px] px-3 py-1 rounded-md border border-emerald-700/50 text-emerald-400">
+                    &#10003;
                   </span>
                 ) : (
                   <span className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400">
@@ -138,13 +168,23 @@ export default function Setup({ onComplete }: SetupProps) {
 
               {isExpanded && !cfg.comingSoon && (
                 <div className="px-4 pb-4 space-y-2">
+                  {cfg.platform === 'bitbucket' && (
+                    <input
+                      type="email"
+                      value={bbEmail}
+                      onChange={(e) => setBbEmail(e.target.value)}
+                      placeholder="Bitbucket email address"
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
+                      autoFocus
+                    />
+                  )}
                   <input
                     type="password"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder={cfg.placeholder}
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
-                    autoFocus
+                    autoFocus={cfg.platform !== 'bitbucket'}
                   />
                   <a
                     href={cfg.helpUrl}
@@ -157,7 +197,7 @@ export default function Setup({ onComplete }: SetupProps) {
                   {error && <p className="text-[11px] text-red-400">{error}</p>}
                   <button
                     onClick={() => handleConnect(cfg.platform)}
-                    disabled={loading || !token.trim()}
+                    disabled={loading || !token.trim() || (cfg.platform === 'bitbucket' && !bbEmail.trim())}
                     className="w-full py-2 bg-radar-600 hover:bg-radar-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     {loading ? 'Verifying...' : 'Connect'}

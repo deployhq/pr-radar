@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { WatchedRepo } from '@/shared/types';
+import type { Platform, WatchedRepo } from '@/shared/types';
 import { PLATFORM_LABELS } from '@/shared/constants';
 import { getAccounts, getWatchedRepos, saveWatchedRepos } from '@/shared/storage';
 import * as github from '@/shared/api/github';
@@ -10,6 +10,7 @@ export default function Repos() {
   const [repos, setRepos] = useState<WatchedRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(new Set());
 
   useEffect(() => {
     async function load() {
@@ -71,6 +72,7 @@ export default function Repos() {
       });
 
       setRepos(allRepos);
+      setConnectedPlatforms(new Set(accounts.map((a) => a.platform)));
       setLoading(false);
     }
     load();
@@ -188,23 +190,59 @@ export default function Repos() {
               </button>
             ))}
 
-            {/* Token scope callout */}
-            <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                <span className="text-gray-300 font-medium">Missing repos?</span>{' '}
-                We recommend using a <span className="text-gray-300">classic token</span> with
-                the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
-                Fine-grained tokens may not show all org repos.
-              </p>
-              <a
-                href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR+Radar"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-[11px] text-radar-400 hover:underline"
-              >
-                Create a classic token &rarr;
-              </a>
-            </div>
+            {/* Token scope callouts */}
+            {connectedPlatforms.has('github') && (
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  <span className="text-gray-300 font-medium">Missing GitHub repos?</span>{' '}
+                  We recommend using a <span className="text-gray-300">classic token</span> with
+                  the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
+                  Fine-grained tokens may not show all org repos.
+                </p>
+                <a
+                  href="https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR+Radar"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[11px] text-radar-400 hover:underline"
+                >
+                  Create a classic token &rarr;
+                </a>
+              </div>
+            )}
+            {connectedPlatforms.has('gitlab') && (
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  <span className="text-gray-300 font-medium">Missing GitLab projects?</span>{' '}
+                  Your token needs the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">read_api</code> scope
+                  to access private projects and merge requests.
+                </p>
+                <a
+                  href="https://gitlab.com/-/user_settings/personal_access_tokens?scopes=read_api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[11px] text-radar-400 hover:underline"
+                >
+                  Create a GitLab token &rarr;
+                </a>
+              </div>
+            )}
+            {connectedPlatforms.has('bitbucket') && (
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  <span className="text-gray-300 font-medium">Missing Bitbucket repos?</span>{' '}
+                  Your API token needs <span className="text-gray-300">Repositories: Read</span> and{' '}
+                  <span className="text-gray-300">Pull requests: Read</span> scopes.
+                </p>
+                <a
+                  href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-[11px] text-radar-400 hover:underline"
+                >
+                  Manage API tokens &rarr;
+                </a>
+              </div>
+            )}
           </div>
         )}
       </div>

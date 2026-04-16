@@ -5,7 +5,7 @@ const BASE_URL = 'https://api.bitbucket.org/2.0';
 async function bbFetch<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Basic ${token}`,
       Accept: 'application/json',
     },
   });
@@ -29,10 +29,10 @@ interface BBPullRequest {
   author: BBUser;
   created_on: string;
   updated_on: string;
-  source: { branch: { name: string }; repository: { full_name: string } };
+  source: { branch: { name: string }; commit?: { hash: string }; repository: { full_name: string } };
   destination: { branch: { name: string }; repository: { full_name: string } };
   reviewers: BBUser[];
-  participants: { user: BBUser; role: string; approved: boolean; state: string }[];
+  participants: { user: BBUser; role: string; approved: boolean; state: string | null }[];
   task_count: number;
   comment_count: number;
 }
@@ -60,6 +60,39 @@ export async function getUserRepositories(token: string, username: string): Prom
     token,
   );
   return result.values;
+}
+
+export async function mergePullRequest(
+  token: string,
+  repoFullName: string,
+  prId: number,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/repositories/${repoFullName}/pullrequests/${prId}/merge`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${token}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    if (res.ok) {
+      return { success: true, message: 'Pull request merged successfully' };
+    }
+    const body = await res.json().catch(() => ({}));
+    return { success: false, message: body.error?.message || `Merge failed: ${res.status} ${res.statusText}` };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : 'Merge failed' };
+  }
+}
+
+export async function checkIfMerged(token: string, repoFullName: string, prId: number): Promise<boolean> {
+  try {
+    const pr = await bbFetch<{ state: string }>(`/repositories/${repoFullName}/pullrequests/${prId}`, token);
+    return pr.state === 'MERGED';
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchPullRequests(
@@ -94,6 +127,9 @@ async function hydratePR(
   const approvalCount = pr.participants.filter((p) => p.approved).length;
   const unresolvedCommentCount = comments.filter((c) => c.inline && !c.resolved).length;
   const isReviewRequested = pr.reviewers.some((r) => r.nickname === username);
+  const hasReviewed = pr.participants.some(
+    (p) => p.user.nickname === username && p.role === 'REVIEWER' && p.state !== null,
+  );
 
   return {
     id: `bitbucket-${repoFullName}-${pr.id}`,
@@ -116,7 +152,8 @@ async function hydratePR(
     isAuthor: pr.author.nickname === username,
     isBot: false,
     isReviewRequested,
-    hasReviewed: false,
+    hasReviewed,
+    headSha: pr.source.commit?.hash,
   };
 }
 

@@ -42,6 +42,7 @@ export interface PullRequest {
   isMerged?: boolean;
   mergedAt?: number;
   headSha?: string;
+  headRef?: string;
   deployment?: {
     environment: string;
     status: 'success' | 'failure' | 'pending' | 'inactive';
@@ -75,4 +76,5 @@ export type Message =
   | { type: 'REFRESH_SETTINGS' }
   | { type: 'GET_PRS'; payload: { tab: DashboardTab } }
   | { type: 'TEST_NOTIFICATION' }
-  | { type: 'MERGE_PR'; payload: { platform: Platform; repoFullName: string; prNumber: number } };
+  | { type: 'MERGE_PR'; payload: { platform: Platform; repoFullName: string; prNumber: number } }
+  | { type: 'DELETE_BRANCH'; payload: { platform: Platform; repoFullName: string; branch: string } };

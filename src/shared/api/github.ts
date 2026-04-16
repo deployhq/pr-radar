@@ -100,7 +100,7 @@ interface GHPullRequest {
   draft: boolean;
   created_at: string;
   updated_at: string;
-  head: { sha: string; repo: { full_name: string } | null };
+  head: { sha: string; ref: string; repo: { full_name: string } | null };
   base: { repo: { full_name: string } };
   mergeable_state?: string;
   requested_reviewers?: GHUser[];
@@ -189,6 +189,30 @@ export async function mergePullRequest(
   }
 }
 
+export async function deleteBranch(
+  token: string,
+  repoFullName: string,
+  branch: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/repos/${repoFullName}/git/refs/heads/${branch}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (res.status === 204 || res.ok) {
+      return { success: true, message: 'Branch deleted' };
+    }
+    const body = await res.json().catch(() => ({}));
+    return { success: false, message: body.message || `Delete failed: ${res.status} ${res.statusText}` };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : 'Delete failed' };
+  }
+}
+
 export async function checkIfMerged(token: string, repoFullName: string, prNumber: number): Promise<boolean> {
   try {
     const pr = await ghFetch<{ merged: boolean }>(`/repos/${repoFullName}/pulls/${prNumber}`, token);
@@ -235,7 +259,7 @@ async function hydratePR(
     fetchDeployment(token, repoFullName, pr.head.sha),
   ]);
 
-  const reviewStatus = deriveReviewStatus(reviews);
+  const reviewStatus = deriveReviewStatus(reviews, pr.head.sha);
   const approvals = reviews.filter((r) => r.state === 'APPROVED');
   const approvalCount = approvals.length;
   const approvedBy = [...new Set(approvals.map((r) => r.user.login))];
@@ -267,6 +291,7 @@ async function hydratePR(
     isReviewRequested,
     hasReviewed,
     headSha: pr.head.sha,
+    headRef: pr.head.ref,
     deployment,
   };
 }
@@ -341,18 +366,26 @@ export function checkHasReviewed(reviews: GHReview[], username: string, headSha:
   );
 }
 
-export function deriveReviewStatus(reviews: GHReview[]): ReviewStatus {
+export function deriveReviewStatus(reviews: GHReview[], headSha?: string): ReviewStatus {
   if (!reviews.length) return 'none';
 
-  // Get latest review per user
-  const latestByUser = new Map<string, string>();
+  // Get latest review per user, tracking the commit it was left on
+  const latestByUser = new Map<string, { state: string; commit_id: string }>();
   for (const r of reviews) {
     if (r.state === 'APPROVED' || r.state === 'CHANGES_REQUESTED') {
-      latestByUser.set(r.user.login, r.state);
+      latestByUser.set(r.user.login, { state: r.state, commit_id: r.commit_id });
     }
   }
 
-  const states = [...latestByUser.values()];
+  // When we know the head SHA, treat CHANGES_REQUESTED on older commits as
+  // stale — GitHub considers these dismissed once new commits are pushed.
+  const states = [...latestByUser.values()].map((entry) => {
+    if (headSha && entry.state === 'CHANGES_REQUESTED' && entry.commit_id !== headSha) {
+      return 'STALE';
+    }
+    return entry.state;
+  });
+
   if (states.includes('CHANGES_REQUESTED')) return 'changes_requested';
   if (states.includes('APPROVED')) return 'approved';
   return 'pending';

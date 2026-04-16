@@ -13,6 +13,8 @@ interface PRItemProps {
 export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProps) {
   const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'merged' | 'error'>('idle');
   const [mergeError, setMergeError] = useState('');
+  const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
+  const [branchError, setBranchError] = useState('');
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -34,6 +36,25 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
     } catch {
       setMergeError('Failed to send merge request');
       setMergeState('error');
+    }
+  }
+
+  async function handleDeleteBranch() {
+    if (!pr.headRef) return;
+    setBranchState('deleting');
+    setBranchError('');
+    try {
+      const msg: Message = { type: 'DELETE_BRANCH', payload: { platform: pr.platform, repoFullName: pr.repoFullName, branch: pr.headRef } };
+      const result = await chrome.runtime.sendMessage(msg) as { success: boolean; message: string };
+      if (result.success) {
+        setBranchState('deleted');
+      } else {
+        setBranchError(result.message);
+        setBranchState('error');
+      }
+    } catch {
+      setBranchError('Failed to delete branch');
+      setBranchState('error');
     }
   }
 
@@ -92,8 +113,56 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
                 </span>
               )}
               {!pr.isMerged && mergeState === 'merged' && (
-                <span className="flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#8957e5] text-white border-[#8957e5]">
-                  Merged
+                <span className="flex-shrink-0 flex items-center gap-1">
+                  <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#8957e5] text-white border-[#8957e5]">
+                    Merged
+                  </span>
+                  {pr.headRef && branchState === 'idle' && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBranchState('confirm'); }}
+                      title={`Delete branch ${pr.headRef}`}
+                      className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#c9d1d9] border-[#30363d] hover:bg-[#30363d] hover:border-[#8b949e] cursor-pointer transition-colors"
+                    >
+                      Delete branch
+                    </button>
+                  )}
+                  {pr.headRef && branchState === 'confirm' && (
+                    <>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteBranch(); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#da3633] text-white border-[#f85149] hover:bg-[#f85149] cursor-pointer transition-colors"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBranchState('idle'); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#c9d1d9] border-[#30363d] hover:bg-[#30363d] cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  {branchState === 'deleting' && (
+                    <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#58a6ff] border-[#30363d]">
+                      Deleting...
+                    </span>
+                  )}
+                  {branchState === 'deleted' && (
+                    <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold text-gray-500">
+                      Branch deleted
+                    </span>
+                  )}
+                  {branchState === 'error' && (
+                    <>
+                      <span className="text-[10px] text-red-400 truncate max-w-[100px]" title={branchError}>{branchError}</span>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBranchState('idle'); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#c9d1d9] border-[#30363d] hover:bg-[#30363d] cursor-pointer transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </>
+                  )}
                 </span>
               )}
               {!pr.isMerged && mergeState === 'error' && (

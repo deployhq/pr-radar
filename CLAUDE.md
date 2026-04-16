@@ -37,10 +37,10 @@ src/
       Setup.tsx                  # GitHub connection (PAT auth, auto-navigates on connect)
       Dashboard.tsx              # PR list with tabs (Mine/Review/All), cache-first rendering
       Settings.tsx               # Notifications, sound, polling, stale PR config, accounts, test button
-      Repos.tsx                  # Watched repo selector with select all, token scope callout
+      Repos.tsx                  # Watched repo selector with select all, pin/fav stars, token scope callout
     components/
       Header.tsx                 # Navigation header with extension icon + "by DeployHQ"
-      PRItem.tsx                 # PR row: badges, deployment URL, stale/reviewed dimming
+      PRItem.tsx                 # PR row: badges, deployment URL, pinned star, stale/reviewed dimming
       CIBadge.tsx                # CI status badge component
       PlatformIcon.tsx           # SVG icons for GitHub, GitLab, Bitbucket
     index.css                    # Tailwind imports + dark scrollbar styles
@@ -83,6 +83,7 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Offscreen API for audio** — MV3 service workers can't play audio; uses `public/offscreen.html` + `public/offscreen.js` (no inline scripts due to CSP)
 - **GraphQL for comments** — REST API doesn't expose thread resolution; GraphQL `reviewThreads.isResolved` is accurate
 - **Classic tokens recommended** — Fine-grained tokens may not show org repos; setup/callout links pre-fill correct scopes
+- **Pinned repos** — `WatchedRepo.pinned` boolean; Dashboard sorts pinned-repo PRs first, PRItem shows ★ with combined tooltips
 - **Stale PR exclusion** — Configurable threshold; stale PRs are dimmed in UI, excluded from badge count and notifications
 
 ## Features
@@ -92,6 +93,7 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Unresolved comments** — Via GitHub GraphQL API (accurate resolved/unresolved)
 - **Deployment status** — Environment name badge + clickable preview URL
 - **Review tracking** — Author/Review/Reviewed badges; reviewed PRs dimmed
+- **Pinned repos** — Star toggle in Repos page; pinned repo PRs sort to top of Dashboard with ★ indicator
 - **Stale PR detection** — Configurable threshold (default 45 days), dimmed with 💤 tooltip
 - **Desktop notifications** — On CI status changes (persisted across SW restarts)
 - **Sound alerts** — Via offscreen document (ding/bell/chime)

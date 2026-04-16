@@ -1,8 +1,11 @@
 import type { PullRequest, CIStatus, ReviewStatus } from '../types';
 
 const BASE_URL = 'https://api.github.com';
+const HYDRATE_CONCURRENCY = 5;
+const ORG_FETCH_CONCURRENCY = 4;
+const MAX_PAGINATED_PAGES = 20;
 
-async function ghFetch<T>(path: string, token: string): Promise<T> {
+async function ghFetchRaw(path: string, token: string): Promise<Response> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -13,7 +16,73 @@ async function ghFetch<T>(path: string, token: string): Promise<T> {
   if (!res.ok) {
     throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
   }
+  return res;
+}
+
+async function ghFetch<T>(path: string, token: string): Promise<T> {
+  const res = await ghFetchRaw(path, token);
   return res.json();
+}
+
+export function getNextPagePath(linkHeader: string | null): string | null {
+  if (!linkHeader) return null;
+
+  for (const part of linkHeader.split(',')) {
+    const match = part.trim().match(/<([^>]+)>;\s*rel="([^"]+)"/);
+    if (!match || match[2] !== 'next') continue;
+
+    const url = new URL(match[1]);
+    if (url.origin !== BASE_URL) return null;
+    return `${url.pathname}${url.search}`;
+  }
+
+  return null;
+}
+
+async function ghPaginate<T>(path: string, token: string, maxPages = MAX_PAGINATED_PAGES): Promise<T[]> {
+  const results: T[] = [];
+  const seenPaths = new Set<string>();
+  let nextPath: string | null = path;
+  let pageCount = 0;
+
+  while (nextPath && pageCount < maxPages && !seenPaths.has(nextPath)) {
+    seenPaths.add(nextPath);
+    const res = await ghFetchRaw(nextPath, token);
+    const page = await res.json() as T[];
+    results.push(...page);
+    nextPath = getNextPagePath(res.headers.get('link'));
+    pageCount += 1;
+  }
+
+  return results;
+}
+
+export async function mapWithConcurrencyLimit<T, R>(
+  items: T[],
+  limit: number,
+  mapItem: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  if (items.length === 0) return [];
+
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= items.length) {
+        return;
+      }
+
+      results[currentIndex] = await mapItem(items[currentIndex], currentIndex);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(limit, 1), items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
 
 interface GHUser {
@@ -49,7 +118,7 @@ export async function getAuthenticatedUser(token: string): Promise<{ login: stri
 
 export async function getUserRepos(token: string): Promise<{ full_name: string }[]> {
   // Fetch personal repos
-  const userRepos = await ghFetch<{ full_name: string }[]>(
+  const userRepos = await ghPaginate<{ full_name: string }>(
     '/user/repos?sort=pushed&per_page=100&affiliation=owner,collaborator,organization_member',
     token,
   );
@@ -58,19 +127,23 @@ export async function getUserRepos(token: string): Promise<{ full_name: string }
   // Use type=member to include private repos the user has access to
   try {
     const orgs = await ghFetch<{ login: string }[]>('/user/orgs?per_page=100', token);
-    const orgRepoLists = await Promise.all(
-      orgs.flatMap((org) => [
-        // type=member: repos the user is a member of (includes private)
-        ghFetch<{ full_name: string }[]>(
-          `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=member`,
-          token,
-        ).catch(() => [] as { full_name: string }[]),
-        // type=all: public repos in the org (in case membership is implicit)
-        ghFetch<{ full_name: string }[]>(
-          `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=all`,
-          token,
-        ).catch(() => [] as { full_name: string }[]),
-      ]),
+    const orgRepoLists = await mapWithConcurrencyLimit(
+      orgs,
+      ORG_FETCH_CONCURRENCY,
+      async (org) => {
+        const [memberRepos, publicRepos] = await Promise.all([
+          ghPaginate<{ full_name: string }>(
+            `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=member`,
+            token,
+          ).catch(() => [] as { full_name: string }[]),
+          ghPaginate<{ full_name: string }>(
+            `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=all`,
+            token,
+          ).catch(() => [] as { full_name: string }[]),
+        ]);
+
+        return [...memberRepos, ...publicRepos];
+      },
     );
 
     // Merge and deduplicate
@@ -134,13 +207,15 @@ export async function fetchPullRequests(
   repoFullName: string,
   username: string,
 ): Promise<PullRequest[]> {
-  const prs = await ghFetch<GHPullRequest[]>(
-    `/repos/${repoFullName}/pulls?state=open&per_page=50`,
+  const prs = await ghPaginate<GHPullRequest>(
+    `/repos/${repoFullName}/pulls?state=open&per_page=100`,
     token,
   );
 
-  const results = await Promise.all(
-    prs.map((pr) => hydratePR(token, repoFullName, pr, username)),
+  const results = await mapWithConcurrencyLimit(
+    prs,
+    HYDRATE_CONCURRENCY,
+    (pr) => hydratePR(token, repoFullName, pr, username),
   );
 
   return results;
@@ -328,15 +403,58 @@ interface GraphQLPRDetails {
   hasConflicts: boolean;
 }
 
+interface GraphQLResponse<T> {
+  data?: T;
+}
+
+interface ReviewThreadConnection {
+  nodes?: Array<{ isResolved: boolean }>;
+  pageInfo?: {
+    hasNextPage: boolean;
+    endCursor: string | null;
+  };
+}
+
+interface GraphQLPullRequestData {
+  repository?: {
+    pullRequest?: {
+      mergeable?: string;
+      reviewThreads?: ReviewThreadConnection;
+    };
+  };
+}
+
+type GraphQLPullRequest = NonNullable<NonNullable<GraphQLPullRequestData['repository']>['pullRequest']>;
+
+async function ghGraphQL<T>(token: string, query: string, variables: Record<string, unknown>): Promise<T | null> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!res.ok) return null;
+
+  const data = await res.json() as GraphQLResponse<T>;
+  return data.data ?? null;
+}
+
 async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber: number): Promise<GraphQLPRDetails> {
   // GitHub REST API doesn't expose resolved/unresolved state or mergeable status reliably.
   // Use GraphQL which has isResolved on reviewThreads and mergeable on pullRequest.
   const [owner, repo] = repoFullName.split('/');
-  const query = `query {
-    repository(owner: "${owner}", name: "${repo}") {
-      pullRequest(number: ${prNumber}) {
+  const query = `query PullRequestDetails($owner: String!, $repo: String!, $prNumber: Int!, $after: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $prNumber) {
         mergeable
-        reviewThreads(first: 100) {
+        reviewThreads(first: 100, after: $after) {
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
           nodes { isResolved }
         }
       }
@@ -344,20 +462,33 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
   }`;
 
   try {
-    const res = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query }),
-    });
-    if (!res.ok) return { unresolvedCommentCount: 0, hasConflicts: false };
-    const data = await res.json();
-    const pr = data?.data?.repository?.pullRequest;
-    const threads = pr?.reviewThreads?.nodes ?? [];
-    const unresolvedCommentCount = threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
-    const hasConflicts = pr?.mergeable === 'CONFLICTING';
+    let unresolvedCommentCount = 0;
+    let hasConflicts = false;
+    let after: string | null = null;
+    let pageCount = 0;
+
+    while (pageCount < MAX_PAGINATED_PAGES) {
+      const data: GraphQLPullRequestData | null = await ghGraphQL<GraphQLPullRequestData>(token, query, {
+        owner,
+        repo,
+        prNumber,
+        after,
+      });
+
+      const pr: GraphQLPullRequest | undefined = data?.repository?.pullRequest;
+      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false };
+
+      const threads = pr.reviewThreads?.nodes ?? [];
+      unresolvedCommentCount += threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
+      hasConflicts = pr.mergeable === 'CONFLICTING';
+
+      const pageInfo: ReviewThreadConnection['pageInfo'] = pr.reviewThreads?.pageInfo;
+      if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+
+      after = pageInfo.endCursor;
+      pageCount += 1;
+    }
+
     return { unresolvedCommentCount, hasConflicts };
   } catch {
     return { unresolvedCommentCount: 0, hasConflicts: false };

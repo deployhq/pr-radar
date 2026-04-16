@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { deriveReviewStatus, checkHasReviewed, type GHReview } from './github';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  checkHasReviewed,
+  deriveReviewStatus,
+  getNextPagePath,
+  getUserRepos,
+  mapWithConcurrencyLimit,
+  type GHReview,
+} from './github';
 
 function review(user: string, state: string, commit_id = 'abc123'): GHReview {
   return { state, user: { login: user, avatar_url: '' }, commit_id };
@@ -99,3 +106,87 @@ describe('checkHasReviewed', () => {
     expect(checkHasReviewed(reviews, 'me', HEAD_SHA)).toBe(false);
   });
 });
+
+describe('getNextPagePath', () => {
+  it('returns the next API path from a link header', () => {
+    const linkHeader = [
+      '<https://api.github.com/resource?page=2>; rel="next"',
+      '<https://api.github.com/resource?page=4>; rel="last"',
+    ].join(', ');
+
+    expect(getNextPagePath(linkHeader)).toBe('/resource?page=2');
+  });
+
+  it('returns null when there is no next page', () => {
+    expect(getNextPagePath('<https://api.github.com/resource?page=4>; rel="last"')).toBeNull();
+  });
+});
+
+describe('mapWithConcurrencyLimit', () => {
+  it('preserves order while limiting in-flight work', async () => {
+    let inFlight = 0;
+    let maxInFlight = 0;
+
+    const results = await mapWithConcurrencyLimit([1, 2, 3, 4], 2, async (value) => {
+      inFlight += 1;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await Promise.resolve();
+      inFlight -= 1;
+      return value * 10;
+    });
+
+    expect(results).toEqual([10, 20, 30, 40]);
+    expect(maxInFlight).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('getUserRepos', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('follows pagination links and deduplicates org repos', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+
+    fetchMock.mockResolvedValueOnce(jsonResponse(
+      [{ full_name: 'deployhq/pr-radar' }],
+      '<https://api.github.com/user/repos?sort=pushed&per_page=100&page=2>; rel="next"',
+    ));
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ full_name: 'deployhq/shipit' }]));
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ login: 'deployhq' }]));
+    fetchMock.mockResolvedValueOnce(jsonResponse(
+      [{ full_name: 'deployhq/internal' }],
+      '<https://api.github.com/orgs/deployhq/repos?sort=pushed&per_page=100&type=member&page=2>; rel="next"',
+    ));
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ full_name: 'deployhq/launch' }]));
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ full_name: 'deployhq/launch' }]));
+
+    const repos = await getUserRepos('token');
+
+    expect(repos).toEqual([
+      { full_name: 'deployhq/pr-radar' },
+      { full_name: 'deployhq/shipit' },
+      { full_name: 'deployhq/internal' },
+      { full_name: 'deployhq/launch' },
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+});
+
+function jsonResponse(body: unknown, linkHeader?: string): Response {
+  return {
+    ok: true,
+    status: 200,
+    statusText: 'OK',
+    json: async () => body,
+    headers: {
+      get: (name: string) => (name.toLowerCase() === 'link' ? linkHeader ?? null : null),
+    },
+  } as Response;
+}

@@ -2,7 +2,7 @@
   "name": "pr-radar",
   "version": "0.1.0",
   "description": "PR Radar - All your PRs in one place. CI status, comments, sound alerts. Free, by DeployHQ.",
-  "private": true,
+  "private": false,
   "type": "module",
   "license": "MIT",
   "author": "DeployHQ (https://www.deployhq.com)",

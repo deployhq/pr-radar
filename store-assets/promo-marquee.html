@@ -144,10 +144,24 @@
     margin-top: 1px; flex-shrink: 0;
   }
 
+  .mini-pr-title-row {
+    display: flex; align-items: center; gap: 6px;
+  }
+
   .mini-pr-title {
     font-size: 12px; color: #e5e7eb; font-weight: 500;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 260px;
+    flex: 1; min-width: 0;
+  }
+
+  .mini-merge-btn {
+    flex-shrink: 0; font-size: 9px; line-height: 1;
+    padding: 2px 6px; border-radius: 5px; font-weight: 600;
+    border: 1px solid #2ea043; background: #238636; color: #fff;
+  }
+
+  .mini-merge-btn.disabled {
+    background: #21262d; color: #484f58; border-color: #30363d;
   }
 
   .mini-pr-meta {
@@ -179,6 +193,7 @@
   .mini-deploy { background: rgba(34,197,94,0.15); color: #4ade80; }
   .mini-changes { background: rgba(239,68,68,0.15); color: #f87171; }
   .mini-time { font-size: 9px; color: #4b5563; margin-left: auto; }
+  .mini-star { color: #facc15; margin-right: 2px; }
 
   .mini-footer {
     display: flex; align-items: center; justify-content: center;
@@ -201,8 +216,9 @@
       <span class="feature">CI Status</span>
       <span class="feature">Review Tracking</span>
       <span class="feature">Sound Alerts</span>
+      <span class="feature">Merge PRs</span>
       <span class="feature">Deployments</span>
-      <span class="feature">No Backend</span>
+      <span class="feature">Pinned Repos</span>
       <span class="feature">Free & Open Source</span>
     </div>
   </div>
@@ -223,8 +239,11 @@
     <div class="mini-pr">
       <div class="mini-pr-top">
         <div class="mini-pr-plat">GH</div>
-        <div>
-          <div class="mini-pr-title">Add deployment preview URLs to dashboard</div>
+        <div style="flex:1;min-width:0">
+          <div class="mini-pr-title-row">
+            <div class="mini-pr-title">Add deployment preview URLs to dashboard</div>
+            <span class="mini-merge-btn">Merge</span>
+          </div>
           <div class="mini-pr-meta">
             <span>deployhq/pr-radar #42</span>
             <span class="mini-badge mini-badge-author">Author</span>
@@ -235,15 +254,18 @@
         <span class="mini-ci mini-passed">✓ Passed</span>
         <span class="mini-ci mini-approved">✓ 2 approved</span>
         <span class="mini-ci mini-deploy">🚀 preview</span>
-        <span class="mini-time">3m ago</span>
+        <span class="mini-time"><span class="mini-star">★</span> 3m ago</span>
       </div>
     </div>
 
     <div class="mini-pr">
       <div class="mini-pr-top">
         <div class="mini-pr-plat">GH</div>
-        <div>
-          <div class="mini-pr-title">Fix notification sound volume setting</div>
+        <div style="flex:1;min-width:0">
+          <div class="mini-pr-title-row">
+            <div class="mini-pr-title">Fix notification sound volume setting</div>
+            <span class="mini-merge-btn">Merge</span>
+          </div>
           <div class="mini-pr-meta">
             <span>deployhq/pr-radar #38</span>
             <span class="mini-badge mini-badge-author">Author</span>
@@ -260,8 +282,11 @@
     <div class="mini-pr">
       <div class="mini-pr-top">
         <div class="mini-pr-plat">GH</div>
-        <div>
-          <div class="mini-pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+        <div style="flex:1;min-width:0">
+          <div class="mini-pr-title-row">
+            <div class="mini-pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+            <span class="mini-merge-btn disabled">Merge</span>
+          </div>
           <div class="mini-pr-meta">
             <span>deployhq/deployhq #1204</span>
             <span class="mini-badge mini-badge-author">Author</span>
@@ -271,15 +296,18 @@
       <div class="mini-pr-badges">
         <span class="mini-ci mini-failed">✗ Failed</span>
         <span class="mini-ci mini-changes">↻ Changes requested</span>
-        <span class="mini-time">2h ago</span>
+        <span class="mini-time"><span class="mini-star">★</span> 2h ago</span>
       </div>
     </div>
 
     <div class="mini-pr dimmed">
       <div class="mini-pr-top">
         <div class="mini-pr-plat">GH</div>
-        <div>
-          <div class="mini-pr-title">Add Bitbucket API client scaffolding</div>
+        <div style="flex:1;min-width:0">
+          <div class="mini-pr-title-row">
+            <div class="mini-pr-title">Add Bitbucket API client scaffolding</div>
+            <span class="mini-merge-btn disabled">Merge</span>
+          </div>
           <div class="mini-pr-meta">
             <span>deployhq/pr-radar #15</span>
             <span class="mini-badge mini-badge-author">Author</span>

@@ -196,6 +196,12 @@
     margin-top: 1px;
   }
 
+  .pr-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .pr-title {
     font-size: 13px;
     color: #e5e7eb;
@@ -204,7 +210,32 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 290px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .merge-btn {
+    flex-shrink: 0;
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid #2ea043;
+    background: #238636;
+    color: #fff;
+  }
+
+  .merge-btn.disabled {
+    background: #21262d;
+    color: #484f58;
+    border-color: #30363d;
+  }
+
+  .merge-btn.merged {
+    background: #8957e5;
+    color: #fff;
+    border-color: #8957e5;
   }
 
   .pr-meta {
@@ -260,6 +291,8 @@
     margin-left: auto;
   }
 
+  .star { color: #facc15; margin-right: 2px; }
+
   .footer {
     display: flex;
     align-items: center;
@@ -280,7 +313,7 @@
   <div class="container">
     <div class="left">
       <h1>All your <span>PRs</span> in one place</h1>
-      <p>CI status, unresolved comments, deployment previews, and sound alerts — right from your toolbar.</p>
+      <p>CI status, merge PRs, unresolved comments, deployment previews, and sound alerts — right from your toolbar.</p>
       <div class="badges">
         <span class="badge badge-green">Free</span>
         <span class="badge badge-purple">Open Source</span>
@@ -318,8 +351,11 @@
         <div class="pr-item">
           <div class="pr-top">
             <div class="pr-platform">GH</div>
-            <div>
-              <div class="pr-title">Add deployment preview URLs to PR dashboard</div>
+            <div style="flex:1;min-width:0">
+              <div class="pr-title-row">
+                <div class="pr-title">Add deployment preview URLs to PR dashboard</div>
+                <span class="merge-btn">Merge</span>
+              </div>
               <div class="pr-meta">
                 <span>deployhq/pr-radar #42</span>
                 <span class="pr-badge badge-author">Author</span>
@@ -330,15 +366,18 @@
             <span class="ci-badge ci-passed">✓ Passed</span>
             <span class="ci-badge ci-approved">✓ 2 approved</span>
             <span class="ci-badge ci-deploy">🚀 preview</span>
-            <span class="pr-time">3m ago</span>
+            <span class="pr-time"><span class="star">★</span> 3m ago</span>
           </div>
         </div>
 
         <div class="pr-item">
           <div class="pr-top">
             <div class="pr-platform">GH</div>
-            <div>
-              <div class="pr-title">Fix notification sound volume not persisting</div>
+            <div style="flex:1;min-width:0">
+              <div class="pr-title-row">
+                <div class="pr-title">Fix notification sound volume not persisting</div>
+                <span class="merge-btn">Merge</span>
+              </div>
               <div class="pr-meta">
                 <span>deployhq/pr-radar #38</span>
                 <span class="pr-badge badge-author">Author</span>
@@ -355,8 +394,11 @@
         <div class="pr-item">
           <div class="pr-top">
             <div class="pr-platform">GH</div>
-            <div>
-              <div class="pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+            <div style="flex:1;min-width:0">
+              <div class="pr-title-row">
+                <div class="pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+                <span class="merge-btn disabled">Merge</span>
+              </div>
               <div class="pr-meta">
                 <span>deployhq/deployhq #1204</span>
                 <span class="pr-badge badge-author">Author</span>
@@ -366,15 +408,18 @@
           <div class="pr-badges">
             <span class="ci-badge ci-failed">✗ Failed</span>
             <span class="ci-badge ci-changes">↻ Changes requested</span>
-            <span class="pr-time">2h ago</span>
+            <span class="pr-time"><span class="star">★</span> 2h ago</span>
           </div>
         </div>
 
         <div class="pr-item dimmed">
           <div class="pr-top">
             <div class="pr-platform">GH</div>
-            <div>
-              <div class="pr-title">Add Bitbucket API client scaffolding</div>
+            <div style="flex:1;min-width:0">
+              <div class="pr-title-row">
+                <div class="pr-title">Add Bitbucket API client scaffolding</div>
+                <span class="merge-btn disabled">Merge</span>
+              </div>
               <div class="pr-meta">
                 <span>deployhq/pr-radar #15</span>
                 <span class="pr-badge badge-author">Author</span>

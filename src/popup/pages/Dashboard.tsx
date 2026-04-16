@@ -120,14 +120,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       )
     : filteredByTab;
 
-  // Sort by pinned repo first, then priority, then date
+  // Sort by priority first, then pinned within same priority tier, then date
   const filtered = [...searched].sort((a, b) => {
-    const aPinned = pinnedRepos.has(`${a.platform}:${a.repoFullName}`) ? 0 : 1;
-    const bPinned = pinnedRepos.has(`${b.platform}:${b.repoFullName}`) ? 0 : 1;
-    if (aPinned !== bPinned) return aPinned - bPinned;
     const pa = prPriority(a, stalePRDays);
     const pb = prPriority(b, stalePRDays);
     if (pa !== pb) return pa - pb;
+    const aPinned = pinnedRepos.has(`${a.platform}:${a.repoFullName}`) ? 0 : 1;
+    const bPinned = pinnedRepos.has(`${b.platform}:${b.repoFullName}`) ? 0 : 1;
+    if (aPinned !== bPinned) return aPinned - bPinned;
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
 

@@ -66,7 +66,7 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 ### GitHub (active)
 
 - **Auth**: Classic PAT with `repo` + `read:org` scopes (fine-grained tokens may miss org repos)
-- **REST endpoints**: `/user`, `/user/repos`, `/user/orgs`, `/orgs/{org}/repos`, `/repos/{owner}/{repo}/pulls`, `/pulls/{n}/reviews`, `/commits/{sha}/status`, `/commits/{sha}/check-runs`, `/deployments`, `/deployments/{id}/statuses`
+- **REST endpoints**: `/user`, `/user/repos`, `/user/orgs`, `/orgs/{org}/repos`, `/repos/{owner}/{repo}/pulls`, `/pulls/{n}/reviews`, `/pulls/{n}/merge`, `/commits/{sha}/status`, `/commits/{sha}/check-runs`, `/deployments`, `/deployments/{id}/statuses`
 - **GraphQL**: `reviewThreads.isResolved` for accurate unresolved comment counts
 - **Org repos**: Fetches via `/user/orgs` then `/orgs/{org}/repos?type=member` + `type=all`
 
@@ -85,6 +85,7 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Classic tokens recommended** — Fine-grained tokens may not show org repos; setup/callout links pre-fill correct scopes
 - **Pinned repos** — `WatchedRepo.pinned` boolean; Dashboard sorts pinned-repo PRs first, PRItem shows ★ with combined tooltips
 - **Stale PR exclusion** — Configurable threshold; stale PRs are dimmed in UI, excluded from badge count and notifications
+- **Merge from dashboard** — GitHub-style merge button in PR title row; disabled when CI failing, conflicts, or draft; confirm step prevents accidental merges; respects branch protection rules; shows Merged (purple) state until poll refreshes
 
 ## Features
 
@@ -104,6 +105,7 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Select all/deselect all** — In watched repo selector (entire row clickable)
 - **Token guidance** — Pre-filled classic token links, "Missing repos?" callout
 - **Dark scrollbar** — Themed to match dark UI
+- **Merge PRs** — GitHub-style merge button with confirm/cancel; disabled for drafts, conflicts, CI failures; error feedback from branch protection
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

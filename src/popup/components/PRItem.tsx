@@ -11,7 +11,7 @@ interface PRItemProps {
 }
 
 export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProps) {
-  const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'error'>('idle');
+  const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'merged' | 'error'>('idle');
   const [mergeError, setMergeError] = useState('');
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
@@ -25,7 +25,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
       const msg: Message = { type: 'MERGE_PR', payload: { platform: pr.platform, repoFullName: pr.repoFullName, prNumber: pr.number } };
       const result = await chrome.runtime.sendMessage(msg) as { success: boolean; message: string };
       if (result.success) {
-        setMergeState('idle');
+        setMergeState('merged');
         onMerged?.();
       } else {
         setMergeError(result.message);
@@ -89,6 +89,11 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
               {!pr.isMerged && mergeState === 'merging' && (
                 <span className="flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#58a6ff] border-[#30363d]">
                   Merging...
+                </span>
+              )}
+              {!pr.isMerged && mergeState === 'merged' && (
+                <span className="flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#8957e5] text-white border-[#8957e5]">
+                  Merged
                 </span>
               )}
               {!pr.isMerged && mergeState === 'error' && (

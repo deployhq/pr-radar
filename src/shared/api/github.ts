@@ -91,6 +91,31 @@ export async function getUserRepos(token: string): Promise<{ full_name: string }
   }
 }
 
+export async function mergePullRequest(
+  token: string,
+  repoFullName: string,
+  prNumber: number,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`${BASE_URL}/repos/${repoFullName}/pulls/${prNumber}/merge`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+    });
+    if (res.ok) {
+      return { success: true, message: 'Pull request merged successfully' };
+    }
+    const body = await res.json().catch(() => ({}));
+    return { success: false, message: body.message || `Merge failed: ${res.status} ${res.statusText}` };
+  } catch (err) {
+    return { success: false, message: err instanceof Error ? err.message : 'Merge failed' };
+  }
+}
+
 export async function checkIfMerged(token: string, repoFullName: string, prNumber: number): Promise<boolean> {
   try {
     const pr = await ghFetch<{ merged: boolean }>(`/repos/${repoFullName}/pulls/${prNumber}`, token);

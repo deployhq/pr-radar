@@ -74,4 +74,5 @@ export type Message =
   | { type: 'POLL_NOW' }
   | { type: 'REFRESH_SETTINGS' }
   | { type: 'GET_PRS'; payload: { tab: DashboardTab } }
-  | { type: 'TEST_NOTIFICATION' };
+  | { type: 'TEST_NOTIFICATION' }
+  | { type: 'MERGE_PR'; payload: { platform: Platform; repoFullName: string; prNumber: number } };

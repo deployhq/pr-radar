@@ -49,6 +49,24 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
     return true; // keep channel open for async sendResponse
   } else if (message.type === 'REFRESH_SETTINGS') {
     setupPolling();
+  } else if (message.type === 'MERGE_PR') {
+    const { platform, repoFullName, prNumber } = message.payload;
+    (async () => {
+      const accounts = await getAccounts();
+      const account = accounts.find((a) => a.platform === platform);
+      if (!account) {
+        sendResponse({ success: false, message: 'Account not found' });
+        return;
+      }
+      if (platform === 'github') {
+        const result = await github.mergePullRequest(account.token, repoFullName, prNumber);
+        sendResponse(result);
+        if (result.success) pollPRs(); // refresh data
+      } else {
+        sendResponse({ success: false, message: 'Merge not supported for this platform yet' });
+      }
+    })();
+    return true;
   } else if (message.type === 'TEST_NOTIFICATION') {
     chrome.notifications.create(`pr-radar-test-${Date.now()}`, {
       type: 'basic',

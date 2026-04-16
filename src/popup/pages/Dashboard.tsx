@@ -250,6 +250,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
               pr={pr}
               stalePRDays={stalePRDays}
               pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
+              onMerged={triggerBackgroundRefresh}
             />
           ))
         )}

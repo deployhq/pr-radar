@@ -5,9 +5,10 @@ import PlatformIcon from './PlatformIcon';
 interface PRItemProps {
   pr: PullRequest;
   stalePRDays: number;
+  pinned?: boolean;
 }
 
-export default function PRItem({ pr, stalePRDays }: PRItemProps) {
+export default function PRItem({ pr, stalePRDays, pinned }: PRItemProps) {
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -91,8 +92,14 @@ export default function PRItem({ pr, stalePRDays }: PRItemProps) {
 
         <span
           className="text-[10px] text-gray-600 ml-auto"
-          title={pr.isMerged ? 'This PR was merged — tracking CI' : isStale ? 'This PR is stale — consider closing it' : pr.isBot ? 'This PR was created by a bot' : undefined}
+          title={[
+            pinned && 'Pinned repo',
+            pr.isMerged && 'This PR was merged — tracking CI',
+            pr.isBot && !pr.isMerged && 'This PR was created by a bot',
+            isStale && !pr.isMerged && 'This PR is stale — consider closing it',
+          ].filter(Boolean).join(' · ') || undefined}
         >
+          {pinned && <span className="mr-1 text-yellow-400">{'\u2605'}</span>}
           {pr.isMerged && <span className="mr-1">&#x1F500;</span>}
           {pr.isBot && !pr.isMerged && <span className="mr-1">&#x1F916;</span>}
           {isStale && !pr.isMerged && <span className="mr-1">&#x1F4A4;</span>}

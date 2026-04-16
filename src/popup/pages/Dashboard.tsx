@@ -21,8 +21,20 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [hasWatchedRepos, setHasWatchedRepos] = useState(true);
+  const [pinnedRepos, setPinnedRepos] = useState<Set<string>>(new Set());
   const [stalePRDays, setStalePRDays] = useState(45);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+
+  const loadPinnedRepos = useCallback(async () => {
+    const watchedRepos = await getWatchedRepos();
+    const pinned = new Set(
+      watchedRepos
+        .filter((r) => r.enabled && r.pinned)
+        .map((r) => `${r.platform}:${r.fullName}`),
+    );
+    setPinnedRepos(pinned);
+    return watchedRepos;
+  }, []);
 
   const loadFromCache = useCallback(async () => {
     const cached = await getCachedPRs();
@@ -52,7 +64,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   useEffect(() => {
     async function init() {
-      const settings = await getSettings();
+      const [settings] = await Promise.all([getSettings(), loadPinnedRepos()]);
       setStalePRDays(settings.stalePRDays);
 
       const hadCache = await loadFromCache();
@@ -67,7 +79,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       }
     }
     init();
-  }, [loadFromCache, triggerBackgroundRefresh]);
+  }, [loadFromCache, loadPinnedRepos, triggerBackgroundRefresh]);
 
   // Listen for storage changes from the service worker's poll
   useEffect(() => {
@@ -83,11 +95,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         setLoading(false);
         setError('');
       }
+      if (changes['pr_radar_repos']) {
+        loadPinnedRepos();
+      }
     }
 
     chrome.storage.local.onChanged.addListener(onStorageChange);
     return () => chrome.storage.local.onChanged.removeListener(onStorageChange);
-  }, []);
+  }, [loadPinnedRepos]);
 
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
@@ -105,8 +120,11 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       )
     : filteredByTab;
 
-  // Sort by priority: actionable items first, then by date
+  // Sort by pinned repo first, then priority, then date
   const filtered = [...searched].sort((a, b) => {
+    const aPinned = pinnedRepos.has(`${a.platform}:${a.repoFullName}`) ? 0 : 1;
+    const bPinned = pinnedRepos.has(`${b.platform}:${b.repoFullName}`) ? 0 : 1;
+    if (aPinned !== bPinned) return aPinned - bPinned;
     const pa = prPriority(a, stalePRDays);
     const pb = prPriority(b, stalePRDays);
     if (pa !== pb) return pa - pb;
@@ -226,7 +244,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             </p>
           </div>
         ) : (
-          filtered.map((pr) => <PRItem key={pr.id} pr={pr} stalePRDays={stalePRDays} />)
+          filtered.map((pr) => (
+            <PRItem
+              key={pr.id}
+              pr={pr}
+              stalePRDays={stalePRDays}
+              pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
+            />
+          ))
         )}
       </div>
     </div>

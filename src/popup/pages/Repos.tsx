@@ -14,7 +14,7 @@ export default function Repos() {
   useEffect(() => {
     async function load() {
       const [accounts, watched] = await Promise.all([getAccounts(), getWatchedRepos()]);
-      const watchedMap = new Map(watched.map((r) => [`${r.platform}:${r.fullName}`, r.enabled]));
+      const watchedMap = new Map(watched.map((r) => [`${r.platform}:${r.fullName}`, r]));
 
       const allRepos: WatchedRepo[] = [];
 
@@ -24,30 +24,36 @@ export default function Repos() {
             const ghRepos = await github.getUserRepos(account.token);
             for (const r of ghRepos) {
               const key = `github:${r.full_name}`;
+              const saved = watchedMap.get(key);
               allRepos.push({
                 platform: 'github',
                 fullName: r.full_name,
-                enabled: watchedMap.get(key) ?? false,
+                enabled: saved?.enabled ?? false,
+                pinned: saved?.pinned ?? false,
               });
             }
           } else if (account.platform === 'gitlab') {
             const glRepos = await gitlab.getUserProjects(account.token);
             for (const r of glRepos) {
               const key = `gitlab:${r.path_with_namespace}`;
+              const saved = watchedMap.get(key);
               allRepos.push({
                 platform: 'gitlab',
                 fullName: r.path_with_namespace,
-                enabled: watchedMap.get(key) ?? false,
+                enabled: saved?.enabled ?? false,
+                pinned: saved?.pinned ?? false,
               });
             }
           } else if (account.platform === 'bitbucket') {
             const bbRepos = await bitbucket.getUserRepositories(account.token, account.username);
             for (const r of bbRepos) {
               const key = `bitbucket:${r.full_name}`;
+              const saved = watchedMap.get(key);
               allRepos.push({
                 platform: 'bitbucket',
                 fullName: r.full_name,
-                enabled: watchedMap.get(key) ?? false,
+                enabled: saved?.enabled ?? false,
+                pinned: saved?.pinned ?? false,
               });
             }
           }
@@ -56,9 +62,11 @@ export default function Repos() {
         }
       }
 
-      // Sort: enabled first, then alphabetically
+      // Sort: pinned+enabled first, then enabled, then disabled — alphabetical within each group
       allRepos.sort((a, b) => {
-        if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+        const aRank = a.enabled && a.pinned ? 0 : a.enabled ? 1 : 2;
+        const bRank = b.enabled && b.pinned ? 0 : b.enabled ? 1 : 2;
+        if (aRank !== bRank) return aRank - bRank;
         return a.fullName.localeCompare(b.fullName);
       });
 
@@ -77,6 +85,17 @@ export default function Repos() {
     setRepos(updated);
     await saveWatchedRepos(updated);
     chrome.runtime.sendMessage({ type: 'POLL_NOW' });
+  }
+
+  async function handleTogglePin(e: React.MouseEvent, fullName: string, platform: string) {
+    e.stopPropagation();
+    const updated = repos.map((r) =>
+      r.fullName === fullName && r.platform === platform
+        ? { ...r, pinned: !r.pinned }
+        : r,
+    );
+    setRepos(updated);
+    await saveWatchedRepos(updated);
   }
 
   const filtered = filter.trim()
@@ -152,6 +171,20 @@ export default function Repos() {
                 <span className="text-[10px] text-gray-600">
                   {PLATFORM_LABELS[repo.platform]}
                 </span>
+                {repo.enabled && (
+                  <span
+                    role="button"
+                    onClick={(e) => handleTogglePin(e, repo.fullName, repo.platform)}
+                    className={`flex-shrink-0 text-sm transition-colors ${
+                      repo.pinned
+                        ? 'text-yellow-400'
+                        : 'text-gray-700 hover:text-gray-500'
+                    }`}
+                    title={repo.pinned ? 'Unpin repo' : 'Pin to top'}
+                  >
+                    {repo.pinned ? '\u2605' : '\u2606'}
+                  </span>
+                )}
               </button>
             ))}
 

@@ -55,6 +55,7 @@ export interface WatchedRepo {
   platform: Platform;
   fullName: string;
   enabled: boolean;
+  pinned?: boolean;
 }
 
 // === Navigation ===

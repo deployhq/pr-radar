@@ -178,6 +178,18 @@ export default function Settings({ onNavigate }: SettingsProps) {
             </SettingRow>
           ))}
       </Section>
+
+      {/* Open Source */}
+      <div className="text-center py-2">
+        <a
+          href="https://github.com/deployhq/pr-radar"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
+        >
+          Open source on GitHub
+        </a>
+      </div>
     </div>
   );
 }

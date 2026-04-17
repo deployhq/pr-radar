@@ -243,7 +243,7 @@ function glResponse(body: unknown, nextPage: string | null): Response {
     headers: {
       get: (name: string) => (name.toLowerCase() === 'x-next-page' ? nextPage : null),
     },
-  } as Response;
+  } as unknown as Response;
 }
 
 function glJsonResponse(body: unknown): Response {
@@ -254,5 +254,5 @@ function glJsonResponse(body: unknown): Response {
     json: async () => body,
     text: async () => JSON.stringify(body),
     headers: { get: () => null },
-  } as Response;
+  } as unknown as Response;
 }

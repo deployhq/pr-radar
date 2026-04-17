@@ -188,5 +188,5 @@ function jsonResponse(body: unknown, linkHeader?: string): Response {
     headers: {
       get: (name: string) => (name.toLowerCase() === 'link' ? linkHeader ?? null : null),
     },
-  } as Response;
+  } as unknown as Response;
 }

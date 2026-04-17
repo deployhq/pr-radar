@@ -257,5 +257,5 @@ function bbJsonResponse(body: unknown): Response {
     json: async () => body,
     text: async () => JSON.stringify(body),
     headers: { get: () => null },
-  } as Response;
+  } as unknown as Response;
 }

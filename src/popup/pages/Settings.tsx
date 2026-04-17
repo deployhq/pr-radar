@@ -180,25 +180,26 @@ export default function Settings({ onNavigate }: SettingsProps) {
           ))}
       </Section>
 
-      {/* About */}
-      <Section title="About">
-        <SettingRow
-          label="Share with your team"
-          description="PR Radar works best when your team uses the same review inbox"
-        >
+      {/* Share & About */}
+      <div className="mb-5 rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[13px] text-gray-200 font-medium">Share with your team</div>
+            <div className="text-[11px] text-gray-500 mt-0.5">Works best when your whole team uses it</div>
+          </div>
           <CopyLinkButton url={CHROME_WEB_STORE_URL} />
-        </SettingRow>
-        <div className="pt-2 text-center">
-          <a
-            href="https://github.com/deployhq/pr-radar"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
-          >
-            Open source on GitHub
-          </a>
         </div>
-      </Section>
+      </div>
+      <div className="text-center pb-2">
+        <a
+          href="https://github.com/deployhq/pr-radar"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
+        >
+          Open source on GitHub
+        </a>
+      </div>
     </div>
   );
 }

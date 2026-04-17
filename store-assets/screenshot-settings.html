@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 800px;
+    background: linear-gradient(135deg, #0f0a1a 0%, #1a1025 50%, #0d1117 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .container {
+    display: flex;
+    align-items: center;
+    gap: 80px;
+  }
+
+  .left {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 420px;
+  }
+
+  .left h1 {
+    font-size: 42px;
+    font-weight: 800;
+    color: #f0f0f0;
+    line-height: 1.15;
+  }
+
+  .left h1 span { color: #8b5cf6; }
+
+  .left p {
+    font-size: 18px;
+    color: #9ca3af;
+    line-height: 1.6;
+  }
+
+  .badges {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+
+  .badge {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+
+  .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-purple { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+
+  /* Extension popup mockup */
+  .popup {
+    width: 380px;
+    background: #0d1117;
+    border-radius: 16px;
+    border: 1px solid #21262d;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.1);
+  }
+
+  .popup-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #21262d;
+    background: #0d1117;
+  }
+
+  .popup-back {
+    color: #6b7280;
+    font-size: 16px;
+    margin-right: 4px;
+  }
+
+  .popup-title { font-size: 15px; font-weight: 700; color: #e5e7eb; }
+
+  .settings-body {
+    padding: 16px;
+  }
+
+  .section { margin-bottom: 20px; }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #6b7280;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .setting-label { font-size: 13px; color: #e5e7eb; }
+  .setting-desc { font-size: 11px; color: #6b7280; margin-top: 2px; }
+
+  .toggle {
+    width: 36px;
+    height: 20px;
+    border-radius: 10px;
+    position: relative;
+  }
+
+  .toggle.on { background: #7c3aed; }
+  .toggle.off { background: #374151; }
+
+  .toggle-knob {
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+  }
+
+  .toggle.on .toggle-knob { left: 18px; }
+  .toggle.off .toggle-knob { left: 2px; }
+
+  .select {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    color: #9ca3af;
+  }
+
+  .btn-small {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid #4b5563;
+    color: #9ca3af;
+    background: none;
+  }
+
+  .btn-small.highlight {
+    border-color: #6d28d9;
+    color: #c4b5fd;
+    background: rgba(139,92,246,0.08);
+  }
+
+  .disconnect { font-size: 11px; color: #6b7280; }
+  .connect-link { font-size: 11px; color: #a78bfa; }
+
+  .about-link {
+    font-size: 11px;
+    color: #6b7280;
+    text-align: center;
+    padding-top: 8px;
+  }
+
+  .about-link a { color: #a78bfa; text-decoration: none; }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px;
+    border-top: 1px solid #21262d;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .footer a { color: #a78bfa; text-decoration: none; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="left">
+      <h1>Share <span>PR Radar</span> with your team</h1>
+      <p>Everyone sees the same review inbox, CI status, and comment threads. One click to copy the install link.</p>
+      <div class="badges">
+        <span class="badge badge-green">Free</span>
+        <span class="badge badge-purple">Open Source</span>
+        <span class="badge badge-blue">No Backend</span>
+      </div>
+    </div>
+
+    <div class="popup">
+      <div class="popup-header">
+        <span class="popup-back">&larr;</span>
+        <span class="popup-title">Settings</span>
+      </div>
+
+      <div class="settings-body">
+        <!-- Notifications (collapsed) -->
+        <div class="section">
+          <div class="section-title">Notifications</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Desktop notifications</div>
+              <div class="setting-desc">When CI status changes on your PRs</div>
+            </div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Sound alerts</div>
+              <div class="setting-desc">Play a sound on CI pass or fail</div>
+            </div>
+            <div class="toggle on"><div class="toggle-knob"></div></div>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Sound</div>
+            </div>
+            <span class="select">Ding</span>
+          </div>
+        </div>
+
+        <!-- Display -->
+        <div class="section">
+          <div class="section-title">Display</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Dim stale PRs after</div>
+              <div class="setting-desc">Older PRs appear faded</div>
+            </div>
+            <span class="select">45 days</span>
+          </div>
+        </div>
+
+        <!-- Accounts -->
+        <div class="section">
+          <div class="section-title">Accounts</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">GitHub</div>
+              <div class="setting-desc">@facundofarias</div>
+            </div>
+            <span class="disconnect">Disconnect</span>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">GitLab</div>
+              <div class="setting-desc">Not connected</div>
+            </div>
+            <span class="connect-link">Connect</span>
+          </div>
+        </div>
+
+        <!-- Share card -->
+        <div style="background: rgba(87,64,207,0.06); border: 1px solid rgba(87,64,207,0.15); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <div>
+              <div class="setting-label" style="font-weight:500;">Share with your team</div>
+              <div class="setting-desc">Works best when your whole team uses it</div>
+            </div>
+            <span class="btn-small">Copy link</span>
+          </div>
+        </div>
+        <div class="about-link">
+          <a>Open source on GitHub</a>
+        </div>
+      </div>
+
+      <div class="footer">Made with &lt;3 by <a>DeployHQ</a></div>
+    </div>
+  </div>
+</body>
+</html>

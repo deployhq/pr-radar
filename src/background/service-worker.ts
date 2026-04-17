@@ -134,6 +134,7 @@ async function pollPRs() {
   const enabledRepos = watchedRepos.filter((r) => r.enabled);
 
   if (enabledRepos.length === 0) {
+    await saveCachedPRs([]);
     updateBadge('ok');
     return;
   }

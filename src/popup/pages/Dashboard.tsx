@@ -38,17 +38,16 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   }, []);
 
   const loadFromCache = useCallback(async () => {
-    const cached = await getCachedPRs();
-    if (cached && cached.prs.length > 0) {
-      setPRs(cached.prs);
-      setLastUpdated(cached.updatedAt);
-      setHasWatchedRepos(true);
-      return true;
-    }
-    // Check if we simply have no repos selected
     const watchedRepos = await getWatchedRepos();
     const enabledRepos = watchedRepos.filter((r) => r.enabled);
     setHasWatchedRepos(enabledRepos.length > 0);
+
+    const cached = await getCachedPRs();
+    if (cached && cached.prs.length > 0 && enabledRepos.length > 0) {
+      setPRs(cached.prs);
+      setLastUpdated(cached.updatedAt);
+      return true;
+    }
     return false;
   }, []);
 

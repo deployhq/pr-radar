@@ -43,9 +43,12 @@ src/
       PRItem.tsx                 # PR row: badges, deployment URL, pinned star, stale/reviewed dimming
       CIBadge.tsx                # CI status badge component
       PlatformIcon.tsx           # SVG icons for GitHub, GitLab, Bitbucket
+      TriageSummary.tsx          # Urgency filter chip bar (icon+count chips with tooltips)
+    utils/
+      urgency.ts                 # Urgency classification, filter predicate, count computation, display metadata
     index.css                    # Tailwind imports + dark scrollbar styles
   shared/
-    types.ts                     # TypeScript types (PullRequest, Platform, Message, etc.)
+    types.ts                     # TypeScript types (PullRequest, Platform, Message, UrgencyCategory, etc.)
     constants.ts                 # Status colors, platform labels, sound options
     storage.ts                   # Chrome storage wrapper (accounts, settings, repos, PR cache, CI statuses)
     api/
@@ -102,6 +105,7 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **Pinned repos** — `WatchedRepo.pinned` boolean; Dashboard sorts pinned-repo PRs first, PRItem shows ★ with combined tooltips
 - **Stale PR exclusion** — Configurable threshold; stale PRs are dimmed in UI, excluded from badge count and notifications
 - **Merge from dashboard** — Merge button in PR title row for all platforms; disabled when CI failing, conflicts, or draft; confirm step prevents accidental merges; respects branch protection rules; shows Merged (purple) state until poll refreshes
+- **Urgency filters as chips, not tabs** — Compact icon+count chips in a triage bar (not a new tab) keep the UI lightweight; single-select toggle; counts computed from tab-filtered list so summary always shows full picture; stale is exclusive (no other urgency flags); filter state is ephemeral (resets on tab switch, no persistence)
 
 ## Features
 
@@ -123,6 +127,7 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **Token guidance** — Pre-filled token links, required scopes panel, platform-specific "Missing repos?" callouts
 - **Dark scrollbar** — Themed to match dark UI
 - **Merge PRs** — Merge button with confirm/cancel for GitHub, GitLab, and Bitbucket; disabled for drafts, conflicts, CI failures
+- **Urgency filters** — Triage chip bar above PR list with icon+count chips (CI failing, Changes requested, Review requested, Conflicts, Stale) plus All chip; single-select toggle filters the list; counts scoped to active tab; resets on tab switch
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { AppView, DashboardTab, PullRequest } from '@/shared/types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import type { AppView, DashboardTab, PullRequest, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings } from '@/shared/storage';
 import { CHROME_WEB_STORE_URL } from '@/shared/constants';
+import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
+import TriageSummary from '../components/TriageSummary';
 
 interface DashboardProps {
   tab: DashboardTab;
@@ -25,6 +27,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [pinnedRepos, setPinnedRepos] = useState<Set<string>>(new Set());
   const [stalePRDays, setStalePRDays] = useState(45);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
 
   const loadPinnedRepos = useCallback(async () => {
     const watchedRepos = await getWatchedRepos();
@@ -104,6 +107,13 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     return () => chrome.storage.local.onChanged.removeListener(onStorageChange);
   }, [loadPinnedRepos]);
 
+  // Reset urgency filter on tab change
+  useEffect(() => { setUrgencyFilter(null); }, [tab]);
+
+  const handleToggleUrgencyFilter = useCallback((category: UrgencyCategory | null) => {
+    setUrgencyFilter(category);
+  }, []);
+
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
     if (tab === 'mine') return pr.isAuthor;
@@ -111,14 +121,25 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     return true;
   });
 
+  // Compute urgency counts from tab-filtered list (before urgency filter)
+  const urgencyCounts = useMemo(
+    () => computeUrgencyCounts(filteredByTab, stalePRDays),
+    [filteredByTab, stalePRDays],
+  );
+
+  // Filter by urgency
+  const filteredByUrgency = urgencyFilter
+    ? filteredByTab.filter((pr) => matchesUrgencyFilter(pr, urgencyFilter, stalePRDays))
+    : filteredByTab;
+
   // Filter by search
   const searched = search.trim()
-    ? filteredByTab.filter(
+    ? filteredByUrgency.filter(
         (pr) =>
           pr.title.toLowerCase().includes(search.toLowerCase()) ||
           pr.repoFullName.toLowerCase().includes(search.toLowerCase()),
       )
-    : filteredByTab;
+    : filteredByUrgency;
 
   // Sort by priority first, then pinned within same priority tier, then date
   const filtered = [...searched].sort((a, b) => {
@@ -197,6 +218,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         ) : null}
       </div>
 
+      {/* Triage summary */}
+      <TriageSummary
+        total={filteredByTab.length}
+        counts={urgencyCounts}
+        activeFilter={urgencyFilter}
+        onToggleFilter={handleToggleUrgencyFilter}
+      />
+
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
@@ -225,6 +254,16 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
               className="mt-3 text-xs bg-radar-600 hover:bg-radar-700 text-white px-4 py-1.5 rounded-md transition-colors"
             >
               Select repos
+            </button>
+          </div>
+        ) : urgencyFilter && filtered.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-xs text-gray-500">No PRs match this filter</p>
+            <button
+              onClick={() => setUrgencyFilter(null)}
+              className="mt-1 text-xs text-radar-400 hover:underline"
+            >
+              Clear filter
             </button>
           </div>
         ) : filtered.length === 0 ? (

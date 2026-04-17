@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>PR Radar — Urgency Filters Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px;
+    height: 800px;
+    background: linear-gradient(135deg, #0f0a1a 0%, #1a1025 50%, #0d1117 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .container {
+    display: flex;
+    align-items: flex-start;
+    gap: 60px;
+  }
+
+  /* ─── Left side: two states ─── */
+  .states {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .state-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+  }
+
+  .state-sublabel {
+    font-size: 11px;
+    color: #4b5563;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+
+  /* ─── Extension popup ─── */
+  .popup {
+    width: 380px;
+    background: #0d1117;
+    border-radius: 16px;
+    border: 1px solid #21262d;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(139,92,246,0.1);
+  }
+
+  .popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #21262d;
+    background: #0d1117;
+  }
+
+  .popup-header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .popup-icon { width: 22px; height: 22px; border-radius: 5px; }
+  .popup-title { font-size: 15px; font-weight: 700; color: #e5e7eb; }
+  .popup-subtitle { font-size: 10px; color: #6b7280; }
+
+  .popup-header-right {
+    display: flex;
+    gap: 12px;
+    color: #6b7280;
+    font-size: 14px;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid #21262d;
+    background: #0d1117;
+  }
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 12px;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+  }
+
+  .tab.active {
+    color: #a78bfa;
+    border-bottom-color: #a78bfa;
+  }
+
+  .tab-count {
+    margin-left: 4px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+
+  .tab.active .tab-count { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .tab:not(.active) .tab-count { background: #21262d; color: #6b7280; }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .search-input {
+    flex: 1;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #6b7280;
+  }
+
+  .refresh-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 20px;
+    border: 1px solid #30363d;
+    color: #6b7280;
+    background: none;
+  }
+
+  .updated-bar {
+    text-align: center;
+    padding: 4px;
+    border-bottom: 1px solid #21262d;
+    font-size: 10px;
+    color: #4b5563;
+  }
+
+  /* ─── NEW: Triage summary chip bar ─── */
+  .triage-bar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 16px;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .triage-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    position: relative;
+  }
+
+  .triage-chip .chip-icon {
+    font-size: 11px;
+    line-height: 1;
+  }
+
+  .triage-chip .chip-count {
+    font-weight: 700;
+    font-size: 11px;
+  }
+
+  /* Tooltip on hover */
+  .triage-chip .chip-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #e5e7eb;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    border: 1px solid #374151;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .triage-chip .chip-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #374151;
+  }
+
+  .triage-chip:hover .chip-tooltip {
+    display: block;
+  }
+
+  /* Chip color variants — default (muted) */
+  .chip-purple {
+    background: rgba(139,92,246,0.10);
+    color: #a78bfa;
+    border-color: rgba(139,92,246,0.20);
+  }
+  .chip-red {
+    background: rgba(239,68,68,0.10);
+    color: #f87171;
+    border-color: rgba(239,68,68,0.20);
+  }
+  .chip-amber {
+    background: rgba(245,158,11,0.10);
+    color: #fbbf24;
+    border-color: rgba(245,158,11,0.20);
+  }
+  .chip-gray {
+    background: rgba(107,114,128,0.10);
+    color: #9ca3af;
+    border-color: rgba(107,114,128,0.20);
+  }
+
+  /* Chip active states */
+  .chip-purple.active {
+    background: rgba(139,92,246,0.25);
+    color: #c4b5fd;
+    border-color: rgba(139,92,246,0.50);
+    box-shadow: 0 0 0 1px rgba(139,92,246,0.15);
+  }
+  .chip-red.active {
+    background: rgba(239,68,68,0.25);
+    color: #fca5a5;
+    border-color: rgba(239,68,68,0.50);
+    box-shadow: 0 0 0 1px rgba(239,68,68,0.15);
+  }
+  .chip-amber.active {
+    background: rgba(245,158,11,0.25);
+    color: #fde68a;
+    border-color: rgba(245,158,11,0.50);
+    box-shadow: 0 0 0 1px rgba(245,158,11,0.15);
+  }
+  .chip-gray.active {
+    background: rgba(107,114,128,0.25);
+    color: #d1d5db;
+    border-color: rgba(107,114,128,0.50);
+    box-shadow: 0 0 0 1px rgba(107,114,128,0.15);
+  }
+
+  /* ─── PR list ─── */
+  .pr-list { padding: 0; }
+
+  .pr-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid #21262d;
+  }
+
+  .pr-item.dimmed { opacity: 0.5; }
+  .pr-item.hidden { display: none; }
+
+  .pr-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pr-platform {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    margin-top: 1px;
+  }
+
+  .pr-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .pr-title {
+    font-size: 13px;
+    color: #e5e7eb;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .merge-btn {
+    flex-shrink: 0;
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid #2ea043;
+    background: #238636;
+    color: #fff;
+  }
+
+  .merge-btn.disabled {
+    background: #21262d;
+    color: #484f58;
+    border-color: #30363d;
+  }
+
+  .pr-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .pr-badge {
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .badge-author { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .badge-review-req { background: rgba(245,158,11,0.15); color: #fbbf24; }
+
+  .pr-badges {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    margin-left: 30px;
+    flex-wrap: wrap;
+  }
+
+  .ci-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ci-passed { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .ci-failed { background: rgba(239,68,68,0.15); color: #f87171; }
+  .ci-running { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .ci-approved { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .ci-comments { background: #21262d; color: #fbbf24; }
+  .ci-changes { background: rgba(239,68,68,0.15); color: #f87171; }
+  .ci-conflicts { background: rgba(239,68,68,0.15); color: #f87171; }
+
+  .pr-time {
+    font-size: 10px;
+    color: #4b5563;
+    margin-left: auto;
+  }
+
+  .star { color: #facc15; margin-right: 2px; }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 10px;
+    border-top: 1px solid #21262d;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  .footer a { color: #a78bfa; text-decoration: none; }
+
+  /* ─── Annotation callouts ─── */
+  .callout {
+    position: absolute;
+    font-size: 11px;
+    color: #a78bfa;
+    line-height: 1.4;
+    max-width: 180px;
+  }
+
+  .callout-line {
+    stroke: #a78bfa;
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    fill: none;
+    opacity: 0.4;
+  }
+
+  .gh-icon { fill: currentColor; }
+  .gl-icon { fill: #fc6d26; }
+  .bb-icon { fill: #2684ff; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ─── STATE 1: No filter active — summary bar visible ─── -->
+    <div>
+      <div class="state-label">Default — Triage at a glance</div>
+      <div class="state-sublabel">
+        Summary chips show what needs attention.<br>
+        Click any chip to filter the list.
+      </div>
+      <div class="popup">
+        <div class="popup-header">
+          <div class="popup-header-left">
+            <img class="popup-icon" src="../icons/icon-128.png" alt="PR Radar">
+            <span class="popup-title">PR Radar</span>
+            <span class="popup-subtitle">by DeployHQ</span>
+          </div>
+          <div class="popup-header-right">
+            <span>&#9776;</span>
+            <span>&#9881;</span>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">Mine<span class="tab-count">5</span></div>
+          <div class="tab">Review<span class="tab-count">3</span></div>
+          <div class="tab">All<span class="tab-count">14</span></div>
+        </div>
+
+        <div class="search-bar">
+          <div class="search-input">Search PRs...</div>
+          <div class="refresh-btn">&#x21BB;</div>
+        </div>
+
+        <div class="updated-bar">Updated just now</div>
+
+        <!-- NEW: Triage summary bar -->
+        <div class="triage-bar">
+          <span class="triage-chip chip-purple active"><span class="chip-icon">&#x2630;</span><span class="chip-count">5</span><span class="chip-tooltip">All</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#10007;</span><span class="chip-count">1</span><span class="chip-tooltip">CI failing</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#x21BB;</span><span class="chip-count">1</span><span class="chip-tooltip">Changes requested</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#x26A0;</span><span class="chip-count">1</span><span class="chip-tooltip">Conflicts</span></span>
+          <span class="triage-chip chip-gray"><span class="chip-icon">&#x1F4A4;</span><span class="chip-count">1</span><span class="chip-tooltip">Stale</span></span>
+        </div>
+
+        <div class="pr-list">
+          <!-- PR 1: CI failed + changes requested (highest urgency) -->
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gh-icon"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+                  <span class="merge-btn disabled">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/deployhq #1204</span>
+                  <span class="pr-badge badge-author">Author</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-failed">&#10007; Failed</span>
+              <span class="ci-badge ci-changes">&#x21BB; Changes requested</span>
+              <span class="ci-badge ci-conflicts">Conflicts</span>
+              <span class="pr-time"><span class="star">&#9733;</span> 2h ago</span>
+            </div>
+          </div>
+
+          <!-- PR 2: Healthy, running CI -->
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gl-icon"><path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 0 0-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 0 0-.867 0L1.386 9.45.045 13.587a.924.924 0 0 0 .331 1.023L12 23.054l11.624-8.443a.92.92 0 0 0 .331-1.024"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Fix notification sound volume not persisting</div>
+                  <span class="merge-btn">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/deploy-api !138</span>
+                  <span class="pr-badge badge-author">Author</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-running">&#9679; Running</span>
+              <span class="ci-badge ci-comments">&#x1F4AC; 1 unresolved</span>
+              <span class="pr-time">12m ago</span>
+            </div>
+          </div>
+
+          <!-- PR 3: Healthy, passed -->
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gh-icon"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Add deployment preview URLs to dashboard</div>
+                  <span class="merge-btn">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/pr-radar #42</span>
+                  <span class="pr-badge badge-author">Author</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-passed">&#10003; Passed</span>
+              <span class="ci-badge ci-approved">&#10003; 2 approved</span>
+              <span class="pr-time"><span class="star">&#9733;</span> 3m ago</span>
+            </div>
+          </div>
+
+          <!-- PR 4: Stale -->
+          <div class="pr-item dimmed">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="bb-icon"><path d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646L24.012 2.104a.768.768 0 0 0-.768-.892zM14.52 15.53H9.522L8.17 8.466h7.561z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Update CI pipeline for Node 20</div>
+                  <span class="merge-btn disabled">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>team-ops/infra-config #87</span>
+                  <span class="pr-badge badge-author">Author</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-passed">&#10003; Passed</span>
+              <span class="pr-time">&#x1F4A4; 48d ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">Made with &lt;3 by <a>DeployHQ</a></div>
+      </div>
+    </div>
+
+    <!-- ─── STATE 2: "CI failing" filter active ─── -->
+    <div>
+      <div class="state-label">Filtered — CI Failing</div>
+      <div class="state-sublabel">
+        Active chip is highlighted. List shows<br>
+        only PRs matching that urgency reason.
+      </div>
+      <div class="popup">
+        <div class="popup-header">
+          <div class="popup-header-left">
+            <img class="popup-icon" src="../icons/icon-128.png" alt="PR Radar">
+            <span class="popup-title">PR Radar</span>
+            <span class="popup-subtitle">by DeployHQ</span>
+          </div>
+          <div class="popup-header-right">
+            <span>&#9776;</span>
+            <span>&#9881;</span>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">Mine<span class="tab-count">5</span></div>
+          <div class="tab">Review<span class="tab-count">3</span></div>
+          <div class="tab">All<span class="tab-count">14</span></div>
+        </div>
+
+        <div class="search-bar">
+          <div class="search-input">Search PRs...</div>
+          <div class="refresh-btn">&#x21BB;</div>
+        </div>
+
+        <div class="updated-bar">Updated just now</div>
+
+        <!-- Triage bar with "CI failing" active -->
+        <div class="triage-bar">
+          <span class="triage-chip chip-purple"><span class="chip-icon">&#x2630;</span><span class="chip-count">5</span><span class="chip-tooltip">All</span></span>
+          <span class="triage-chip chip-red active"><span class="chip-icon">&#10007;</span><span class="chip-count">1</span><span class="chip-tooltip">CI failing</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#x21BB;</span><span class="chip-count">1</span><span class="chip-tooltip">Changes requested</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#x26A0;</span><span class="chip-count">1</span><span class="chip-tooltip">Conflicts</span></span>
+          <span class="triage-chip chip-gray"><span class="chip-icon">&#x1F4A4;</span><span class="chip-count">1</span><span class="chip-tooltip">Stale</span></span>
+        </div>
+
+        <div class="pr-list">
+          <!-- Only the CI-failed PR shows -->
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gh-icon"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
+                  <span class="merge-btn disabled">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/deployhq #1204</span>
+                  <span class="pr-badge badge-author">Author</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-failed">&#10007; Failed</span>
+              <span class="ci-badge ci-changes">&#x21BB; Changes requested</span>
+              <span class="ci-badge ci-conflicts">Conflicts</span>
+              <span class="pr-time"><span class="star">&#9733;</span> 2h ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">Made with &lt;3 by <a>DeployHQ</a></div>
+      </div>
+    </div>
+
+    <!-- ─── STATE 3: Review tab with "Review requested" filter ─── -->
+    <div>
+      <div class="state-label">Review tab — filtered</div>
+      <div class="state-sublabel">
+        Chips adapt to the active tab's PRs.<br>
+        Here, "Review requested" is the key signal.
+      </div>
+      <div class="popup">
+        <div class="popup-header">
+          <div class="popup-header-left">
+            <img class="popup-icon" src="../icons/icon-128.png" alt="PR Radar">
+            <span class="popup-title">PR Radar</span>
+            <span class="popup-subtitle">by DeployHQ</span>
+          </div>
+          <div class="popup-header-right">
+            <span>&#9776;</span>
+            <span>&#9881;</span>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab">Mine<span class="tab-count">5</span></div>
+          <div class="tab active">Review<span class="tab-count">3</span></div>
+          <div class="tab">All<span class="tab-count">14</span></div>
+        </div>
+
+        <div class="search-bar">
+          <div class="search-input">Search PRs...</div>
+          <div class="refresh-btn">&#x21BB;</div>
+        </div>
+
+        <div class="updated-bar">Updated 2m ago</div>
+
+        <!-- Triage bar scoped to Review tab -->
+        <div class="triage-bar">
+          <span class="triage-chip chip-purple"><span class="chip-icon">&#x2630;</span><span class="chip-count">3</span><span class="chip-tooltip">All</span></span>
+          <span class="triage-chip chip-amber active"><span class="chip-icon">&#x1F441;</span><span class="chip-count">2</span><span class="chip-tooltip">Review requested</span></span>
+          <span class="triage-chip chip-red"><span class="chip-icon">&#10007;</span><span class="chip-count">1</span><span class="chip-tooltip">CI failing</span></span>
+        </div>
+
+        <div class="pr-list">
+          <!-- Review-requested PRs only -->
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gh-icon"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Add webhook retry logic with backoff</div>
+                  <span class="merge-btn">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/deployhq #1198</span>
+                  <span class="pr-badge badge-review-req">Review</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-passed">&#10003; Passed</span>
+              <span class="ci-badge ci-approved">&#10003; 1 approved</span>
+              <span class="pr-time">25m ago</span>
+            </div>
+          </div>
+
+          <div class="pr-item">
+            <div class="pr-top">
+              <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" class="gl-icon"><path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 0 0-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 0 0-.867 0L1.386 9.45.045 13.587a.924.924 0 0 0 .331 1.023L12 23.054l11.624-8.443a.92.92 0 0 0 .331-1.024"/></svg></div>
+              <div style="flex:1;min-width:0">
+                <div class="pr-title-row">
+                  <div class="pr-title">Migrate session store to Redis</div>
+                  <span class="merge-btn disabled">Merge</span>
+                </div>
+                <div class="pr-meta">
+                  <span>deployhq/identity !45</span>
+                  <span class="pr-badge badge-review-req">Review</span>
+                </div>
+              </div>
+            </div>
+            <div class="pr-badges">
+              <span class="ci-badge ci-failed">&#10007; Failed</span>
+              <span class="ci-badge ci-comments">&#x1F4AC; 3 unresolved</span>
+              <span class="pr-time">1h ago</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer">Made with &lt;3 by <a>DeployHQ</a></div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

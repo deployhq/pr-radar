@@ -3,7 +3,8 @@ import type { PullRequest, CIStatus, ReviewStatus } from '../types';
 const BASE_URL = 'https://api.bitbucket.org/2.0';
 
 async function bbFetch<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
+  const res = await fetch(url, {
     headers: {
       Authorization: `Basic ${token}`,
       Accept: 'application/json',
@@ -14,6 +15,21 @@ async function bbFetch<T>(path: string, token: string): Promise<T> {
     throw new Error(`Bitbucket API error: ${res.status} ${res.statusText} ${body}`);
   }
   return res.json();
+}
+
+async function bbFetchPaginated<T>(path: string, token: string, maxPages = 10): Promise<T[]> {
+  const allValues: T[] = [];
+  let nextUrl: string | undefined = path;
+  let page = 0;
+
+  while (nextUrl && page < maxPages) {
+    const result: { values: T[]; next?: string } = await bbFetch(nextUrl, token);
+    allValues.push(...result.values);
+    nextUrl = result.next;
+    page++;
+  }
+
+  return allValues;
 }
 
 interface BBUser {
@@ -58,21 +74,21 @@ export async function getAuthenticatedUser(token: string): Promise<{ nickname: s
 export async function getUserRepositories(token: string): Promise<{ full_name: string }[]> {
   // /2.0/workspaces was sunset on 2026-04-14 (CHANGE-2770).
   // Replacement: /2.0/user/workspaces returns workspace_access objects.
-  const result = await bbFetch<{ values: { workspace: { slug: string } }[] }>(
+  const workspaces = await bbFetchPaginated<{ workspace: { slug: string } }>(
     '/user/workspaces?pagelen=100',
     token,
   );
 
   const allRepos: { full_name: string }[] = [];
-  for (const membership of result.values) {
+  for (const membership of workspaces) {
     const slug = membership.workspace?.slug;
     if (!slug) continue;
     try {
-      const repos = await bbFetch<{ values: { full_name: string }[] }>(
+      const repos = await bbFetchPaginated<{ full_name: string }>(
         `/repositories/${slug}?pagelen=100&sort=-updated_on&role=member`,
         token,
       );
-      allRepos.push(...repos.values);
+      allRepos.push(...repos);
     } catch {
       // Workspace might not have repos or access — skip
     }

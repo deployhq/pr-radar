@@ -16,7 +16,10 @@
     "offscreen"
   ],
   "host_permissions": [
-    "https://api.github.com/*"
+    "https://api.github.com/*",
+    "https://gitlab.com/*",
+    "https://api.bitbucket.org/*",
+    "https://id.atlassian.com/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.ts",

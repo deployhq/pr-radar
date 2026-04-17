@@ -65,7 +65,28 @@ export async function getAuthenticatedUser(token: string): Promise<{ username: s
 }
 
 export async function getUserProjects(token: string): Promise<{ path_with_namespace: string }[]> {
-  return glFetch('/projects?membership=true&order_by=last_activity_at&per_page=100', token);
+  // Paginate through all projects (GitLab returns x-next-page header)
+  const allProjects: { path_with_namespace: string }[] = [];
+  let page = 1;
+  const maxPages = 10; // safety limit: 1000 projects
+
+  while (page <= maxPages) {
+    const res = await fetch(`${BASE_URL}/projects?membership=true&order_by=last_activity_at&per_page=100&page=${page}`, {
+      headers: { 'PRIVATE-TOKEN': token },
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`GitLab API error: ${res.status} ${body}`);
+    }
+    const projects = await res.json() as { path_with_namespace: string }[];
+    allProjects.push(...projects);
+
+    const nextPage = res.headers.get('x-next-page');
+    if (!nextPage || projects.length < 100) break;
+    page++;
+  }
+
+  return allProjects;
 }
 
 export async function mergeMergeRequest(

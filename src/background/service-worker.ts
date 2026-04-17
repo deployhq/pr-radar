@@ -243,17 +243,18 @@ async function pollPRs() {
         const elapsed = Date.now() - (pr.mergedAt ?? 0);
         if (elapsed > MERGED_TTL) continue; // expired
 
-        // Refresh CI status
-        if (pr.platform === 'github' && pr.headSha) {
-          const account = accounts.find((a) => a.platform === 'github');
-          if (account) {
-            try {
-              const ciResult = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
-              allPRs.push({ ...pr, ciStatus: ciResult.status, ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined });
-            } catch {
-              allPRs.push(pr); // keep with old status
-            }
+        // Refresh CI status — GitHub has a dedicated endpoint; GitLab/Bitbucket keep last-known status
+        const account = accounts.find((a) => a.platform === pr.platform);
+        if (pr.platform === 'github' && pr.headSha && account) {
+          try {
+            const ciResult = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
+            allPRs.push({ ...pr, ciStatus: ciResult.status, ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined });
+          } catch {
+            allPRs.push(pr); // keep with old status
           }
+        } else {
+          // GitLab/Bitbucket: keep merged PR with last-known CI status during TTL
+          allPRs.push(pr);
         }
       }
     }

@@ -231,7 +231,7 @@ async function fetchDeployment(
   }
 }
 
-function mapGLPipelineStatus(status?: string): CIStatus {
+export function mapGLPipelineStatus(status?: string): CIStatus {
   if (!status) return 'unknown';
   switch (status) {
     case 'success': return 'passed';
@@ -243,7 +243,7 @@ function mapGLPipelineStatus(status?: string): CIStatus {
   }
 }
 
-function deriveGLReviewStatus(approvals: GLApproval): ReviewStatus {
+export function deriveGLReviewStatus(approvals: GLApproval): ReviewStatus {
   if (approvals.approved_by.length > 0) return 'approved';
   if (approvals.approved) return 'approved';
   return 'none';

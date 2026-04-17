@@ -228,7 +228,7 @@ async function fetchComments(token: string, repoFullName: string, prId: number):
   }
 }
 
-function deriveBBReviewStatus(participants: BBPullRequest['participants']): ReviewStatus {
+export function deriveBBReviewStatus(participants: { user: { display_name: string; nickname: string; links: { avatar: { href: string } } }; role: string; approved: boolean; state: string | null }[]): ReviewStatus {
   const reviewers = participants.filter((p) => p.role === 'REVIEWER');
   if (!reviewers.length) return 'none';
 

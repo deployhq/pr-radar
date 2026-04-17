@@ -11,12 +11,19 @@ interface SetupProps {
   onComplete: () => void;
 }
 
+interface ScopeInfo {
+  name: string;
+  reason: string;
+}
+
 interface PlatformConfig {
   platform: Platform;
   placeholder: string;
   helpUrl: string;
   helpLabel: string;
   comingSoon: boolean;
+  scopes: ScopeInfo[];
+  note?: string;
 }
 
 const PLATFORMS: PlatformConfig[] = [
@@ -24,22 +31,37 @@ const PLATFORMS: PlatformConfig[] = [
     platform: 'github',
     placeholder: 'ghp_xxxxxxxxxxxx',
     helpUrl: 'https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR Radar',
-    helpLabel: 'Create a token (pre-filled with the right scopes)',
+    helpLabel: 'Create a classic token (scopes pre-filled)',
     comingSoon: false,
+    scopes: [
+      { name: 'repo', reason: 'Access PRs, CI status, and merge' },
+      { name: 'read:org', reason: 'List organization repositories' },
+    ],
+    note: 'If your org uses SSO, authorize the token for that org after creating it.',
   },
   {
     platform: 'gitlab',
     placeholder: 'glpat-xxxxxxxxxxxx',
     helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens?scopes=read_api',
-    helpLabel: 'Create a token with read_api scope',
+    helpLabel: 'Create a personal access token',
     comingSoon: false,
+    scopes: [
+      { name: 'read_api', reason: 'Access merge requests, CI pipelines, and projects' },
+    ],
   },
   {
     platform: 'bitbucket',
     placeholder: 'API token',
     helpUrl: 'https://id.atlassian.com/manage-profile/security/api-tokens',
-    helpLabel: 'Create an API token with repository and pull request read scopes',
+    helpLabel: 'Create an API token',
     comingSoon: false,
+    scopes: [
+      { name: 'read:user:bitbucket', reason: 'Identify your account' },
+      { name: 'read:workspace:bitbucket', reason: 'List your workspaces' },
+      { name: 'read:repository:bitbucket', reason: 'List repositories' },
+      { name: 'read:pullrequest:bitbucket', reason: 'View pull requests and CI' },
+      { name: 'write:pullrequest:bitbucket', reason: 'Merge pull requests' },
+    ],
   },
 ];
 
@@ -91,8 +113,8 @@ export default function Setup({ onComplete }: SetupProps) {
 
       await saveAccount(account);
       onComplete();
-    } catch {
-      setError('Invalid token. Please check and try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Connection failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -194,6 +216,21 @@ export default function Setup({ onComplete }: SetupProps) {
                   >
                     {cfg.helpLabel} &rarr;
                   </a>
+                  <div className="rounded-lg bg-gray-900 border border-gray-700 p-2.5">
+                    <p className="text-[10px] text-gray-400 font-medium mb-1.5">Required scopes</p>
+                    {cfg.scopes.map((scope) => (
+                      <div key={scope.name} className="py-0.5">
+                        <code className="text-[10px] text-radar-400 bg-gray-800 px-1 py-px rounded">
+                          {scope.name}
+                        </code>
+                      </div>
+                    ))}
+                    {cfg.note && (
+                      <p className="text-[10px] text-amber-400/80 mt-1.5 leading-relaxed">
+                        {cfg.note}
+                      </p>
+                    )}
+                  </div>
                   {error && <p className="text-[11px] text-red-400">{error}</p>}
                   <button
                     onClick={() => handleConnect(cfg.platform)}

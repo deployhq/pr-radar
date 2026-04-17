@@ -93,7 +93,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
       {
         type: 'basic',
         iconUrl: chrome.runtime.getURL('icons/icon-128.png'),
-        title: 'CI Passed',
+        title: '\u2705 CI passed',
         message: 'deployhq/pr-radar #1 — This is a test notification',
       },
       (notificationId) => {
@@ -292,10 +292,12 @@ async function notifyCIChange(pr: PullRequest) {
   const settings = await getSettings();
 
   if (settings.notificationsEnabled) {
-    const title =
-      pr.ciStatus === 'passed' ? 'CI Passed'
-        : pr.ciStatus === 'failed' ? 'CI Failed'
-          : `CI ${CI_STATUS_LABELS[pr.ciStatus]}`;
+    const statusEmoji =
+      pr.ciStatus === 'passed' ? '\u2705'
+        : pr.ciStatus === 'failed' ? '\u274C'
+          : pr.ciStatus === 'running' ? '\uD83D\uDD35'
+            : '\u26A0\uFE0F';
+    const title = `${statusEmoji} ${CI_STATUS_LABELS[pr.ciStatus]}`;
 
     chrome.notifications.create(`pr-radar-${pr.id}-${Date.now()}`, {
       type: 'basic',

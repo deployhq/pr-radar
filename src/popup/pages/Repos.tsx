@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import type { Platform, WatchedRepo } from '@/shared/types';
-import { PLATFORM_LABELS } from '@/shared/constants';
 import { getAccounts, getWatchedRepos, saveWatchedRepos } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
+import PlatformIcon from '../components/PlatformIcon';
 
 export default function Repos() {
   const [repos, setRepos] = useState<WatchedRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(new Set());
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function Repos() {
               });
             }
           } else if (account.platform === 'bitbucket') {
-            const bbRepos = await bitbucket.getUserRepositories(account.token, account.username);
+            const bbRepos = await bitbucket.getUserRepositories(account.token);
             for (const r of bbRepos) {
               const key = `bitbucket:${r.full_name}`;
               const saved = watchedMap.get(key);
@@ -100,15 +101,22 @@ export default function Repos() {
     await saveWatchedRepos(updated);
   }
 
-  const filtered = filter.trim()
-    ? repos.filter((r) => r.fullName.toLowerCase().includes(filter.toLowerCase()))
-    : repos;
+  const filtered = repos.filter((r) => {
+    if (platformFilter !== 'all' && r.platform !== platformFilter) return false;
+    if (filter.trim() && !r.fullName.toLowerCase().includes(filter.toLowerCase())) return false;
+    return true;
+  });
 
   const enabledCount = repos.filter((r) => r.enabled).length;
-  const allEnabled = repos.length > 0 && repos.every((r) => r.enabled);
+  const allFiltered = filtered.length > 0 && filtered.every((r) => r.enabled);
 
   async function handleSelectAll() {
-    const updated = repos.map((r) => ({ ...r, enabled: !allEnabled }));
+    const filteredKeys = new Set(filtered.map((r) => `${r.platform}:${r.fullName}`));
+    const updated = repos.map((r) =>
+      filteredKeys.has(`${r.platform}:${r.fullName}`)
+        ? { ...r, enabled: !allFiltered }
+        : r,
+    );
     setRepos(updated);
     await saveWatchedRepos(updated);
     chrome.runtime.sendMessage({ type: 'POLL_NOW' });
@@ -126,16 +134,45 @@ export default function Repos() {
             className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
           />
         </div>
+        {connectedPlatforms.size > 1 && (
+          <div className="flex items-center gap-1.5 mt-2">
+            <button
+              onClick={() => setPlatformFilter('all')}
+              className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
+                platformFilter === 'all'
+                  ? 'border-radar-600 text-radar-400 bg-radar-900/30'
+                  : 'border-gray-700 text-gray-500 hover:text-gray-400'
+              }`}
+            >
+              All
+            </button>
+            {(['github', 'gitlab', 'bitbucket'] as Platform[])
+              .filter((p) => connectedPlatforms.has(p))
+              .map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPlatformFilter(p)}
+                  className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
+                    platformFilter === p
+                      ? 'border-radar-600 text-radar-400 bg-radar-900/30'
+                      : 'border-gray-700 text-gray-500 hover:text-gray-400'
+                  }`}
+                >
+                  <PlatformIcon platform={p} size={12} />
+                </button>
+              ))}
+          </div>
+        )}
         <div className="flex items-center justify-between mt-2">
           <p className="text-[11px] text-gray-500">
             {enabledCount} of {repos.length} repos watched
           </p>
-          {repos.length > 0 && (
+          {filtered.length > 0 && (
             <button
               onClick={handleSelectAll}
               className="text-[11px] text-radar-400 hover:underline"
             >
-              {allEnabled ? 'Deselect all' : 'Select all'}
+              {allFiltered ? 'Deselect all' : 'Select all'}
             </button>
           )}
         </div>
@@ -170,8 +207,8 @@ export default function Repos() {
                 <span className="flex-1 text-[13px] text-gray-200 truncate">
                   {repo.fullName}
                 </span>
-                <span className="text-[10px] text-gray-600">
-                  {PLATFORM_LABELS[repo.platform]}
+                <span className="flex-shrink-0 text-gray-600">
+                  <PlatformIcon platform={repo.platform} size={14} />
                 </span>
                 {repo.enabled && (
                   <span
@@ -230,7 +267,8 @@ export default function Repos() {
               <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
                 <p className="text-[11px] text-gray-400 leading-relaxed">
                   <span className="text-gray-300 font-medium">Missing Bitbucket repos?</span>{' '}
-                  Your API token needs <span className="text-gray-300">Repositories: Read</span> and{' '}
+                  Your API token needs <span className="text-gray-300">Account: Read</span>,{' '}
+                  <span className="text-gray-300">Repositories: Read</span>, and{' '}
                   <span className="text-gray-300">Pull requests: Read</span> scopes.
                 </p>
                 <a

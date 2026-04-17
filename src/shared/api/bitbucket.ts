@@ -10,7 +10,8 @@ async function bbFetch<T>(path: string, token: string): Promise<T> {
     },
   });
   if (!res.ok) {
-    throw new Error(`Bitbucket API error: ${res.status} ${res.statusText}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`Bitbucket API error: ${res.status} ${res.statusText} ${body}`);
   }
   return res.json();
 }
@@ -54,12 +55,29 @@ export async function getAuthenticatedUser(token: string): Promise<{ nickname: s
   return { nickname: user.nickname, display_name: user.display_name, avatar: user.links.avatar.href };
 }
 
-export async function getUserRepositories(token: string, username: string): Promise<{ full_name: string }[]> {
-  const result = await bbFetch<{ values: { full_name: string }[] }>(
-    `/repositories/${username}?pagelen=100&sort=-updated_on`,
+export async function getUserRepositories(token: string): Promise<{ full_name: string }[]> {
+  // /2.0/workspaces was sunset on 2026-04-14 (CHANGE-2770).
+  // Replacement: /2.0/user/workspaces returns workspace_access objects.
+  const result = await bbFetch<{ values: { workspace: { slug: string } }[] }>(
+    '/user/workspaces?pagelen=100',
     token,
   );
-  return result.values;
+
+  const allRepos: { full_name: string }[] = [];
+  for (const membership of result.values) {
+    const slug = membership.workspace?.slug;
+    if (!slug) continue;
+    try {
+      const repos = await bbFetch<{ values: { full_name: string }[] }>(
+        `/repositories/${slug}?pagelen=100&sort=-updated_on&role=member`,
+        token,
+      );
+      allRepos.push(...repos.values);
+    } catch {
+      // Workspace might not have repos or access — skip
+    }
+  }
+  return allRepos;
 }
 
 export async function mergePullRequest(

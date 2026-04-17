@@ -2,7 +2,7 @@
 
 ## Overview
 
-PR Radar - a free Chrome extension (Manifest V3) that provides a unified PR dashboard for GitHub (GitLab and Bitbucket coming soon). Shows CI status, unresolved comments, review state, deployment status, and sound/desktop notifications. No tab required — works in the background. Free, by DeployHQ.
+PR Radar - a free Chrome extension (Manifest V3) that provides a unified PR dashboard for GitHub, GitLab, and Bitbucket. Shows CI status, unresolved comments, review state, deployment status, and sound/desktop notifications. No tab required — works in the background. Free, by DeployHQ.
 
 ## Commands
 
@@ -34,10 +34,10 @@ src/
   popup/
     App.tsx                      # Main app shell with routing
     pages/
-      Setup.tsx                  # GitHub connection (PAT auth, auto-navigates on connect)
+      Setup.tsx                  # Multi-platform connection (GitHub/GitLab/Bitbucket PAT auth, scope guide, connected state)
       Dashboard.tsx              # PR list with tabs (Mine/Review/All), cache-first rendering
       Settings.tsx               # Notifications, sound, polling, stale PR config, accounts, test button
-      Repos.tsx                  # Watched repo selector with select all, pin/fav stars, token scope callout
+      Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts
     components/
       Header.tsx                 # Navigation header with extension icon + "by DeployHQ"
       PRItem.tsx                 # PR row: badges, deployment URL, pinned star, stale/reviewed dimming
@@ -49,9 +49,9 @@ src/
     constants.ts                 # Status colors, platform labels, sound options
     storage.ts                   # Chrome storage wrapper (accounts, settings, repos, PR cache, CI statuses)
     api/
-      github.ts                  # GitHub REST + GraphQL API (PRs, CI, reviews, threads, deployments, orgs)
-      gitlab.ts                  # GitLab REST API (coming soon)
-      bitbucket.ts               # Bitbucket REST API (coming soon)
+      github.ts                  # GitHub REST + GraphQL API (PRs, CI, reviews, threads, deployments, orgs, merge)
+      gitlab.ts                  # GitLab REST API (MRs, CI pipelines, discussions, approvals, deployments, merge)
+      bitbucket.ts               # Bitbucket REST API (PRs, pipelines, comments, participants, merge, workspaces)
 public/
   offscreen.html                 # Offscreen document for audio playback (references offscreen.js)
   offscreen.js                   # Audio player (separate file required by MV3 CSP - no inline scripts)
@@ -63,16 +63,30 @@ icons/                           # Extension icons: 16/32/48/128px (radar dish o
 
 Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-fill scopes.
 
-### GitHub (active)
+### GitHub
 
 - **Auth**: Classic PAT with `repo` + `read:org` scopes (fine-grained tokens may miss org repos)
 - **REST endpoints**: `/user`, `/user/repos`, `/user/orgs`, `/orgs/{org}/repos`, `/repos/{owner}/{repo}/pulls`, `/pulls/{n}/reviews`, `/pulls/{n}/merge`, `/commits/{sha}/status`, `/commits/{sha}/check-runs`, `/deployments`, `/deployments/{id}/statuses`
 - **GraphQL**: `reviewThreads.isResolved` for accurate unresolved comment counts
 - **Org repos**: Fetches via `/user/orgs` then `/orgs/{org}/repos?type=member` + `type=all`
+- **SSO**: Token must be authorized for SSO-enabled orgs after creation
 
-### GitLab / Bitbucket (coming soon)
+### GitLab
 
-API clients exist but are disabled in the Setup UI. Platform cards show "Coming soon".
+- **Auth**: PAT with `api` + `read_user` scopes (classic token; setup link pre-fills scopes)
+- **REST endpoints**: `/user`, `/projects?membership=true`, `/projects/{id}/merge_requests`, `/merge_requests/{iid}/discussions`, `/merge_requests/{iid}/approvals`, `/merge_requests/{iid}/merge`, `/deployments`
+- **CI status**: From `head_pipeline.status` on MR response
+- **Unresolved comments**: Counted from discussion notes with `resolvable && !resolved`
+- **Review tracking**: `hasReviewed` derived from user's resolvable notes in discussions
+
+### Bitbucket
+
+- **Auth**: Atlassian API token with Basic auth (`email:token` base64-encoded). Required scopes: `read:user:bitbucket`, `read:workspace:bitbucket`, `read:repository:bitbucket`, `read:pullrequest:bitbucket`, `write:pullrequest:bitbucket`
+- **REST endpoints**: `/user`, `/user/workspaces`, `/repositories/{workspace}`, `/repositories/{repo}/pullrequests`, `/pullrequests/{id}/comments`, `/pullrequests/{id}/merge`
+- **Workspaces**: Uses `/2.0/user/workspaces` (CHANGE-2770 replacement for deprecated `/workspaces`)
+- **CI status**: From pipelines API filtered by source branch
+- **Review tracking**: `hasReviewed` derived from participant state
+- **Limitations**: No draft PR detection (Bitbucket doesn't support drafts), no conflict detection via API
 
 ## Key Design Decisions
 
@@ -82,17 +96,20 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Persisted CI statuses** — Stored in `chrome.storage` (not in-memory) so status change detection survives service worker restarts
 - **Offscreen API for audio** — MV3 service workers can't play audio; uses `public/offscreen.html` + `public/offscreen.js` (no inline scripts due to CSP)
 - **GraphQL for comments** — REST API doesn't expose thread resolution; GraphQL `reviewThreads.isResolved` is accurate
-- **Classic tokens recommended** — Fine-grained tokens may not show org repos; setup/callout links pre-fill correct scopes
+- **Classic tokens recommended (GitHub)** — Fine-grained tokens may not show org repos; setup/callout links pre-fill correct scopes
+- **Basic auth for Bitbucket** — Atlassian API tokens use `email:token` base64-encoded as Basic auth (not Bearer)
+- **Workspace API (Bitbucket)** — Uses `/2.0/user/workspaces` (CHANGE-2770 replacement, old `/workspaces` is sunset)
 - **Pinned repos** — `WatchedRepo.pinned` boolean; Dashboard sorts pinned-repo PRs first, PRItem shows ★ with combined tooltips
 - **Stale PR exclusion** — Configurable threshold; stale PRs are dimmed in UI, excluded from badge count and notifications
-- **Merge from dashboard** — GitHub-style merge button in PR title row; disabled when CI failing, conflicts, or draft; confirm step prevents accidental merges; respects branch protection rules; shows Merged (purple) state until poll refreshes
+- **Merge from dashboard** — Merge button in PR title row for all platforms; disabled when CI failing, conflicts, or draft; confirm step prevents accidental merges; respects branch protection rules; shows Merged (purple) state until poll refreshes
 
 ## Features
 
 - **Unified PR dashboard** — Mine/Review/All tabs
-- **CI status** — Via check-runs + combined status API per PR head SHA
-- **Unresolved comments** — Via GitHub GraphQL API (accurate resolved/unresolved)
-- **Deployment status** — Environment name badge + clickable preview URL
+- **Multi-platform** — GitHub, GitLab, and Bitbucket with platform filter in Repos page
+- **CI status** — GitHub: check-runs + combined status; GitLab: head pipeline; Bitbucket: pipelines API
+- **Unresolved comments** — GitHub: GraphQL reviewThreads; GitLab: discussion notes; Bitbucket: inline comments
+- **Deployment status** — GitHub: deployments API; GitLab: deployments by SHA
 - **Review tracking** — Author/Review/Reviewed badges; reviewed PRs dimmed
 - **Pinned repos** — Star toggle in Repos page; pinned repo PRs sort to top of Dashboard with ★ indicator
 - **Stale PR detection** — Configurable threshold (default 45 days), dimmed with 💤 tooltip
@@ -103,9 +120,9 @@ API clients exist but are disabled in the Setup UI. Platform cards show "Coming 
 - **Manual refresh** — ↻ button in dashboard
 - **Last updated** — Timestamp shown below search bar
 - **Select all/deselect all** — In watched repo selector (entire row clickable)
-- **Token guidance** — Pre-filled classic token links, "Missing repos?" callout
+- **Token guidance** — Pre-filled token links, required scopes panel, platform-specific "Missing repos?" callouts
 - **Dark scrollbar** — Themed to match dark UI
-- **Merge PRs** — GitHub-style merge button with confirm/cancel; disabled for drafts, conflicts, CI failures; error feedback from branch protection
+- **Merge PRs** — Merge button with confirm/cancel for GitHub, GitLab, and Bitbucket; disabled for drafts, conflicts, CI failures
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

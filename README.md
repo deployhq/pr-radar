@@ -67,6 +67,12 @@ npm run build
 - Create an Atlassian API token and enter your email + token
 - Required scopes: `read:user:bitbucket`, `read:workspace:bitbucket`, `read:repository:bitbucket`, `read:pullrequest:bitbucket`, `write:pullrequest:bitbucket`
 
+## For Teams
+
+PR Radar works best when your whole team uses it. Share the install link so everyone sees the same review inbox, CI status, and comment threads.
+
+[Install PR Radar →](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh)
+
 ## How it works
 
 PR Radar polls platform APIs in the background at a configurable interval (default: 60 seconds). When it detects a CI status change on one of your PRs, it sends a desktop notification and plays a sound.

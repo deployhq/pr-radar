@@ -43,3 +43,6 @@ export const SOUND_OPTIONS = [
 ] as const;
 
 export type SoundId = typeof SOUND_OPTIONS[number]['id'];
+
+export const CHROME_WEB_STORE_URL =
+  'https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh';

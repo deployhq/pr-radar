@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { AppView, Platform } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType } from '@/shared/storage';
+import { CHROME_WEB_STORE_URL } from '@/shared/constants';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -179,17 +180,25 @@ export default function Settings({ onNavigate }: SettingsProps) {
           ))}
       </Section>
 
-      {/* Open Source */}
-      <div className="text-center py-2">
-        <a
-          href="https://github.com/deployhq/pr-radar"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
+      {/* About */}
+      <Section title="About">
+        <SettingRow
+          label="Share with your team"
+          description="PR Radar works best when your team uses the same review inbox"
         >
-          Open source on GitHub
-        </a>
-      </div>
+          <CopyLinkButton url={CHROME_WEB_STORE_URL} />
+        </SettingRow>
+        <div className="pt-2 text-center">
+          <a
+            href="https://github.com/deployhq/pr-radar"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
+          >
+            Open source on GitHub
+          </a>
+        </div>
+      </Section>
     </div>
   );
 }
@@ -222,6 +231,25 @@ function SettingRow({
       </div>
       {children}
     </div>
+  );
+}
+
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
+    >
+      {copied ? 'Copied!' : 'Copy link'}
+    </button>
   );
 }
 

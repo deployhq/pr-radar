@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AppView, DashboardTab, PullRequest } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings } from '@/shared/storage';
+import { CHROME_WEB_STORE_URL } from '@/shared/constants';
 import PRItem from '../components/PRItem';
 
 interface DashboardProps {
@@ -242,6 +243,20 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
                   ? 'Try a different search'
                   : "You're all clear — no open PRs on your watched repos"}
             </p>
+            {!search && (
+              <p className="text-[11px] text-gray-600 mt-4">
+                Enjoying PR Radar?{' '}
+                <a
+                  href={CHROME_WEB_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-radar-400 hover:underline"
+                >
+                  Share it with your team
+                </a>
+                {' '}to keep everyone in sync.
+              </p>
+            )}
           </div>
         ) : (
           filtered.map((pr) => (

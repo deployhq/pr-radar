@@ -42,12 +42,14 @@ const PLATFORMS: PlatformConfig[] = [
   {
     platform: 'gitlab',
     placeholder: 'glpat-xxxxxxxxxxxx',
-    helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens?scopes=read_api',
-    helpLabel: 'Create a personal access token',
+    helpUrl: 'https://gitlab.com/-/user_settings/personal_access_tokens?name=PR+Radar&scopes=api,read_user',
+    helpLabel: 'Create a token (scopes pre-filled)',
     comingSoon: false,
     scopes: [
-      { name: 'read_api', reason: 'Access merge requests, CI pipelines, and projects' },
+      { name: 'api', reason: 'Access projects, merge requests, and CI pipelines' },
+      { name: 'read_user', reason: 'Identify your account' },
     ],
+    note: 'The api scope is needed to merge MRs. read_api is sufficient if you don\'t need merge.',
   },
   {
     platform: 'bitbucket',

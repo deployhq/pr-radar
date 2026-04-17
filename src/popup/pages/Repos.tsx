@@ -148,19 +148,22 @@ export default function Repos() {
             </button>
             {(['github', 'gitlab', 'bitbucket'] as Platform[])
               .filter((p) => connectedPlatforms.has(p))
-              .map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatformFilter(p)}
-                  className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
-                    platformFilter === p
-                      ? 'border-radar-600 text-radar-400 bg-radar-900/30'
-                      : 'border-gray-700 text-gray-500 hover:text-gray-400'
-                  }`}
-                >
-                  <PlatformIcon platform={p} size={12} />
-                </button>
-              ))}
+              .map((p) => {
+                const iconColor = p === 'gitlab' ? 'text-orange-500' : p === 'bitbucket' ? 'text-blue-500' : '';
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPlatformFilter(p)}
+                    className={`flex items-center justify-center w-7 h-6 text-[11px] rounded-md border transition-colors ${
+                      platformFilter === p
+                        ? 'border-radar-600 bg-radar-900/30'
+                        : 'border-gray-700 text-gray-500 hover:text-gray-400'
+                    }`}
+                  >
+                    <PlatformIcon platform={p} size={12} className={iconColor} />
+                  </button>
+                );
+              })}
           </div>
         )}
         <div className="flex items-center justify-between mt-2">

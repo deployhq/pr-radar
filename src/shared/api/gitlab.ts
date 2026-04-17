@@ -9,7 +9,8 @@ async function glFetch<T>(path: string, token: string): Promise<T> {
     },
   });
   if (!res.ok) {
-    throw new Error(`GitLab API error: ${res.status} ${res.statusText}`);
+    const body = await res.text().catch(() => '');
+    throw new Error(`GitLab API error: ${res.status} ${body}`);
   }
   return res.json();
 }

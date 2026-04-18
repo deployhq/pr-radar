@@ -204,6 +204,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         </button>
       </div>
 
+      {/* Triage summary */}
+      <TriageSummary
+        total={filteredByTab.length}
+        counts={urgencyCounts}
+        activeFilter={urgencyFilter}
+        onToggleFilter={handleToggleUrgencyFilter}
+      />
+
       {/* Status bar */}
       <div className="flex items-center justify-center gap-2 py-1 border-b border-gray-800 min-h-[24px]">
         {refreshing ? (
@@ -217,14 +225,6 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </span>
         ) : null}
       </div>
-
-      {/* Triage summary */}
-      <TriageSummary
-        total={filteredByTab.length}
-        counts={urgencyCounts}
-        activeFilter={urgencyFilter}
-        onToggleFilter={handleToggleUrgencyFilter}
-      />
 
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">

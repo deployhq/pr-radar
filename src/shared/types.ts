@@ -33,7 +33,9 @@ export interface PullRequest {
   reviewStatus: ReviewStatus;
   approvalCount: number;
   approvedBy?: string[];
+  changesRequestedBy?: string[];
   unresolvedCommentCount: number;
+  unresolvedCommentAuthors?: string[];
   hasConflicts: boolean;
   isAuthor: boolean;
   isBot: boolean;

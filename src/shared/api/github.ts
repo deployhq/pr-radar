@@ -263,6 +263,12 @@ async function hydratePR(
   const approvals = reviews.filter((r) => r.state === 'APPROVED');
   const approvalCount = approvals.length;
   const approvedBy = [...new Set(approvals.map((r) => r.user.login))];
+  const changesRequestedBy = [...new Set(
+    reviews
+      .filter((r) => r.state === 'CHANGES_REQUESTED')
+      .filter((r) => !pr.head?.sha || r.commit_id === pr.head.sha)
+      .map((r) => r.user.login),
+  )];
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
   const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 
@@ -284,7 +290,9 @@ async function hydratePR(
     reviewStatus,
     approvalCount,
     approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
+    changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
+    unresolvedCommentAuthors: graphqlDetails.unresolvedCommentAuthors?.length ? graphqlDetails.unresolvedCommentAuthors : undefined,
     hasConflicts: graphqlDetails.hasConflicts,
     isAuthor: pr.user.login === username,
     isBot: pr.user.type === 'Bot',
@@ -433,6 +441,7 @@ async function fetchDeployment(
 
 interface GraphQLPRDetails {
   unresolvedCommentCount: number;
+  unresolvedCommentAuthors?: string[];
   hasConflicts: boolean;
 }
 
@@ -441,7 +450,7 @@ interface GraphQLResponse<T> {
 }
 
 interface ReviewThreadConnection {
-  nodes?: Array<{ isResolved: boolean }>;
+  nodes?: Array<{ isResolved: boolean; comments?: { nodes?: Array<{ author?: { login: string } }> } }>;
   pageInfo?: {
     hasNextPage: boolean;
     endCursor: string | null;
@@ -488,7 +497,10 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
             hasNextPage
             endCursor
           }
-          nodes { isResolved }
+          nodes {
+            isResolved
+            comments(first: 1) { nodes { author { login } } }
+          }
         }
       }
     }
@@ -496,6 +508,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
 
   try {
     let unresolvedCommentCount = 0;
+    const unresolvedAuthors = new Set<string>();
     let hasConflicts = false;
     let after: string | null = null;
     let pageCount = 0;
@@ -512,7 +525,13 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false };
 
       const threads = pr.reviewThreads?.nodes ?? [];
-      unresolvedCommentCount += threads.filter((t: { isResolved: boolean }) => !t.isResolved).length;
+      for (const t of threads) {
+        if (!t.isResolved) {
+          unresolvedCommentCount++;
+          const author = t.comments?.nodes?.[0]?.author?.login;
+          if (author) unresolvedAuthors.add(author);
+        }
+      }
       hasConflicts = pr.mergeable === 'CONFLICTING';
 
       const pageInfo: ReviewThreadConnection['pageInfo'] = pr.reviewThreads?.pageInfo;
@@ -522,7 +541,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       pageCount += 1;
     }
 
-    return { unresolvedCommentCount, hasConflicts };
+    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts };
   } catch {
     return { unresolvedCommentCount: 0, hasConflicts: false };
   }

@@ -161,10 +161,11 @@ async function hydrateMR(
     fetchDeployment(token, encodedPath, mr.sha),
   ]);
 
-  const unresolvedCommentCount = discussions.reduce((count, d) => {
-    const unresolved = d.notes.filter((n) => n.resolvable && !n.resolved);
-    return count + unresolved.length;
-  }, 0);
+  const unresolvedNotes = discussions.flatMap((d) =>
+    d.notes.filter((n) => n.resolvable && !n.resolved),
+  );
+  const unresolvedCommentCount = unresolvedNotes.length;
+  const unresolvedCommentAuthors = [...new Set(unresolvedNotes.map((n) => n.author.username))];
 
   const hasReviewed = discussions.some((d) =>
     d.notes.some((n) => n.author.username === username && n.resolvable),
@@ -192,6 +193,7 @@ async function hydrateMR(
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
+    unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
     isBot: false,

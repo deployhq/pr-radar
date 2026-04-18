@@ -64,6 +64,7 @@ interface BBComment {
   content: { raw: string };
   parent?: { id: number };
   resolved?: boolean;
+  user?: { nickname: string; display_name: string };
 }
 
 export async function getAuthenticatedUser(token: string): Promise<{ nickname: string; display_name: string; avatar: string }> {
@@ -159,7 +160,16 @@ async function hydratePR(
 
   const reviewStatus = deriveBBReviewStatus(pr.participants);
   const approvalCount = pr.participants.filter((p) => p.approved).length;
-  const unresolvedCommentCount = comments.filter((c) => c.inline && !c.resolved).length;
+  const changesRequestedBy = [...new Set(
+    pr.participants
+      .filter((p) => p.role === 'REVIEWER' && p.state === 'changes_requested')
+      .map((p) => p.user.nickname),
+  )];
+  const unresolvedComments = comments.filter((c) => c.inline && !c.resolved);
+  const unresolvedCommentCount = unresolvedComments.length;
+  const unresolvedCommentAuthors = [...new Set(
+    unresolvedComments.map((c) => c.user?.nickname).filter((n): n is string => !!n),
+  )];
   const isReviewRequested = pr.reviewers.some((r) => r.nickname === username);
   const hasReviewed = pr.participants.some(
     (p) => p.user.nickname === username && p.role === 'REVIEWER' && p.state !== null,
@@ -181,7 +191,9 @@ async function hydratePR(
     ciStatus,
     reviewStatus,
     approvalCount,
+    changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount,
+    unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
     isBot: false,

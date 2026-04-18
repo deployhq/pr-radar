@@ -212,15 +212,19 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           )}
 
           {pr.reviewStatus === 'changes_requested' && (
-            <Badge className="bg-red-900/50 text-red-400">
-              &#x21BB; Changes requested
-            </Badge>
+            <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}>
+              <Badge className="bg-red-900/50 text-red-400">
+                &#x21BB; Changes requested
+              </Badge>
+            </span>
           )}
 
           {pr.unresolvedCommentCount > 0 && (
-            <Badge className="bg-gray-800 text-amber-400">
-              &#x1F4AC; {pr.unresolvedCommentCount} unresolved
-            </Badge>
+            <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}>
+              <Badge className="bg-gray-800 text-amber-400">
+                &#x1F4AC; {pr.unresolvedCommentCount} unresolved
+              </Badge>
+            </span>
           )}
 
           {pr.hasConflicts && (

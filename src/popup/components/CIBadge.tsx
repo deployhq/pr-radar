@@ -20,15 +20,27 @@ const BADGE_ICONS: Record<CIStatus, string> = {
 interface CIBadgeProps {
   status: CIStatus;
   failedChecks?: string[];
+  durationMs?: number;
 }
 
-export default function CIBadge({ status, failedChecks }: CIBadgeProps) {
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainMinutes = minutes % 60;
+  return remainMinutes > 0 ? `${hours}h${remainMinutes}m` : `${hours}h`;
+}
+
+export default function CIBadge({ status, failedChecks, durationMs }: CIBadgeProps) {
   if (status === 'unknown') return null;
 
   const label = CI_STATUS_LABELS[status];
+  const durationLabel = durationMs ? ` (${formatDuration(durationMs)})` : '';
   const tooltip = status === 'failed' && failedChecks && failedChecks.length > 0
-    ? `${label}: ${failedChecks.join(', ')}`
-    : label;
+    ? `${label}${durationLabel}: ${failedChecks.join(', ')}`
+    : `${label}${durationLabel}`;
 
   return (
     <span
@@ -36,6 +48,9 @@ export default function CIBadge({ status, failedChecks }: CIBadgeProps) {
       title={tooltip}
     >
       {BADGE_ICONS[status]}
+      {durationMs !== undefined && (
+        <span className="opacity-80">{formatDuration(durationMs)}</span>
+      )}
     </span>
   );
 }

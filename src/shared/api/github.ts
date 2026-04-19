@@ -289,6 +289,7 @@ async function hydratePR(
     updatedAt: pr.updated_at,
     ciStatus: ciResult.status,
     ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined,
+    ciDurationMs: ciResult.durationMs,
     reviewStatus,
     approvalCount,
     approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
@@ -313,6 +314,7 @@ async function hydratePR(
 interface CIResult {
   status: CIStatus;
   failedChecks: string[];
+  durationMs?: number;
 }
 
 async function fetchCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIResult> {
@@ -323,7 +325,7 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
         `/repos/${repoFullName}/commits/${headSha}/status`,
         token,
       ),
-      ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null }[] }>(
+      ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null; started_at: string | null; completed_at: string | null }[] }>(
         `/repos/${repoFullName}/commits/${headSha}/check-runs`,
         token,
       ),
@@ -333,17 +335,20 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
     if (checkRuns.total_count > 0) {
       const runs = checkRuns.check_runs;
 
+      // Compute total CI duration from earliest start to latest completion
+      const durationMs = computeCheckRunDuration(runs);
+
       const failedRuns = runs.filter(
         (r) => r.conclusion === 'failure' || r.conclusion === 'timed_out',
       );
       if (failedRuns.length > 0) {
-        return { status: 'failed', failedChecks: failedRuns.map((r) => r.name) };
+        return { status: 'failed', failedChecks: failedRuns.map((r) => r.name), durationMs };
       }
 
       const hasRunning = runs.some(
         (r) => r.status === 'in_progress' || r.status === 'queued',
       );
-      if (hasRunning) return { status: 'running', failedChecks: [] };
+      if (hasRunning) return { status: 'running', failedChecks: [], durationMs };
 
       const allDone = runs.every((r) => r.status === 'completed');
       if (allDone) {
@@ -351,12 +356,12 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
           (r) => r.conclusion !== 'success' && r.conclusion !== 'neutral' && r.conclusion !== 'skipped',
         );
         if (nonSuccess.length > 0) {
-          return { status: 'failed', failedChecks: nonSuccess.map((r) => r.name) };
+          return { status: 'failed', failedChecks: nonSuccess.map((r) => r.name), durationMs };
         }
-        return { status: 'passed', failedChecks: [] };
+        return { status: 'passed', failedChecks: [], durationMs };
       }
 
-      return { status: 'pending', failedChecks: [] };
+      return { status: 'pending', failedChecks: [], durationMs };
     }
 
     // Fall back to legacy commit status API
@@ -369,6 +374,20 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
   } catch {
     return { status: 'unknown', failedChecks: [] };
   }
+}
+
+function computeCheckRunDuration(runs: { started_at: string | null; completed_at: string | null }[]): number | undefined {
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (const r of runs) {
+    if (r.started_at) starts.push(new Date(r.started_at).getTime());
+    if (r.completed_at) ends.push(new Date(r.completed_at).getTime());
+  }
+  if (starts.length === 0) return undefined;
+  const earliest = Math.min(...starts);
+  // If still running, measure from earliest start to now
+  const latest = ends.length > 0 ? Math.max(...ends) : Date.now();
+  return latest - earliest;
 }
 
 /** Only count reviews on the current head commit — stale reviews on older commits don't count. */

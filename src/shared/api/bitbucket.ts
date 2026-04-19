@@ -57,6 +57,7 @@ interface BBPullRequest {
 
 interface BBPipelineStatus {
   state: { name: string; result?: { name: string } };
+  duration_in_seconds?: number;
 }
 
 interface BBComment {
@@ -154,7 +155,7 @@ async function hydratePR(
   pr: BBPullRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [ciStatus, comments, diffStats] = await Promise.all([
+  const [ciResult, comments, diffStats] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr),
     fetchComments(token, repoFullName, pr.id),
     fetchDiffStats(token, repoFullName, pr.id),
@@ -193,7 +194,8 @@ async function hydratePR(
     isDraft: false, // Bitbucket doesn't have draft PRs
     createdAt: pr.created_on,
     updatedAt: pr.updated_on,
-    ciStatus,
+    ciStatus: ciResult.status,
+    ciDurationMs: ciResult.durationMs,
     reviewStatus,
     approvalCount,
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
@@ -234,28 +236,34 @@ async function fetchDiffStats(
   }
 }
 
-async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequest): Promise<CIStatus> {
+interface BBCIResult {
+  status: CIStatus;
+  durationMs?: number;
+}
+
+async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequest): Promise<BBCIResult> {
   try {
     const result = await bbFetch<{ values: BBPipelineStatus[] }>(
       `/repositories/${repoFullName}/pipelines/?sort=-created_on&pagelen=1&target.branch=${pr.source.branch.name}`,
       token,
     );
 
-    if (!result.values.length) return 'unknown';
+    if (!result.values.length) return { status: 'unknown' };
     const pipeline = result.values[0];
+    const durationMs = pipeline.duration_in_seconds ? pipeline.duration_in_seconds * 1000 : undefined;
 
     switch (pipeline.state.name) {
       case 'COMPLETED':
-        return pipeline.state.result?.name === 'SUCCESSFUL' ? 'passed' : 'failed';
+        return { status: pipeline.state.result?.name === 'SUCCESSFUL' ? 'passed' : 'failed', durationMs };
       case 'IN_PROGRESS': case 'RUNNING':
-        return 'running';
+        return { status: 'running', durationMs };
       case 'PENDING':
-        return 'pending';
+        return { status: 'pending', durationMs };
       default:
-        return 'unknown';
+        return { status: 'unknown', durationMs };
     }
   } catch {
-    return 'unknown';
+    return { status: 'unknown' };
   }
 }
 

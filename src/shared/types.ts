@@ -29,6 +29,7 @@ export interface PullRequest {
   updatedAt: string;
   ciStatus: CIStatus;
   ciFailedChecks?: string[];
+  ciDurationMs?: number;
   ciUrl?: string;
   reviewStatus: ReviewStatus;
   approvalCount: number;

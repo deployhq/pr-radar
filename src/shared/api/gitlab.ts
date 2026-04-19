@@ -38,6 +38,7 @@ interface GLMergeRequest {
   head_pipeline?: {
     status: string;
     web_url: string;
+    duration: number | null;
   } | null;
 }
 
@@ -195,6 +196,7 @@ async function hydrateMR(
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus,
+    ciDurationMs: mr.head_pipeline?.duration ? mr.head_pipeline.duration * 1000 : undefined,
     ciUrl: mr.head_pipeline?.web_url,
     reviewStatus,
     approvalCount: approvals.approved_by.length,

@@ -227,6 +227,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
             </span>
           )}
 
+          {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
+            <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}>
+              <Badge className="bg-blue-900/50 text-blue-400">
+                &#x23F3; {pr.pendingReviewers.length} reviewing
+              </Badge>
+            </span>
+          )}
+
           {pr.hasConflicts && (
             <Badge className="bg-red-900/50 text-red-400">
               Conflicts

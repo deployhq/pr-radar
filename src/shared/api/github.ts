@@ -270,6 +270,7 @@ async function hydratePR(
       .map((r) => r.user.login),
   )];
   const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
+  const pendingReviewers = pr.requested_reviewers?.map((r) => r.login) ?? [];
   const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 
   return {
@@ -298,6 +299,7 @@ async function hydratePR(
     isBot: pr.user.type === 'Bot',
     isReviewRequested,
     hasReviewed,
+    pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: pr.head.sha,
     headRef: pr.head.ref,
     deployment,

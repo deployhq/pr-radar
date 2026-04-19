@@ -174,6 +174,10 @@ async function hydrateMR(
   const ciStatus = mapGLPipelineStatus(mr.head_pipeline?.status);
   const reviewStatus = deriveGLReviewStatus(approvals);
   const isReviewRequested = mr.reviewers?.some((r) => r.username === username) ?? false;
+  const approvedUsernames = new Set(approvals.approved_by.map((a) => a.user.username));
+  const pendingReviewers = (mr.reviewers ?? [])
+    .filter((r) => !approvedUsernames.has(r.username))
+    .map((r) => r.username);
 
   return {
     id: `gitlab-${projectPath}-${mr.iid}`,
@@ -199,6 +203,7 @@ async function hydrateMR(
     isBot: false,
     isReviewRequested,
     hasReviewed,
+    pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: mr.sha,
     deployment,
   };

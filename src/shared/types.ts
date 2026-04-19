@@ -41,6 +41,7 @@ export interface PullRequest {
   isBot: boolean;
   isReviewRequested: boolean;
   hasReviewed: boolean;
+  pendingReviewers?: string[];
   isMerged?: boolean;
   mergedAt?: number;
   headSha?: string;

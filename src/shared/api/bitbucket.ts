@@ -174,6 +174,9 @@ async function hydratePR(
   const hasReviewed = pr.participants.some(
     (p) => p.user.nickname === username && p.role === 'REVIEWER' && p.state !== null,
   );
+  const pendingReviewers = pr.participants
+    .filter((p) => p.role === 'REVIEWER' && p.state === null && !p.approved)
+    .map((p) => p.user.nickname);
 
   return {
     id: `bitbucket-${repoFullName}-${pr.id}`,
@@ -199,6 +202,7 @@ async function hydratePR(
     isBot: false,
     isReviewRequested,
     hasReviewed,
+    pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: pr.source.commit?.hash,
   };
 }

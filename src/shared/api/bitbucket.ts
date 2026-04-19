@@ -221,8 +221,9 @@ async function fetchDiffStats(
 ): Promise<{ additions: number; deletions: number }> {
   try {
     const files = await bbFetchPaginated<{ lines_added: number; lines_removed: number }>(
-      `/repositories/${repoFullName}/pullrequests/${prId}/diffstat`,
+      `/repositories/${repoFullName}/pullrequests/${prId}/diffstat?pagelen=100`,
       token,
+      100,
     );
     let additions = 0;
     let deletions = 0;

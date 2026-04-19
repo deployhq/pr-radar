@@ -233,8 +233,8 @@ async function fetchDiffStats(
     let deletions = 0;
     for (const change of response.changes ?? []) {
       for (const line of change.diff.split('\n')) {
-        if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-        else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
+        if (line.startsWith('+') && !line.startsWith('+++ ')) additions++;
+        else if (line.startsWith('-') && !line.startsWith('--- ')) deletions++;
       }
     }
     return { additions, deletions };

@@ -40,8 +40,8 @@ src/
       Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts
     components/
       Header.tsx                 # Navigation header with extension icon + "by DeployHQ"
-      PRItem.tsx                 # PR row: badges, deployment URL, pinned star, stale/reviewed dimming
-      CIBadge.tsx                # CI status badge component
+      PRItem.tsx                 # PR row: badges, diff stats, description preview, deployment URL, pinned star, stale/reviewed dimming
+      CIBadge.tsx                # CI status badge (icon-only, tooltip with details + "broken by" on failure)
       PlatformIcon.tsx           # SVG icons for GitHub, GitLab, Bitbucket
       TriageSummary.tsx          # Urgency filter chip bar (icon+count chips with tooltips)
     utils/
@@ -70,7 +70,7 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 
 - **Auth**: Classic PAT with `repo` + `read:org` scopes (fine-grained tokens may miss org repos)
 - **REST endpoints**: `/user`, `/user/repos`, `/user/orgs`, `/orgs/{org}/repos`, `/repos/{owner}/{repo}/pulls`, `/pulls/{n}/reviews`, `/pulls/{n}/merge`, `/commits/{sha}/status`, `/commits/{sha}/check-runs`, `/deployments`, `/deployments/{id}/statuses`
-- **GraphQL**: `reviewThreads.isResolved` for accurate unresolved comment counts
+- **GraphQL**: `reviewThreads.isResolved` for accurate unresolved comment counts; `additions`/`deletions` for diff stats (zero extra API calls)
 - **Org repos**: Fetches via `/user/orgs` then `/orgs/{org}/repos?type=member` + `type=all`
 - **SSO**: Token must be authorized for SSO-enabled orgs after creation
 
@@ -80,12 +80,13 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **REST endpoints**: `/user`, `/projects?membership=true`, `/projects/{id}/merge_requests`, `/merge_requests/{iid}/discussions`, `/merge_requests/{iid}/approvals`, `/merge_requests/{iid}/merge`, `/deployments`
 - **CI status**: From `head_pipeline.status` on MR response
 - **Unresolved comments**: Counted from discussion notes with `resolvable && !resolved`
+- **Diff stats**: Via `/merge_requests/{iid}/changes` endpoint; checks `overflow` flag to suppress inaccurate counts on large MRs
 - **Review tracking**: `hasReviewed` derived from user's resolvable notes in discussions
 
 ### Bitbucket
 
 - **Auth**: Atlassian API token with Basic auth (`email:token` base64-encoded). Required scopes: `read:user:bitbucket`, `read:workspace:bitbucket`, `read:repository:bitbucket`, `read:pullrequest:bitbucket`, `write:pullrequest:bitbucket`
-- **REST endpoints**: `/user`, `/user/workspaces`, `/repositories/{workspace}`, `/repositories/{repo}/pullrequests`, `/pullrequests/{id}/comments`, `/pullrequests/{id}/merge`
+- **REST endpoints**: `/user`, `/user/workspaces`, `/repositories/{workspace}`, `/repositories/{repo}/pullrequests`, `/pullrequests/{id}/comments`, `/pullrequests/{id}/merge`, `/pullrequests/{id}/diffstat`
 - **Workspaces**: Uses `/2.0/user/workspaces` (CHANGE-2770 replacement for deprecated `/workspaces`)
 - **CI status**: From pipelines API filtered by source branch
 - **Review tracking**: `hasReviewed` derived from participant state
@@ -128,6 +129,11 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **Dark scrollbar** — Themed to match dark UI
 - **Merge PRs** — Merge button with confirm/cancel for GitHub, GitLab, and Bitbucket; disabled for drafts, conflicts, CI failures
 - **Urgency filters** — Triage chip bar above PR list with icon+count chips (CI failing, Changes requested, Review requested, Conflicts, Stale) plus All chip; single-select toggle filters the list; counts scoped to active tab; resets on tab switch
+- **Diff stats** — Shows `+N -N` additions/deletions per PR; GitHub via GraphQL, GitLab via changes endpoint (with overflow detection), Bitbucket via paginated diffstat API
+- **PR description preview** — Expandable "Show description" toggle below each PR row; truncated at 500 chars with scrollable container; whitespace-only descriptions are hidden
+- **Pending reviewers** — Badge showing count of reviewers who haven't submitted a review yet
+- **Who broke the build** — CI failure tooltip includes PR author attribution (e.g., "CI failed: lint — broken by @john")
+- **Compact badges** — Icon-only CI status, icon+count for approvals (👤), unresolved comments (💬), pending reviewers (⏳), changes requested (↻); full details in tooltips
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

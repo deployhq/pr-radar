@@ -24,6 +24,7 @@ interface GLMergeRequest {
   id: number;
   iid: number;
   title: string;
+  description: string | null;
   web_url: string;
   author: GLUser;
   work_in_progress: boolean;
@@ -37,6 +38,7 @@ interface GLMergeRequest {
   head_pipeline?: {
     status: string;
     web_url: string;
+    duration: number | null;
   } | null;
 }
 
@@ -149,7 +151,7 @@ async function hydrateMR(
   mr: GLMergeRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [discussions, approvals, deployment] = await Promise.all([
+  const [discussions, approvals, deployment, diffStats] = await Promise.all([
     glFetch<GLDiscussion[]>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/discussions`,
       token,
@@ -159,6 +161,7 @@ async function hydrateMR(
       token,
     ),
     fetchDeployment(token, encodedPath, mr.sha),
+    fetchDiffStats(token, encodedPath, mr.iid),
   ]);
 
   const unresolvedNotes = discussions.flatMap((d) =>
@@ -193,11 +196,15 @@ async function hydrateMR(
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus,
+    ciDurationMs: mr.head_pipeline?.duration != null ? mr.head_pipeline.duration * 1000 : undefined,
     ciUrl: mr.head_pipeline?.web_url,
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
+    additions: diffStats?.additions,
+    deletions: diffStats?.deletions,
+    description: mr.description || undefined,
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
     isBot: false,
@@ -207,6 +214,31 @@ async function hydrateMR(
     headSha: mr.sha,
     deployment,
   };
+}
+
+async function fetchDiffStats(
+  token: string,
+  encodedPath: string,
+  mrIid: number,
+): Promise<{ additions: number; deletions: number } | undefined> {
+  try {
+    const response = await glFetch<{ overflow?: boolean; changes: { diff: string }[] }>(
+      `/projects/${encodedPath}/merge_requests/${mrIid}/changes?access_raw_diffs=false`,
+      token,
+    );
+    if (response.overflow) return undefined;
+    let additions = 0;
+    let deletions = 0;
+    for (const change of response.changes ?? []) {
+      for (const line of change.diff.split('\n')) {
+        if (line.startsWith('+') && !line.startsWith('+++ ')) additions++;
+        else if (line.startsWith('-') && !line.startsWith('--- ')) deletions++;
+      }
+    }
+    return { additions, deletions };
+  } catch {
+    return undefined;
+  }
 }
 
 async function fetchDeployment(

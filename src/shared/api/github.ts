@@ -95,6 +95,7 @@ interface GHPullRequest {
   id: number;
   number: number;
   title: string;
+  body: string | null;
   html_url: string;
   user: GHUser;
   draft: boolean;
@@ -288,12 +289,16 @@ async function hydratePR(
     updatedAt: pr.updated_at,
     ciStatus: ciResult.status,
     ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined,
+    ciDurationMs: ciResult.durationMs,
     reviewStatus,
     approvalCount,
     approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
     unresolvedCommentAuthors: graphqlDetails.unresolvedCommentAuthors?.length ? graphqlDetails.unresolvedCommentAuthors : undefined,
+    additions: graphqlDetails.additions,
+    deletions: graphqlDetails.deletions,
+    description: pr.body || undefined,
     hasConflicts: graphqlDetails.hasConflicts,
     isAuthor: pr.user.login === username,
     isBot: pr.user.type === 'Bot',
@@ -309,6 +314,7 @@ async function hydratePR(
 interface CIResult {
   status: CIStatus;
   failedChecks: string[];
+  durationMs?: number;
 }
 
 async function fetchCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIResult> {
@@ -319,7 +325,7 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
         `/repos/${repoFullName}/commits/${headSha}/status`,
         token,
       ),
-      ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null }[] }>(
+      ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null; started_at: string | null; completed_at: string | null }[] }>(
         `/repos/${repoFullName}/commits/${headSha}/check-runs`,
         token,
       ),
@@ -329,17 +335,20 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
     if (checkRuns.total_count > 0) {
       const runs = checkRuns.check_runs;
 
+      // Compute total CI duration from earliest start to latest completion
+      const durationMs = computeCheckRunDuration(runs);
+
       const failedRuns = runs.filter(
         (r) => r.conclusion === 'failure' || r.conclusion === 'timed_out',
       );
       if (failedRuns.length > 0) {
-        return { status: 'failed', failedChecks: failedRuns.map((r) => r.name) };
+        return { status: 'failed', failedChecks: failedRuns.map((r) => r.name), durationMs };
       }
 
       const hasRunning = runs.some(
         (r) => r.status === 'in_progress' || r.status === 'queued',
       );
-      if (hasRunning) return { status: 'running', failedChecks: [] };
+      if (hasRunning) return { status: 'running', failedChecks: [], durationMs };
 
       const allDone = runs.every((r) => r.status === 'completed');
       if (allDone) {
@@ -347,12 +356,12 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
           (r) => r.conclusion !== 'success' && r.conclusion !== 'neutral' && r.conclusion !== 'skipped',
         );
         if (nonSuccess.length > 0) {
-          return { status: 'failed', failedChecks: nonSuccess.map((r) => r.name) };
+          return { status: 'failed', failedChecks: nonSuccess.map((r) => r.name), durationMs };
         }
-        return { status: 'passed', failedChecks: [] };
+        return { status: 'passed', failedChecks: [], durationMs };
       }
 
-      return { status: 'pending', failedChecks: [] };
+      return { status: 'pending', failedChecks: [], durationMs };
     }
 
     // Fall back to legacy commit status API
@@ -365,6 +374,21 @@ async function fetchCIStatus(token: string, repoFullName: string, headSha: strin
   } catch {
     return { status: 'unknown', failedChecks: [] };
   }
+}
+
+function computeCheckRunDuration(runs: { started_at: string | null; completed_at: string | null }[]): number | undefined {
+  const starts: number[] = [];
+  const ends: number[] = [];
+  for (const r of runs) {
+    if (r.started_at) starts.push(new Date(r.started_at).getTime());
+    if (r.completed_at) ends.push(new Date(r.completed_at).getTime());
+  }
+  if (starts.length === 0) return undefined;
+  const earliest = Math.min(...starts);
+  const hasRunning = runs.some((r) => r.started_at && !r.completed_at);
+  // If any check is still running, measure to now; otherwise use latest completion
+  const latest = hasRunning ? Date.now() : (ends.length > 0 ? Math.max(...ends) : Date.now());
+  return latest - earliest;
 }
 
 /** Only count reviews on the current head commit — stale reviews on older commits don't count. */
@@ -445,6 +469,8 @@ interface GraphQLPRDetails {
   unresolvedCommentCount: number;
   unresolvedCommentAuthors?: string[];
   hasConflicts: boolean;
+  additions: number;
+  deletions: number;
 }
 
 interface GraphQLResponse<T> {
@@ -463,6 +489,8 @@ interface GraphQLPullRequestData {
   repository?: {
     pullRequest?: {
       mergeable?: string;
+      additions?: number;
+      deletions?: number;
       reviewThreads?: ReviewThreadConnection;
     };
   };
@@ -494,6 +522,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
     repository(owner: $owner, name: $repo) {
       pullRequest(number: $prNumber) {
         mergeable
+        additions
+        deletions
         reviewThreads(first: 100, after: $after) {
           pageInfo {
             hasNextPage
@@ -512,6 +542,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
     let unresolvedCommentCount = 0;
     const unresolvedAuthors = new Set<string>();
     let hasConflicts = false;
+    let additions = 0;
+    let deletions = 0;
     let after: string | null = null;
     let pageCount = 0;
 
@@ -524,7 +556,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       });
 
       const pr: GraphQLPullRequest | undefined = data?.repository?.pullRequest;
-      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false };
+      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
 
       const threads = pr.reviewThreads?.nodes ?? [];
       for (const t of threads) {
@@ -535,6 +567,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
         }
       }
       hasConflicts = pr.mergeable === 'CONFLICTING';
+      additions = pr.additions ?? 0;
+      deletions = pr.deletions ?? 0;
 
       const pageInfo: ReviewThreadConnection['pageInfo'] = pr.reviewThreads?.pageInfo;
       if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
@@ -543,8 +577,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       pageCount += 1;
     }
 
-    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts };
+    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts, additions, deletions };
   } catch {
-    return { unresolvedCommentCount: 0, hasConflicts: false };
+    return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
   }
 }

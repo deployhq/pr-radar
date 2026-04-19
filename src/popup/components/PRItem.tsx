@@ -15,6 +15,8 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
   const [branchError, setBranchError] = useState('');
+  const [expanded, setExpanded] = useState(false);
+  const description = pr.description?.trim();
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -201,12 +203,12 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
         <div className="flex items-center gap-2 mt-1.5 ml-[30px] flex-wrap">
           {pr.isDraft && <Badge className="bg-gray-800 text-gray-500">Draft</Badge>}
 
-          <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} />
+          <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} author={pr.author} durationMs={pr.ciDurationMs} />
 
           {pr.approvalCount > 0 && (
             <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}>
               <Badge className="bg-emerald-900/50 text-emerald-400">
-                &#10003; {pr.approvalCount} approved
+                &#x1F464; {pr.approvalCount}
               </Badge>
             </span>
           )}
@@ -214,7 +216,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.reviewStatus === 'changes_requested' && (
             <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}>
               <Badge className="bg-red-900/50 text-red-400">
-                &#x21BB; Changes requested
+                &#x21BB;
               </Badge>
             </span>
           )}
@@ -222,7 +224,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.unresolvedCommentCount > 0 && (
             <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}>
               <Badge className="bg-gray-800 text-amber-400">
-                &#x1F4AC; {pr.unresolvedCommentCount} unresolved
+                &#x1F4AC; {pr.unresolvedCommentCount}
               </Badge>
             </span>
           )}
@@ -230,7 +232,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
             <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}>
               <Badge className="bg-blue-900/50 text-blue-400">
-                &#x23F3; {pr.pendingReviewers.length} reviewing
+                &#x23F3; {pr.pendingReviewers.length}
               </Badge>
             </span>
           )}
@@ -248,6 +250,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
                   : 'bg-blue-900/50 text-blue-400'
             }>
               &#x1F680; {pr.deployment.environment}
+            </Badge>
+          )}
+
+          {(pr.additions !== undefined || pr.deletions !== undefined) && (
+            <Badge className="bg-gray-800 text-gray-400">
+              <span className="text-emerald-400">+{pr.additions ?? 0}</span>
+              {' '}
+              <span className="text-red-400">-{pr.deletions ?? 0}</span>
             </Badge>
           )}
 
@@ -279,6 +289,22 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           </div>
         )}
       </a>
+
+      {description && (
+        <div className="ml-[30px] mt-1">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+          >
+            {expanded ? '\u25BE Hide description' : '\u25B8 Show description'}
+          </button>
+          {expanded && (
+            <div className="mt-1 text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">
+              {description.length > 500 ? `${description.slice(0, 500)}…` : description}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

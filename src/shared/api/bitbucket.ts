@@ -41,6 +41,7 @@ interface BBUser {
 interface BBPullRequest {
   id: number;
   title: string;
+  description: string;
   state: string;
   links: { html: { href: string } };
   author: BBUser;
@@ -56,6 +57,7 @@ interface BBPullRequest {
 
 interface BBPipelineStatus {
   state: { name: string; result?: { name: string } };
+  duration_in_seconds?: number;
 }
 
 interface BBComment {
@@ -153,9 +155,10 @@ async function hydratePR(
   pr: BBPullRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [ciStatus, comments] = await Promise.all([
+  const [ciResult, comments, diffStats] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr),
     fetchComments(token, repoFullName, pr.id),
+    fetchDiffStats(token, repoFullName, pr.id),
   ]);
 
   const reviewStatus = deriveBBReviewStatus(pr.participants);
@@ -191,12 +194,16 @@ async function hydratePR(
     isDraft: false, // Bitbucket doesn't have draft PRs
     createdAt: pr.created_on,
     updatedAt: pr.updated_on,
-    ciStatus,
+    ciStatus: ciResult.status,
+    ciDurationMs: ciResult.durationMs,
     reviewStatus,
     approvalCount,
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
+    additions: diffStats?.additions,
+    deletions: diffStats?.deletions,
+    description: pr.description || undefined,
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
     isBot: false,
@@ -207,28 +214,57 @@ async function hydratePR(
   };
 }
 
-async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequest): Promise<CIStatus> {
+async function fetchDiffStats(
+  token: string,
+  repoFullName: string,
+  prId: number,
+): Promise<{ additions: number; deletions: number } | undefined> {
+  try {
+    const files = await bbFetchPaginated<{ lines_added: number; lines_removed: number }>(
+      `/repositories/${repoFullName}/pullrequests/${prId}/diffstat?pagelen=100`,
+      token,
+      100,
+    );
+    let additions = 0;
+    let deletions = 0;
+    for (const file of files) {
+      additions += file.lines_added;
+      deletions += file.lines_removed;
+    }
+    return { additions, deletions };
+  } catch {
+    return undefined;
+  }
+}
+
+interface BBCIResult {
+  status: CIStatus;
+  durationMs?: number;
+}
+
+async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequest): Promise<BBCIResult> {
   try {
     const result = await bbFetch<{ values: BBPipelineStatus[] }>(
       `/repositories/${repoFullName}/pipelines/?sort=-created_on&pagelen=1&target.branch=${pr.source.branch.name}`,
       token,
     );
 
-    if (!result.values.length) return 'unknown';
+    if (!result.values.length) return { status: 'unknown' };
     const pipeline = result.values[0];
+    const durationMs = pipeline.duration_in_seconds ? pipeline.duration_in_seconds * 1000 : undefined;
 
     switch (pipeline.state.name) {
       case 'COMPLETED':
-        return pipeline.state.result?.name === 'SUCCESSFUL' ? 'passed' : 'failed';
+        return { status: pipeline.state.result?.name === 'SUCCESSFUL' ? 'passed' : 'failed', durationMs };
       case 'IN_PROGRESS': case 'RUNNING':
-        return 'running';
+        return { status: 'running', durationMs };
       case 'PENDING':
-        return 'pending';
+        return { status: 'pending', durationMs };
       default:
-        return 'unknown';
+        return { status: 'unknown', durationMs };
     }
   } catch {
-    return 'unknown';
+    return { status: 'unknown' };
   }
 }
 

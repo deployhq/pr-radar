@@ -20,21 +20,40 @@ const BADGE_ICONS: Record<CIStatus, string> = {
 interface CIBadgeProps {
   status: CIStatus;
   failedChecks?: string[];
+  author?: string;
+  durationMs?: number;
 }
 
-export default function CIBadge({ status, failedChecks }: CIBadgeProps) {
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const remainMinutes = minutes % 60;
+  return remainMinutes > 0 ? `${hours}h${remainMinutes}m` : `${hours}h`;
+}
+
+export default function CIBadge({ status, failedChecks, author, durationMs }: CIBadgeProps) {
   if (status === 'unknown') return null;
 
-  const tooltip = status === 'failed' && failedChecks && failedChecks.length > 0
-    ? `Failed: ${failedChecks.join(', ')}`
-    : undefined;
+  const label = CI_STATUS_LABELS[status];
+  const durationLabel = durationMs ? ` (${formatDuration(durationMs)})` : '';
+  const brokenBy = status === 'failed' && author ? ` — broken by @${author}` : '';
+  const failedList = status === 'failed' && failedChecks && failedChecks.length > 0
+    ? `: ${failedChecks.join(', ')}`
+    : '';
+  const tooltip = `${label}${durationLabel}${failedList}${brokenBy}`;
 
   return (
     <span
       className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-1 ${BADGE_STYLES[status]}`}
       title={tooltip}
     >
-      {BADGE_ICONS[status]} {CI_STATUS_LABELS[status]}
+      {BADGE_ICONS[status]}
+      {durationMs !== undefined && (
+        <span className="opacity-80">{formatDuration(durationMs)}</span>
+      )}
     </span>
   );
 }

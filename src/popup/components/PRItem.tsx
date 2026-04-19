@@ -207,7 +207,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.approvalCount > 0 && (
             <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}>
               <Badge className="bg-emerald-900/50 text-emerald-400">
-                &#10003; {pr.approvalCount} approved
+                &#x1F464; {pr.approvalCount}
               </Badge>
             </span>
           )}
@@ -223,7 +223,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.unresolvedCommentCount > 0 && (
             <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}>
               <Badge className="bg-gray-800 text-amber-400">
-                &#x1F4AC; {pr.unresolvedCommentCount} unresolved
+                &#x1F4AC; {pr.unresolvedCommentCount}
               </Badge>
             </span>
           )}
@@ -231,7 +231,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
             <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}>
               <Badge className="bg-blue-900/50 text-blue-400">
-                &#x23F3; {pr.pendingReviewers.length} reviewing
+                &#x23F3; {pr.pendingReviewers.length}
               </Badge>
             </span>
           )}

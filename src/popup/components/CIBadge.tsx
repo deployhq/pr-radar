@@ -20,6 +20,7 @@ const BADGE_ICONS: Record<CIStatus, string> = {
 interface CIBadgeProps {
   status: CIStatus;
   failedChecks?: string[];
+  author?: string;
   durationMs?: number;
 }
 
@@ -33,14 +34,16 @@ function formatDuration(ms: number): string {
   return remainMinutes > 0 ? `${hours}h${remainMinutes}m` : `${hours}h`;
 }
 
-export default function CIBadge({ status, failedChecks, durationMs }: CIBadgeProps) {
+export default function CIBadge({ status, failedChecks, author, durationMs }: CIBadgeProps) {
   if (status === 'unknown') return null;
 
   const label = CI_STATUS_LABELS[status];
   const durationLabel = durationMs ? ` (${formatDuration(durationMs)})` : '';
-  const tooltip = status === 'failed' && failedChecks && failedChecks.length > 0
-    ? `${label}${durationLabel}: ${failedChecks.join(', ')}`
-    : `${label}${durationLabel}`;
+  const brokenBy = status === 'failed' && author ? ` — broken by @${author}` : '';
+  const failedList = status === 'failed' && failedChecks && failedChecks.length > 0
+    ? `: ${failedChecks.join(', ')}`
+    : '';
+  const tooltip = `${label}${durationLabel}${failedList}${brokenBy}`;
 
   return (
     <span

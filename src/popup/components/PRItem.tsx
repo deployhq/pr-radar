@@ -203,7 +203,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
         <div className="flex items-center gap-2 mt-1.5 ml-[30px] flex-wrap">
           {pr.isDraft && <Badge className="bg-gray-800 text-gray-500">Draft</Badge>}
 
-          <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} durationMs={pr.ciDurationMs} />
+          <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} author={pr.author} durationMs={pr.ciDurationMs} />
 
           {pr.approvalCount > 0 && (
             <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}>
@@ -216,7 +216,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           {pr.reviewStatus === 'changes_requested' && (
             <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}>
               <Badge className="bg-red-900/50 text-red-400">
-                &#x21BB; Changes requested
+                &#x21BB;
               </Badge>
             </span>
           )}

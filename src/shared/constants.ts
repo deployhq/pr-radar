@@ -46,3 +46,6 @@ export type SoundId = typeof SOUND_OPTIONS[number]['id'];
 
 export const CHROME_WEB_STORE_URL =
   'https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh';
+
+export const GITHUB_REPO_URL = 'https://github.com/deployhq/pr-radar';
+export const GITHUB_ISSUES_URL = 'https://github.com/deployhq/pr-radar/issues';

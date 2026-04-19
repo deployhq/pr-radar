@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { AppView, Platform } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType } from '@/shared/storage';
-import { CHROME_WEB_STORE_URL } from '@/shared/constants';
+import { CHROME_WEB_STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -180,24 +180,49 @@ export default function Settings({ onNavigate }: SettingsProps) {
           ))}
       </Section>
 
-      {/* Share & About */}
-      <div className="mb-5 rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[13px] text-gray-200 font-medium">Share with your team</div>
-            <div className="text-[11px] text-gray-500 mt-0.5">Works best when your whole team uses it</div>
-          </div>
-          <CopyLinkButton url={CHROME_WEB_STORE_URL} />
-        </div>
-      </div>
-      <div className="text-center pb-2">
+      {/* Community */}
+      <div className="mb-5 space-y-2">
         <a
-          href="https://github.com/deployhq/pr-radar"
+          href={CHROME_WEB_STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[11px] text-gray-500 hover:text-radar-400 transition-colors"
+          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
         >
-          Open source on GitHub
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] text-gray-200 font-medium">&#128229; Share with your team</div>
+              <div className="text-[11px] text-gray-500 mt-0.5">Works best when your whole team uses it</div>
+            </div>
+            <span className="text-gray-600 text-xs">&#8594;</span>
+          </div>
+        </a>
+        <a
+          href={GITHUB_REPO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] text-gray-200 font-medium">&#9733; Star us on GitHub</div>
+              <div className="text-[11px] text-gray-500 mt-0.5">Help others discover PR Radar</div>
+            </div>
+            <span className="text-gray-600 text-xs">&#8594;</span>
+          </div>
+        </a>
+        <a
+          href={GITHUB_ISSUES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] text-gray-200 font-medium">&#128172; Feedback &amp; Ideas</div>
+              <div className="text-[11px] text-gray-500 mt-0.5">Report bugs or suggest features</div>
+            </div>
+            <span className="text-gray-600 text-xs">&#8594;</span>
+          </div>
         </a>
       </div>
     </div>
@@ -235,24 +260,6 @@ function SettingRow({
   );
 }
 
-function CopyLinkButton({ url }: { url: string }) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
-    >
-      {copied ? 'Copied!' : 'Copy link'}
-    </button>
-  );
-}
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (

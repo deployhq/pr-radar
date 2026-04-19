@@ -24,6 +24,7 @@ interface GLMergeRequest {
   id: number;
   iid: number;
   title: string;
+  description: string | null;
   web_url: string;
   author: GLUser;
   work_in_progress: boolean;
@@ -149,7 +150,7 @@ async function hydrateMR(
   mr: GLMergeRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [discussions, approvals, deployment] = await Promise.all([
+  const [discussions, approvals, deployment, diffStats] = await Promise.all([
     glFetch<GLDiscussion[]>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/discussions`,
       token,
@@ -159,6 +160,7 @@ async function hydrateMR(
       token,
     ),
     fetchDeployment(token, encodedPath, mr.sha),
+    fetchDiffStats(token, encodedPath, mr.iid),
   ]);
 
   const unresolvedNotes = discussions.flatMap((d) =>
@@ -198,6 +200,9 @@ async function hydrateMR(
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
+    additions: diffStats.additions || undefined,
+    deletions: diffStats.deletions || undefined,
+    description: mr.description || undefined,
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
     isBot: false,
@@ -207,6 +212,30 @@ async function hydrateMR(
     headSha: mr.sha,
     deployment,
   };
+}
+
+async function fetchDiffStats(
+  token: string,
+  encodedPath: string,
+  mrIid: number,
+): Promise<{ additions: number; deletions: number }> {
+  try {
+    const changes = await glFetch<{ changes: { diff: string; new_path: string; old_path: string }[] }>(
+      `/projects/${encodedPath}/merge_requests/${mrIid}/changes?access_raw_diffs=false`,
+      token,
+    );
+    let additions = 0;
+    let deletions = 0;
+    for (const change of changes.changes ?? []) {
+      for (const line of change.diff.split('\n')) {
+        if (line.startsWith('+') && !line.startsWith('+++')) additions++;
+        else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
+      }
+    }
+    return { additions, deletions };
+  } catch {
+    return { additions: 0, deletions: 0 };
+  }
 }
 
 async function fetchDeployment(

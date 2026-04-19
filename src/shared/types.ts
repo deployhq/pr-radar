@@ -36,6 +36,9 @@ export interface PullRequest {
   changesRequestedBy?: string[];
   unresolvedCommentCount: number;
   unresolvedCommentAuthors?: string[];
+  additions?: number;
+  deletions?: number;
+  description?: string;
   hasConflicts: boolean;
   isAuthor: boolean;
   isBot: boolean;

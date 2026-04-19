@@ -95,6 +95,7 @@ interface GHPullRequest {
   id: number;
   number: number;
   title: string;
+  body: string | null;
   html_url: string;
   user: GHUser;
   draft: boolean;
@@ -294,6 +295,9 @@ async function hydratePR(
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
     unresolvedCommentAuthors: graphqlDetails.unresolvedCommentAuthors?.length ? graphqlDetails.unresolvedCommentAuthors : undefined,
+    additions: graphqlDetails.additions || undefined,
+    deletions: graphqlDetails.deletions || undefined,
+    description: pr.body || undefined,
     hasConflicts: graphqlDetails.hasConflicts,
     isAuthor: pr.user.login === username,
     isBot: pr.user.type === 'Bot',
@@ -445,6 +449,8 @@ interface GraphQLPRDetails {
   unresolvedCommentCount: number;
   unresolvedCommentAuthors?: string[];
   hasConflicts: boolean;
+  additions: number;
+  deletions: number;
 }
 
 interface GraphQLResponse<T> {
@@ -463,6 +469,8 @@ interface GraphQLPullRequestData {
   repository?: {
     pullRequest?: {
       mergeable?: string;
+      additions?: number;
+      deletions?: number;
       reviewThreads?: ReviewThreadConnection;
     };
   };
@@ -494,6 +502,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
     repository(owner: $owner, name: $repo) {
       pullRequest(number: $prNumber) {
         mergeable
+        additions
+        deletions
         reviewThreads(first: 100, after: $after) {
           pageInfo {
             hasNextPage
@@ -512,6 +522,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
     let unresolvedCommentCount = 0;
     const unresolvedAuthors = new Set<string>();
     let hasConflicts = false;
+    let additions = 0;
+    let deletions = 0;
     let after: string | null = null;
     let pageCount = 0;
 
@@ -524,7 +536,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       });
 
       const pr: GraphQLPullRequest | undefined = data?.repository?.pullRequest;
-      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false };
+      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
 
       const threads = pr.reviewThreads?.nodes ?? [];
       for (const t of threads) {
@@ -535,6 +547,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
         }
       }
       hasConflicts = pr.mergeable === 'CONFLICTING';
+      additions = pr.additions ?? 0;
+      deletions = pr.deletions ?? 0;
 
       const pageInfo: ReviewThreadConnection['pageInfo'] = pr.reviewThreads?.pageInfo;
       if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
@@ -543,8 +557,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       pageCount += 1;
     }
 
-    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts };
+    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts, additions, deletions };
   } catch {
-    return { unresolvedCommentCount: 0, hasConflicts: false };
+    return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
   }
 }

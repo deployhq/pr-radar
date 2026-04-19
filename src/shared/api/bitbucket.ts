@@ -41,6 +41,7 @@ interface BBUser {
 interface BBPullRequest {
   id: number;
   title: string;
+  description: string;
   state: string;
   links: { html: { href: string } };
   author: BBUser;
@@ -153,9 +154,10 @@ async function hydratePR(
   pr: BBPullRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [ciStatus, comments] = await Promise.all([
+  const [ciStatus, comments, diffStats] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr),
     fetchComments(token, repoFullName, pr.id),
+    fetchDiffStats(token, repoFullName, pr.id),
   ]);
 
   const reviewStatus = deriveBBReviewStatus(pr.participants);
@@ -197,6 +199,9 @@ async function hydratePR(
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
+    additions: diffStats.additions || undefined,
+    deletions: diffStats.deletions || undefined,
+    description: pr.description || undefined,
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
     isBot: false,
@@ -205,6 +210,28 @@ async function hydratePR(
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: pr.source.commit?.hash,
   };
+}
+
+async function fetchDiffStats(
+  token: string,
+  repoFullName: string,
+  prId: number,
+): Promise<{ additions: number; deletions: number }> {
+  try {
+    const result = await bbFetch<{ values: { lines_added: number; lines_removed: number }[] }>(
+      `/repositories/${repoFullName}/pullrequests/${prId}/diffstat`,
+      token,
+    );
+    let additions = 0;
+    let deletions = 0;
+    for (const file of result.values) {
+      additions += file.lines_added;
+      deletions += file.lines_removed;
+    }
+    return { additions, deletions };
+  } catch {
+    return { additions: 0, deletions: 0 };
+  }
 }
 
 async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequest): Promise<CIStatus> {

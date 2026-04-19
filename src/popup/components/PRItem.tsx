@@ -15,6 +15,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
   const [branchError, setBranchError] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -251,6 +252,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
             </Badge>
           )}
 
+          {(pr.additions !== undefined || pr.deletions !== undefined) && (
+            <Badge className="bg-gray-800 text-gray-400">
+              <span className="text-emerald-400">+{pr.additions ?? 0}</span>
+              {' '}
+              <span className="text-red-400">-{pr.deletions ?? 0}</span>
+            </Badge>
+          )}
+
           <span
             className="text-[10px] text-gray-600 ml-auto"
             title={[
@@ -279,6 +288,22 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           </div>
         )}
       </a>
+
+      {pr.description && (
+        <div className="ml-[30px] mt-1">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+          >
+            {expanded ? '\u25BE Hide description' : '\u25B8 Show description'}
+          </button>
+          {expanded && (
+            <div className="mt-1 text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">
+              {pr.description.length > 500 ? `${pr.description.slice(0, 500)}…` : pr.description}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

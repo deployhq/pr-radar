@@ -218,13 +218,13 @@ async function fetchDiffStats(
   prId: number,
 ): Promise<{ additions: number; deletions: number }> {
   try {
-    const result = await bbFetch<{ values: { lines_added: number; lines_removed: number }[] }>(
+    const files = await bbFetchPaginated<{ lines_added: number; lines_removed: number }>(
       `/repositories/${repoFullName}/pullrequests/${prId}/diffstat`,
       token,
     );
     let additions = 0;
     let deletions = 0;
-    for (const file of result.values) {
+    for (const file of files) {
       additions += file.lines_added;
       deletions += file.lines_removed;
     }

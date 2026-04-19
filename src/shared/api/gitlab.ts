@@ -220,13 +220,16 @@ async function fetchDiffStats(
   mrIid: number,
 ): Promise<{ additions: number; deletions: number }> {
   try {
-    const changes = await glFetch<{ changes: { diff: string; new_path: string; old_path: string }[] }>(
+    const response = await glFetch<{ overflow?: boolean; changes: { diff: string }[] }>(
       `/projects/${encodedPath}/merge_requests/${mrIid}/changes?access_raw_diffs=false`,
       token,
     );
+    if (response.overflow) {
+      return { additions: 0, deletions: 0 };
+    }
     let additions = 0;
     let deletions = 0;
-    for (const change of changes.changes ?? []) {
+    for (const change of response.changes ?? []) {
       for (const line of change.diff.split('\n')) {
         if (line.startsWith('+') && !line.startsWith('+++')) additions++;
         else if (line.startsWith('-') && !line.startsWith('---')) deletions++;

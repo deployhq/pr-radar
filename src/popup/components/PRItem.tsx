@@ -16,6 +16,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
   const [branchError, setBranchError] = useState('');
   const [expanded, setExpanded] = useState(false);
+  const description = pr.description?.trim();
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -289,7 +290,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
         )}
       </a>
 
-      {pr.description && (
+      {description && (
         <div className="ml-[30px] mt-1">
           <button
             onClick={() => setExpanded(!expanded)}
@@ -299,7 +300,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           </button>
           {expanded && (
             <div className="mt-1 text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">
-              {pr.description.length > 500 ? `${pr.description.slice(0, 500)}…` : pr.description}
+              {description.length > 500 ? `${description.slice(0, 500)}…` : description}
             </div>
           )}
         </div>

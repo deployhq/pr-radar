@@ -102,14 +102,21 @@ export async function saveCachedPRs(prs: PullRequest[]): Promise<void> {
   });
 }
 
-export async function clearAll(): Promise<void> {
-  await chrome.storage.local.remove([ACCOUNTS_KEY, SETTINGS_KEY, REPOS_KEY, PR_CACHE_KEY]);
-}
-
 // === Install date & star prompt ===
 
 const INSTALL_DATE_KEY = 'pr_radar_install_date';
 const STAR_PROMPT_DISMISSED_KEY = 'pr_radar_star_dismissed';
+
+export async function clearAll(): Promise<void> {
+  await chrome.storage.local.remove([
+    ACCOUNTS_KEY,
+    SETTINGS_KEY,
+    REPOS_KEY,
+    PR_CACHE_KEY,
+    INSTALL_DATE_KEY,
+    STAR_PROMPT_DISMISSED_KEY,
+  ]);
+}
 
 export async function getInstallDate(): Promise<number | null> {
   const result = await chrome.storage.local.get(INSTALL_DATE_KEY);

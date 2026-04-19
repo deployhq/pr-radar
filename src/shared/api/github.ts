@@ -296,8 +296,8 @@ async function hydratePR(
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
     unresolvedCommentAuthors: graphqlDetails.unresolvedCommentAuthors?.length ? graphqlDetails.unresolvedCommentAuthors : undefined,
-    additions: graphqlDetails.additions || undefined,
-    deletions: graphqlDetails.deletions || undefined,
+    additions: graphqlDetails.additions,
+    deletions: graphqlDetails.deletions,
     description: pr.body || undefined,
     hasConflicts: graphqlDetails.hasConflicts,
     isAuthor: pr.user.login === username,
@@ -385,8 +385,9 @@ function computeCheckRunDuration(runs: { started_at: string | null; completed_at
   }
   if (starts.length === 0) return undefined;
   const earliest = Math.min(...starts);
-  // If still running, measure from earliest start to now
-  const latest = ends.length > 0 ? Math.max(...ends) : Date.now();
+  const hasRunning = runs.some((r) => r.started_at && !r.completed_at);
+  // If any check is still running, measure to now; otherwise use latest completion
+  const latest = hasRunning ? Date.now() : (ends.length > 0 ? Math.max(...ends) : Date.now());
   return latest - earliest;
 }
 

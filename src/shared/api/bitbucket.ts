@@ -201,8 +201,8 @@ async function hydratePR(
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
-    additions: diffStats.additions || undefined,
-    deletions: diffStats.deletions || undefined,
+    additions: diffStats?.additions,
+    deletions: diffStats?.deletions,
     description: pr.description || undefined,
     hasConflicts: false, // Would need separate merge check
     isAuthor: pr.author.nickname === username,
@@ -218,7 +218,7 @@ async function fetchDiffStats(
   token: string,
   repoFullName: string,
   prId: number,
-): Promise<{ additions: number; deletions: number }> {
+): Promise<{ additions: number; deletions: number } | undefined> {
   try {
     const files = await bbFetchPaginated<{ lines_added: number; lines_removed: number }>(
       `/repositories/${repoFullName}/pullrequests/${prId}/diffstat?pagelen=100`,
@@ -233,7 +233,7 @@ async function fetchDiffStats(
     }
     return { additions, deletions };
   } catch {
-    return { additions: 0, deletions: 0 };
+    return undefined;
   }
 }
 

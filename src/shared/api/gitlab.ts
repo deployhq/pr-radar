@@ -196,14 +196,14 @@ async function hydrateMR(
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus,
-    ciDurationMs: mr.head_pipeline?.duration ? mr.head_pipeline.duration * 1000 : undefined,
+    ciDurationMs: mr.head_pipeline?.duration != null ? mr.head_pipeline.duration * 1000 : undefined,
     ciUrl: mr.head_pipeline?.web_url,
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
-    additions: diffStats.additions || undefined,
-    deletions: diffStats.deletions || undefined,
+    additions: diffStats?.additions,
+    deletions: diffStats?.deletions,
     description: mr.description || undefined,
     hasConflicts: mr.has_conflicts,
     isAuthor: mr.author.username === username,
@@ -220,15 +220,13 @@ async function fetchDiffStats(
   token: string,
   encodedPath: string,
   mrIid: number,
-): Promise<{ additions: number; deletions: number }> {
+): Promise<{ additions: number; deletions: number } | undefined> {
   try {
     const response = await glFetch<{ overflow?: boolean; changes: { diff: string }[] }>(
       `/projects/${encodedPath}/merge_requests/${mrIid}/changes?access_raw_diffs=false`,
       token,
     );
-    if (response.overflow) {
-      return { additions: 0, deletions: 0 };
-    }
+    if (response.overflow) return undefined;
     let additions = 0;
     let deletions = 0;
     for (const change of response.changes ?? []) {
@@ -239,7 +237,7 @@ async function fetchDiffStats(
     }
     return { additions, deletions };
   } catch {
-    return { additions: 0, deletions: 0 };
+    return undefined;
   }
 }
 

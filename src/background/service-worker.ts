@@ -332,31 +332,54 @@ async function notifyNewComments(pr: PullRequest, newCount: number) {
   }
 }
 
-// === Sound (via offscreen document) ===
+// === Sound ===
 
-async function ensureOffscreen() {
-  // Check if offscreen document already exists
-  const existingContexts = await chrome.runtime.getContexts({
-    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
-  });
-  if (existingContexts.length > 0) return;
-
-  await chrome.offscreen.createDocument({
-    url: chrome.runtime.getURL('offscreen.html'),
-    reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
-    justification: 'Play notification sounds',
-  });
-}
+// Chrome: offscreen document (service workers can't play audio)
+// Firefox: Web Audio API (no offscreen API, but background supports AudioContext)
 
 async function playSound(soundId: string, volume?: number) {
   try {
-    await ensureOffscreen();
-    // Small delay to let the offscreen document initialize its listener
-    await new Promise((r) => setTimeout(r, 100));
-    await chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId, volume: volume ?? 0.7 });
+    if (__BROWSER__ === 'firefox') {
+      await playSoundWebAudio(soundId, volume ?? 0.7);
+    } else {
+      await playSoundOffscreen(soundId, volume ?? 0.7);
+    }
   } catch {
-    // Offscreen document not ready — ignore
+    // Audio playback not available — ignore
   }
+}
+
+// Chrome path: offscreen document
+async function playSoundOffscreen(soundId: string, volume: number) {
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+  });
+  if (existingContexts.length === 0) {
+    await chrome.offscreen.createDocument({
+      url: chrome.runtime.getURL('offscreen.html'),
+      reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
+      justification: 'Play notification sounds',
+    });
+  }
+  await new Promise((r) => setTimeout(r, 100));
+  await chrome.runtime.sendMessage({ type: 'PLAY_SOUND', soundId, volume });
+}
+
+// Firefox path: Web Audio API in background script
+async function playSoundWebAudio(soundId: string, volume: number) {
+  const src = `sounds/${soundId}.mp3`;
+  const url = chrome.runtime.getURL(src);
+  const response = await fetch(url);
+  const arrayBuffer = await response.arrayBuffer();
+  const ctx = new AudioContext();
+  const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  const source = ctx.createBufferSource();
+  source.buffer = audioBuffer;
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = volume;
+  source.connect(gainNode);
+  gainNode.connect(ctx.destination);
+  source.start();
 }
 
 // === Badge ===

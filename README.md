@@ -26,9 +26,13 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 
 ## Install
 
-### Chrome Web Store
+### Chrome
 
-[Install PR Radar](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh) — free, no account required.
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh) — free, no account required.
+
+### Firefox
+
+[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/) — free, no account required.
 
 ### Manual install (development)
 
@@ -36,12 +40,13 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 git clone https://github.com/deployhq/pr-radar.git
 cd pr-radar
 npm install
-npm run build
+npm run build           # Chrome (default)
+npm run build:firefox   # Firefox
 ```
 
-1. Open `chrome://extensions/`
-2. Enable **Developer mode**
-3. Click **Load unpacked** and select the `dist/` folder
+**Chrome**: Open `chrome://extensions/` → Enable Developer mode → Load unpacked → select `dist/`
+
+**Firefox**: Open `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → select `dist-firefox/manifest.json`
 
 ## Setup
 
@@ -121,12 +126,14 @@ Stale PRs are excluded from the badge count.
 ## Development
 
 ```bash
-npm run dev          # Build in watch mode
-npm run build        # Production build
-npm run lint         # ESLint
-npm run typecheck    # TypeScript check
-npm test             # Run tests
-npm run test:watch   # Run tests in watch mode
+npm run dev              # Chrome dev (watch mode)
+npm run dev:firefox      # Firefox dev (watch mode)
+npm run build            # Chrome production build
+npm run build:firefox    # Firefox production build
+npm run lint             # ESLint
+npm run typecheck        # TypeScript check
+npm test                 # Run tests
+npm run test:watch       # Run tests in watch mode
 ```
 
 ## Accessibility

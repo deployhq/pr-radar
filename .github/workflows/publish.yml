@@ -1,4 +1,4 @@
-name: Publish to Chrome Web Store
+name: Publish to stores
 
 on:
   push:
@@ -18,13 +18,21 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
 
-      - name: Create ZIP
-        run: cd dist && zip -r ../extension.zip .
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Create Chrome ZIP
+        run: cd dist && zip -r ../extension-chrome.zip .
+
+      - name: Create Firefox ZIP
+        run: cd dist-firefox && zip -r ../extension-firefox.zip .
 
       - name: Upload & publish to Chrome Web Store
-        run: npx chrome-webstore-upload-cli@3 upload --auto-publish --source extension.zip
+        run: npx chrome-webstore-upload-cli@3 upload --auto-publish --source extension-chrome.zip
         env:
           EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
           CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
@@ -34,5 +42,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: extension.zip
+          files: |
+            extension-chrome.zip
+            extension-firefox.zip
           generate_release_notes: true

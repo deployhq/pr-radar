@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AppView, DashboardTab, PullRequest, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
-import { CHROME_WEB_STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
+import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
 import TriageSummary from '../components/TriageSummary';
@@ -415,7 +415,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
               <p className="text-[11px] text-gray-600 mt-4">
                 Enjoying PR Radar?{' '}
                 <a
-                  href={CHROME_WEB_STORE_URL}
+                  href={STORE_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-radar-400 hover:underline"

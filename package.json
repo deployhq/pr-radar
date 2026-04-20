@@ -15,8 +15,12 @@
     "url": "https://github.com/deployhq/pr-radar/issues"
   },
   "scripts": {
-    "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build",
+    "dev": "BROWSER=chrome vite build --watch --mode development",
+    "dev:chrome": "BROWSER=chrome vite build --watch --mode development",
+    "dev:firefox": "BROWSER=firefox vite build --watch --mode development",
+    "build": "tsc && BROWSER=chrome vite build",
+    "build:chrome": "tsc && BROWSER=chrome vite build",
+    "build:firefox": "tsc && BROWSER=firefox vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
@@ -28,7 +32,6 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0-beta.25",
     "@eslint/js": "^9.39.4",
     "@types/chrome": "^0.0.268",
     "@types/react": "^18.3.3",
@@ -43,6 +46,7 @@
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.58.0",
     "vite": "^5.3.3",
+    "vite-plugin-web-extension": "^4.5.1",
     "vitest": "^2.1.9"
   }
 }

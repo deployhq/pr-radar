@@ -20,13 +20,27 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
 
-      - name: Create extension ZIP
-        run: cd dist && zip -r ../extension.zip .
+      - name: Build Chrome extension
+        run: npm run build:chrome
 
-      - name: Upload extension artifact
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Create Chrome ZIP
+        run: cd dist && zip -r ../extension-chrome.zip .
+
+      - name: Create Firefox ZIP
+        run: cd dist-firefox && zip -r ../extension-firefox.zip .
+
+      - name: Upload Chrome extension
         uses: actions/upload-artifact@v4
         with:
-          name: pr-radar-extension
-          path: extension.zip
+          name: pr-radar-chrome
+          path: extension-chrome.zip
+
+      - name: Upload Firefox extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-radar-firefox
+          path: extension-firefox.zip

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import type { AppView, Platform } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType } from '@/shared/storage';
-import { CHROME_WEB_STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
+import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -186,7 +186,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
       {/* Community */}
       <div className="mb-5 space-y-2">
         <a
-          href={CHROME_WEB_STORE_URL}
+          href={STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"

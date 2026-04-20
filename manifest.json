@@ -9,11 +9,16 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "permissions": [
+  "{{chrome}}.permissions": [
     "storage",
     "alarms",
     "notifications",
     "offscreen"
+  ],
+  "{{firefox}}.permissions": [
+    "storage",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://api.github.com/*",
@@ -21,9 +26,19 @@
     "https://api.bitbucket.org/*",
     "https://id.atlassian.com/*"
   ],
-  "background": {
+  "{{chrome}}.background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"
+  },
+  "{{firefox}}.background": {
+    "scripts": ["src/background/service-worker.ts"],
+    "type": "module"
+  },
+  "{{firefox}}.browser_specific_settings": {
+    "gecko": {
+      "id": "pr-radar@deployhq.com",
+      "strict_min_version": "109.0"
+    }
   },
   "action": {
     "default_popup": "popup.html",

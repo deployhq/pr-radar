@@ -47,5 +47,10 @@ export type SoundId = typeof SOUND_OPTIONS[number]['id'];
 export const CHROME_WEB_STORE_URL =
   'https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh';
 
+export const FIREFOX_ADDON_URL =
+  'https://addons.mozilla.org/en-US/firefox/addon/pr-radar/';
+
+export const STORE_URL = __BROWSER__ === 'firefox' ? FIREFOX_ADDON_URL : CHROME_WEB_STORE_URL;
+
 export const GITHUB_REPO_URL = 'https://github.com/deployhq/pr-radar';
 export const GITHUB_ISSUES_URL = 'https://github.com/deployhq/pr-radar/issues';

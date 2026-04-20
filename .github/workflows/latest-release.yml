@@ -18,10 +18,18 @@ jobs:
           cache: npm
 
       - run: npm ci
-      - run: npm run build
 
-      - name: Create ZIP
-        run: cd dist && zip -r ../extension.zip .
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Create Chrome ZIP
+        run: cd dist && zip -r ../extension-chrome.zip .
+
+      - name: Create Firefox ZIP
+        run: cd dist-firefox && zip -r ../extension-firefox.zip .
 
       - name: Update latest release
         uses: softprops/action-gh-release@v2
@@ -30,7 +38,11 @@ jobs:
           name: Latest build (main)
           body: |
             This is an automated build from the latest `main` branch.
-            Download `extension.zip`, unpack it, and load it in `chrome://extensions/` with Developer mode enabled.
-          files: extension.zip
+
+            **Chrome**: Download `extension-chrome.zip`, unpack it, and load in `chrome://extensions/` with Developer mode enabled.
+            **Firefox**: Download `extension-firefox.zip`, unpack it, and load in `about:debugging#/runtime/this-firefox` via Load Temporary Add-on.
+          files: |
+            extension-chrome.zip
+            extension-firefox.zip
           prerelease: true
           make_latest: false

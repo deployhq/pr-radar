@@ -2,22 +2,31 @@
 
 ## Overview
 
-PR Radar - a free Chrome extension (Manifest V3) that provides a unified PR dashboard for GitHub, GitLab, and Bitbucket. Shows CI status, unresolved comments, review state, deployment status, and sound/desktop notifications. No tab required — works in the background. Free, by DeployHQ.
+PR Radar - a free browser extension (Manifest V3, Chrome + Firefox) that provides a unified PR dashboard for GitHub, GitLab, and Bitbucket. Shows CI status, unresolved comments, review state, deployment status, and sound/desktop notifications. No tab required — works in the background. Free, by DeployHQ.
 
 ## Commands
 
 ```bash
-npm run dev          # Build in watch mode (development)
-npm run build        # Production build (typecheck + vite build)
-npm run typecheck    # TypeScript check only
-npm run lint         # ESLint
+npm run dev              # Chrome dev (watch mode)
+npm run dev:firefox      # Firefox dev (watch mode)
+npm run build            # Chrome production build (typecheck + vite build)
+npm run build:chrome     # Chrome production build (explicit)
+npm run build:firefox    # Firefox production build
+npm run typecheck        # TypeScript check only
+npm run lint             # ESLint
 ```
 
 ### Loading locally
 
+**Chrome**:
 1. `npm run build`
 2. Chrome > `chrome://extensions/` > Developer mode > Load unpacked > select `dist/`
-3. To update: rebuild, then click refresh on the extension card (or remove + re-add for icon changes)
+
+**Firefox**:
+1. `npm run build:firefox`
+2. Firefox > `about:debugging#/runtime/this-firefox` > Load Temporary Add-on > select `dist-firefox/manifest.json`
+
+To update: rebuild, then click refresh on the extension card (or remove + re-add for icon changes)
 
 ## Tech Stack
 

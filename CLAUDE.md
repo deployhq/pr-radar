@@ -43,6 +43,7 @@ src/
       PRItem.tsx                 # PR row: badges, diff stats, description preview, deployment URL, pinned star, stale/reviewed dimming
       CIBadge.tsx                # CI status badge (icon-only, tooltip with details + "broken by" on failure)
       PlatformIcon.tsx           # SVG icons for GitHub, GitLab, Bitbucket
+      KeyboardShortcuts.tsx     # ? cheat sheet overlay (j/k nav, o open, 1-3 tabs, / search, r refresh)
       TriageSummary.tsx          # Urgency filter chip bar (icon+count chips with tooltips)
     utils/
       urgency.ts                 # Urgency classification, filter predicate, count computation, display metadata
@@ -134,6 +135,8 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **Pending reviewers** — Badge showing count of reviewers who haven't submitted a review yet
 - **Who broke the build** — CI failure tooltip includes PR author attribution (e.g., "CI failed: lint — broken by @john")
 - **Compact badges** — Icon-only CI status, icon+count for approvals (👤), unresolved comments (💬), pending reviewers (⏳), changes requested (↻); full details in tooltips
+- **Keyboard shortcuts** — `j`/`k` or arrows navigate PR list with visual focus ring, `o`/`Enter` opens PR, `1`/`2`/`3` switch tabs, `/` focuses search, `r` refreshes, `Escape` clears search/filter/focus, `?` toggles cheat sheet overlay; all shortcuts disabled when search input is focused (except Escape); "Press ? for shortcuts" hint in footer
+- **Accessibility** — ARIA labels/roles on all interactive elements, `role="tab"`/`role="switch"`/`role="checkbox"` semantics, `aria-live` regions for status updates, `aria-expanded` on collapsible sections, decorative icons hidden from screen readers, form inputs labeled
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

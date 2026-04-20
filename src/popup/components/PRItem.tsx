@@ -8,9 +8,10 @@ interface PRItemProps {
   stalePRDays: number;
   pinned?: boolean;
   onMerged?: () => void;
+  focused?: boolean;
 }
 
-export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProps) {
+export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: PRItemProps) {
   const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'merged' | 'error'>('idle');
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
@@ -61,7 +62,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
   }
 
   return (
-    <div className={`px-4 py-3 border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${isDimmed ? 'opacity-50' : ''}`}>
+    <div className={`px-4 py-3 border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${isDimmed ? 'opacity-50' : ''} ${focused ? 'ring-1 ring-inset ring-radar-500/60 bg-gray-800/40' : ''}`}>
       <a
         href={pr.url}
         target="_blank"

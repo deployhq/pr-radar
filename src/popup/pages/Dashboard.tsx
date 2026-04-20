@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AppView, DashboardTab, PullRequest, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
 import { CHROME_WEB_STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
 import TriageSummary from '../components/TriageSummary';
+import KeyboardShortcuts from '../components/KeyboardShortcuts';
 
 interface DashboardProps {
   tab: DashboardTab;
@@ -29,6 +30,10 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
   const [showStarBanner, setShowStarBanner] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const loadPinnedRepos = useCallback(async () => {
     const watchedRepos = await getWatchedRepos();
@@ -126,6 +131,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     setUrgencyFilter(category);
   }, []);
 
+  // Reset focused index when list changes
+  useEffect(() => { setFocusedIndex(-1); }, [tab, urgencyFilter, search]);
+
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
     if (tab === 'mine') return pr.isAuthor;
@@ -164,6 +172,87 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
 
+  // Keyboard navigation
+  const filteredRef = useRef(filtered);
+  filteredRef.current = filtered;
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT';
+
+      if (e.key === '?' && !inInput) {
+        e.preventDefault();
+        setShowShortcuts((s) => !s);
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (showShortcuts) { setShowShortcuts(false); return; }
+        if (inInput) { (target as HTMLInputElement).blur(); return; }
+        if (search) { setSearch(''); return; }
+        if (urgencyFilter) { setUrgencyFilter(null); return; }
+        if (focusedIndex >= 0) { setFocusedIndex(-1); return; }
+        return;
+      }
+
+      if (inInput) return;
+
+      const list = filteredRef.current;
+      switch (e.key) {
+        case 'j':
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedIndex((i) => Math.min(i + 1, list.length - 1));
+          break;
+        case 'k':
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedIndex((i) => Math.max(i - 1, 0));
+          break;
+        case 'o':
+        case 'Enter':
+          if (focusedIndex >= 0 && focusedIndex < list.length) {
+            e.preventDefault();
+            window.open(list[focusedIndex].url, '_blank');
+          }
+          break;
+        case '1':
+          e.preventDefault();
+          onNavigate({ type: 'dashboard', tab: 'mine' });
+          break;
+        case '2':
+          e.preventDefault();
+          onNavigate({ type: 'dashboard', tab: 'review' });
+          break;
+        case '3':
+          e.preventDefault();
+          onNavigate({ type: 'dashboard', tab: 'all' });
+          break;
+        case 'r':
+          e.preventDefault();
+          triggerBackgroundRefresh();
+          break;
+        case '/':
+          e.preventDefault();
+          searchRef.current?.focus();
+          break;
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [focusedIndex, search, urgencyFilter, showShortcuts, onNavigate, triggerBackgroundRefresh]);
+
+  // Scroll focused PR into view
+  useEffect(() => {
+    if (focusedIndex < 0 || !listRef.current) return;
+    const items = listRef.current.children;
+    if (items[focusedIndex]) {
+      items[focusedIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }, [focusedIndex]);
+
   const tabCounts: Record<DashboardTab, number> = {
     mine: prs.filter((pr) => pr.isAuthor).length,
     review: prs.filter((pr) => pr.isReviewRequested && !pr.isDraft).length,
@@ -171,7 +260,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   };
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 relative">
       {/* Tabs */}
       <div className="flex border-b border-gray-800 bg-gray-900" role="tablist" aria-label="Pull request filters">
         {TABS.map((t) => (
@@ -203,8 +292,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       {/* Filter bar */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-800">
         <input
+          ref={searchRef}
           type="text"
-          placeholder="Search PRs..."
+          placeholder="Search PRs...  (/ to focus)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Search pull requests"
@@ -337,17 +427,21 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             )}
           </div>
         ) : (
-          filtered.map((pr) => (
-            <PRItem
-              key={pr.id}
-              pr={pr}
-              stalePRDays={stalePRDays}
-              pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
-              onMerged={triggerBackgroundRefresh}
-            />
-          ))
+          <div ref={listRef}>
+            {filtered.map((pr, i) => (
+              <PRItem
+                key={pr.id}
+                pr={pr}
+                stalePRDays={stalePRDays}
+                pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
+                onMerged={triggerBackgroundRefresh}
+                focused={i === focusedIndex}
+              />
+            ))}
+          </div>
         )}
       </div>
+      {showShortcuts && <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />}
     </div>
   );
 }

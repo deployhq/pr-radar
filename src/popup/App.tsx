@@ -57,16 +57,23 @@ export default function App() {
         {view.type === 'settings' && <Settings onNavigate={setView} />}
         {view.type === 'repos' && <Repos />}
       </div>
-      <footer className="flex items-center justify-center gap-1.5 py-2.5 border-t border-gray-800 text-[11px] text-gray-500">
-        Made with &lt;3 by{' '}
-        <a
-          href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=footer"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-radar-400 visited:text-radar-400 hover:underline"
-        >
-          DeployHQ
-        </a>
+      <footer className="flex items-center justify-between px-4 py-2.5 border-t border-gray-800 text-[11px] text-gray-500">
+        <span>
+          Made with &lt;3 by{' '}
+          <a
+            href="https://www.deployhq.com/?utm_source=pr-radar&utm_medium=chrome-extension&utm_campaign=footer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-radar-400 visited:text-radar-400 hover:underline"
+          >
+            DeployHQ
+          </a>
+        </span>
+        {view.type === 'dashboard' && (
+          <span className="text-gray-600">
+            Press <kbd className="px-1 py-px rounded bg-gray-800 border border-gray-700 text-gray-400 font-mono text-[10px]">?</kbd> for shortcuts
+          </span>
+        )}
       </footer>
     </div>
   );

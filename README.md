@@ -21,6 +21,7 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 - **Background polling** — Works without any tab open, using a personal access token
 - **Toolbar badge** — Icon shows pass/fail/running count at a glance
 - **Instant load** — Cached data shown immediately, refreshes in background
+- **Keyboard shortcuts** — Navigate PRs with `j`/`k`, open with `o`, switch tabs with `1`/`2`/`3`, search with `/`, press `?` for the full list
 - **Privacy-first** — Your token stays on your device. No backend, no tracking
 
 ## Install

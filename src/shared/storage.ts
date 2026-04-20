@@ -102,6 +102,39 @@ export async function saveCachedPRs(prs: PullRequest[]): Promise<void> {
   });
 }
 
+// === Install date & star prompt ===
+
+const INSTALL_DATE_KEY = 'pr_radar_install_date';
+const STAR_PROMPT_DISMISSED_KEY = 'pr_radar_star_dismissed';
+
 export async function clearAll(): Promise<void> {
-  await chrome.storage.local.remove([ACCOUNTS_KEY, SETTINGS_KEY, REPOS_KEY, PR_CACHE_KEY]);
+  await chrome.storage.local.remove([
+    ACCOUNTS_KEY,
+    SETTINGS_KEY,
+    REPOS_KEY,
+    PR_CACHE_KEY,
+    INSTALL_DATE_KEY,
+    STAR_PROMPT_DISMISSED_KEY,
+  ]);
+}
+
+export async function getInstallDate(): Promise<number | null> {
+  const result = await chrome.storage.local.get(INSTALL_DATE_KEY);
+  return result[INSTALL_DATE_KEY] ?? null;
+}
+
+export async function setInstallDate(): Promise<void> {
+  const existing = await getInstallDate();
+  if (!existing) {
+    await chrome.storage.local.set({ [INSTALL_DATE_KEY]: Date.now() });
+  }
+}
+
+export async function isStarPromptDismissed(): Promise<boolean> {
+  const result = await chrome.storage.local.get(STAR_PROMPT_DISMISSED_KEY);
+  return result[STAR_PROMPT_DISMISSED_KEY] === true;
+}
+
+export async function dismissStarPrompt(): Promise<void> {
+  await chrome.storage.local.set({ [STAR_PROMPT_DISMISSED_KEY]: true });
 }

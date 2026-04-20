@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -34,6 +34,7 @@ async function saveLastCommentCounts(counts: Record<string, number>): Promise<vo
 // === Lifecycle ===
 
 chrome.runtime.onInstalled.addListener(() => {
+  setInstallDate();
   setupPolling();
 });
 

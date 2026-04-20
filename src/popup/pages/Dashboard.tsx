@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { AppView, DashboardTab, PullRequest, UrgencyCategory } from '@/shared/types';
-import { getWatchedRepos, getCachedPRs, getSettings } from '@/shared/storage';
-import { CHROME_WEB_STORE_URL } from '@/shared/constants';
+import { getWatchedRepos, getCachedPRs, getSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
+import { CHROME_WEB_STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
 import TriageSummary from '../components/TriageSummary';
@@ -28,6 +28,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [stalePRDays, setStalePRDays] = useState(45);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
+  const [showStarBanner, setShowStarBanner] = useState(false);
 
   const loadPinnedRepos = useCallback(async () => {
     const watchedRepos = await getWatchedRepos();
@@ -106,6 +107,17 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     chrome.storage.local.onChanged.addListener(onStorageChange);
     return () => chrome.storage.local.onChanged.removeListener(onStorageChange);
   }, [loadPinnedRepos]);
+
+  // Check if star banner should show (7+ days since install, not dismissed)
+  useEffect(() => {
+    async function checkStarBanner() {
+      const [installDate, dismissed] = await Promise.all([getInstallDate(), isStarPromptDismissed()]);
+      if (dismissed || !installDate) return;
+      const daysSinceInstall = (Date.now() - installDate) / 86400000;
+      if (daysSinceInstall >= 7) setShowStarBanner(true);
+    }
+    checkStarBanner();
+  }, []);
 
   // Reset urgency filter on tab change
   useEffect(() => { setUrgencyFilter(null); }, [tab]);
@@ -225,6 +237,27 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </span>
         ) : null}
       </div>
+
+      {/* Star banner */}
+      {showStarBanner && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-radar-900/50 bg-radar-950/30">
+          <a
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[11px] text-gray-400 hover:text-radar-400 transition-colors"
+          >
+            &#9733; Enjoying PR Radar? <span className="text-radar-400">Star us on GitHub</span> to help others discover it
+          </a>
+          <button
+            onClick={() => { setShowStarBanner(false); dismissStarPrompt(); }}
+            className="text-gray-600 hover:text-gray-400 text-xs leading-none flex-shrink-0"
+            title="Dismiss"
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
 
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">

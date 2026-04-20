@@ -131,6 +131,7 @@ export default function Repos() {
             placeholder="Filter repos..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
+            aria-label="Filter repositories"
             className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
           />
         </div>
@@ -154,6 +155,8 @@ export default function Repos() {
                   <button
                     key={p}
                     onClick={() => setPlatformFilter(p)}
+                    aria-label={`Filter by ${p === 'github' ? 'GitHub' : p === 'gitlab' ? 'GitLab' : 'Bitbucket'}`}
+                    aria-pressed={platformFilter === p}
                     className={`flex items-center justify-center w-7 h-6 text-[11px] rounded-md border transition-colors ${
                       platformFilter === p
                         ? 'border-radar-600 bg-radar-900/30'
@@ -183,7 +186,7 @@ export default function Repos() {
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center py-16" role="status" aria-label="Loading repositories">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
           </div>
         ) : filtered.length === 0 ? (
@@ -196,9 +199,13 @@ export default function Repos() {
               <button
                 key={`${repo.platform}:${repo.fullName}`}
                 onClick={() => handleToggle(repo.fullName, repo.platform)}
+                role="checkbox"
+                aria-checked={repo.enabled}
+                aria-label={`${repo.enabled ? 'Unwatch' : 'Watch'} ${repo.fullName}`}
                 className="flex items-center gap-3 py-2 border-b border-gray-800 w-full text-left hover:bg-gray-800/30 transition-colors"
               >
                 <span
+                  aria-hidden="true"
                   className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[10px] border transition-colors ${
                     repo.enabled
                       ? 'bg-radar-600 border-radar-600 text-white'
@@ -214,8 +221,7 @@ export default function Repos() {
                   <PlatformIcon platform={repo.platform} size={14} />
                 </span>
                 {repo.enabled && (
-                  <span
-                    role="button"
+                  <button
                     onClick={(e) => handleTogglePin(e, repo.fullName, repo.platform)}
                     className={`flex-shrink-0 text-sm transition-colors ${
                       repo.pinned
@@ -223,9 +229,11 @@ export default function Repos() {
                         : 'text-gray-700 hover:text-gray-500'
                     }`}
                     title={repo.pinned ? 'Unpin repo' : 'Pin to top'}
+                    aria-label={repo.pinned ? `Unpin ${repo.fullName}` : `Pin ${repo.fullName} to top`}
+                    aria-pressed={repo.pinned}
                   >
                     {repo.pinned ? '\u2605' : '\u2606'}
-                  </span>
+                  </button>
                 )}
               </button>
             ))}

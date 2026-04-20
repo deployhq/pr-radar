@@ -198,6 +198,7 @@ export default function Setup({ onComplete }: SetupProps) {
                       value={bbEmail}
                       onChange={(e) => setBbEmail(e.target.value)}
                       placeholder="Bitbucket email address"
+                      aria-label="Bitbucket email address"
                       className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
                       autoFocus
                     />
@@ -207,6 +208,7 @@ export default function Setup({ onComplete }: SetupProps) {
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder={cfg.placeholder}
+                    aria-label={`${PLATFORM_LABELS[cfg.platform]} personal access token`}
                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
                     autoFocus={cfg.platform !== 'bitbucket'}
                   />
@@ -233,7 +235,7 @@ export default function Setup({ onComplete }: SetupProps) {
                       </p>
                     )}
                   </div>
-                  {error && <p className="text-[11px] text-red-400">{error}</p>}
+                  {error && <p className="text-[11px] text-red-400" role="alert">{error}</p>}
                   <button
                     onClick={() => handleConnect(cfg.platform)}
                     disabled={loading || !token.trim() || (cfg.platform === 'bitbucket' && !bbEmail.trim())}

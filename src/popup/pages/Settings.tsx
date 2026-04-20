@@ -51,7 +51,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
 
   if (!settings) {
     return (
-      <div className="flex items-center justify-center py-16">
+      <div className="flex items-center justify-center py-16" role="status" aria-label="Loading settings">
         <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
       </div>
     );
@@ -65,13 +65,13 @@ export default function Settings({ onNavigate }: SettingsProps) {
           label="Desktop notifications"
           description="When CI status changes on your PRs"
         >
-          <Toggle checked={settings.notificationsEnabled} onChange={(v) => handleToggle('notificationsEnabled', v)} />
+          <Toggle checked={settings.notificationsEnabled} onChange={(v) => handleToggle('notificationsEnabled', v)} label="Desktop notifications" />
         </SettingRow>
         <SettingRow
           label="Sound alerts"
           description="Play a sound on CI pass or fail"
         >
-          <Toggle checked={settings.soundEnabled} onChange={(v) => handleToggle('soundEnabled', v)} />
+          <Toggle checked={settings.soundEnabled} onChange={(v) => handleToggle('soundEnabled', v)} label="Sound alerts" />
         </SettingRow>
         {settings.soundEnabled && (
           <SettingRow label="Sound">
@@ -79,6 +79,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
               <select
                 value={settings.soundId}
                 onChange={(e) => handleChange('soundId', e.target.value as SettingsType['soundId'])}
+                aria-label="Notification sound"
                 className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
               >
                 {SOUND_OPTIONS.map((s) => (
@@ -92,7 +93,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
           label="New comments"
           description="Notify when new comments appear"
         >
-          <Toggle checked={settings.notifyOnComments} onChange={(v) => handleToggle('notifyOnComments', v)} />
+          <Toggle checked={settings.notifyOnComments} onChange={(v) => handleToggle('notifyOnComments', v)} label="New comment notifications" />
         </SettingRow>
         <SettingRow
           label="Test"
@@ -118,6 +119,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
           <select
             value={settings.stalePRDays}
             onChange={(e) => handleChange('stalePRDays', Number(e.target.value))}
+            aria-label="Stale PR threshold"
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
           >
             <option value={14}>14 days</option>
@@ -136,6 +138,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
           <select
             value={settings.pollIntervalSeconds}
             onChange={(e) => handleChange('pollIntervalSeconds', Number(e.target.value))}
+            aria-label="Polling interval"
             className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
           >
             <option value={30}>30 seconds</option>
@@ -261,9 +264,12 @@ function SettingRow({
 }
 
 
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative w-9 h-5 rounded-full transition-colors ${
         checked ? 'bg-radar-600' : 'bg-gray-700'

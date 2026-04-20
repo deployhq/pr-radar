@@ -4,7 +4,7 @@
 
 <img width="1119" height="623" alt="image" src="https://github.com/user-attachments/assets/f70cbb13-89d3-4f20-adf4-0c22e21f5fb4" />
 
-Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme).
+Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme). [Learn more →](https://www.deployhq.com/features/pr-radar)
 
 ## Features
 
@@ -127,6 +127,17 @@ npm run typecheck    # TypeScript check
 npm test             # Run tests
 npm run test:watch   # Run tests in watch mode
 ```
+
+## Accessibility
+
+PR Radar is built with accessibility in mind:
+
+- **Keyboard navigation** — All interactive elements are reachable and operable via keyboard
+- **Screen reader support** — ARIA labels, roles, and live regions throughout the UI
+- **Semantic HTML** — Proper tab, switch, and checkbox roles; `aria-expanded` for collapsible sections
+- **Status announcements** — Loading states, refresh status, and error messages use `aria-live` regions
+- **Descriptive labels** — All form inputs, icon-only buttons, and status badges have accessible names
+- **Decorative icons hidden** — Emoji and unicode icons are marked `aria-hidden` with text alternatives provided
 
 ## Privacy
 

@@ -35,7 +35,7 @@ export default function App() {
 
   if (loading || !view) {
     return (
-      <div className="flex items-center justify-center h-[520px] bg-gray-950">
+      <div className="flex items-center justify-center h-[520px] bg-gray-950" role="status" aria-label="Loading PR Radar">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-radar-500 border-t-transparent" />
       </div>
     );

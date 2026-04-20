@@ -110,7 +110,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
                 </span>
               )}
               {!pr.isMerged && mergeState === 'merging' && (
-                <span className="flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#58a6ff] border-[#30363d]">
+                <span className="flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#58a6ff] border-[#30363d]" role="status" aria-label="Merging pull request">
                   Merging...
                 </span>
               )}
@@ -206,33 +206,37 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} author={pr.author} durationMs={pr.ciDurationMs} />
 
           {pr.approvalCount > 0 && (
-            <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}>
+            <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}
+              aria-label={`${pr.approvalCount} approval${pr.approvalCount > 1 ? 's' : ''}${pr.approvedBy ? ` by ${pr.approvedBy.join(', ')}` : ''}`}>
               <Badge className="bg-emerald-900/50 text-emerald-400">
-                &#x1F464; {pr.approvalCount}
+                <span aria-hidden="true">&#x1F464;</span> {pr.approvalCount}
               </Badge>
             </span>
           )}
 
           {pr.reviewStatus === 'changes_requested' && (
-            <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}>
+            <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}
+              aria-label={`Changes requested${pr.changesRequestedBy ? ` by ${pr.changesRequestedBy.join(', ')}` : ''}`}>
               <Badge className="bg-red-900/50 text-red-400">
-                &#x21BB;
+                <span aria-hidden="true">&#x21BB;</span>
               </Badge>
             </span>
           )}
 
           {pr.unresolvedCommentCount > 0 && (
-            <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}>
+            <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}
+              aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}${pr.unresolvedCommentAuthors ? ` from ${pr.unresolvedCommentAuthors.join(', ')}` : ''}`}>
               <Badge className="bg-gray-800 text-amber-400">
-                &#x1F4AC; {pr.unresolvedCommentCount}
+                <span aria-hidden="true">&#x1F4AC;</span> {pr.unresolvedCommentCount}
               </Badge>
             </span>
           )}
 
           {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
-            <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}>
+            <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}
+              aria-label={`${pr.pendingReviewers.length} pending reviewer${pr.pendingReviewers.length > 1 ? 's' : ''}: ${pr.pendingReviewers.join(', ')}`}>
               <Badge className="bg-blue-900/50 text-blue-400">
-                &#x23F3; {pr.pendingReviewers.length}
+                <span aria-hidden="true">&#x23F3;</span> {pr.pendingReviewers.length}
               </Badge>
             </span>
           )}
@@ -249,7 +253,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
                 : pr.deployment.status === 'failure' ? 'bg-red-900/50 text-red-400'
                   : 'bg-blue-900/50 text-blue-400'
             }>
-              &#x1F680; {pr.deployment.environment}
+              <span aria-hidden="true">&#x1F680;</span> <span aria-label={`Deployment ${pr.deployment.status}: ${pr.deployment.environment}`}>{pr.deployment.environment}</span>
             </Badge>
           )}
 
@@ -270,22 +274,26 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
               isStale && !pr.isMerged && 'This PR is stale — consider closing it',
             ].filter(Boolean).join(' · ') || undefined}
           >
-            {pinned && <span className="mr-1 text-yellow-400">{'\u2605'}</span>}
-            {pr.isMerged && <span className="mr-1">&#x1F500;</span>}
-            {pr.isBot && !pr.isMerged && <span className="mr-1">&#x1F916;</span>}
-            {isStale && !pr.isMerged && <span className="mr-1">&#x1F4A4;</span>}
-            {timeAgo}
+            {pinned && <span className="mr-1 text-yellow-400" aria-label="Pinned repo">{'\u2605'}</span>}
+            {pr.isMerged && <span className="mr-1" aria-label="Merged">&#x1F500;</span>}
+            {pr.isBot && !pr.isMerged && <span className="mr-1" aria-label="Bot PR">&#x1F916;</span>}
+            {isStale && !pr.isMerged && <span className="mr-1" aria-label="Stale PR">&#x1F4A4;</span>}
+            <span aria-label={`Updated ${timeAgo}`}>{timeAgo}</span>
           </span>
         </div>
 
         {pr.deployment?.url && pr.deployment.status === 'success' && (
           <div className="ml-[30px] mt-1 flex items-center gap-1">
-            <span
+            <a
+              href={pr.deployment.url}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-[10px] text-radar-400 hover:underline truncate"
-              onClick={(e) => { e.preventDefault(); window.open(pr.deployment!.url, '_blank'); }}
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Deployment preview: ${pr.deployment.url.replace(/^https?:\/\//, '')}`}
             >
-              &#x1F517; {pr.deployment.url.replace(/^https?:\/\//, '')}
-            </span>
+              <span aria-hidden="true">&#x1F517;</span> {pr.deployment.url.replace(/^https?:\/\//, '')}
+            </a>
           </div>
         )}
       </a>
@@ -295,8 +303,10 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged }: PRItemProp
           <button
             onClick={() => setExpanded(!expanded)}
             className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Hide PR description' : 'Show PR description'}
           >
-            {expanded ? '\u25BE Hide description' : '\u25B8 Show description'}
+            <span aria-hidden="true">{expanded ? '\u25BE' : '\u25B8'}</span> {expanded ? 'Hide description' : 'Show description'}
           </button>
           {expanded && (
             <div className="mt-1 text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">

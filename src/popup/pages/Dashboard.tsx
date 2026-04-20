@@ -173,10 +173,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   return (
     <div className="flex flex-col flex-1">
       {/* Tabs */}
-      <div className="flex border-b border-gray-800 bg-gray-900">
+      <div className="flex border-b border-gray-800 bg-gray-900" role="tablist" aria-label="Pull request filters">
         {TABS.map((t) => (
           <button
             key={t.id}
+            role="tab"
+            aria-selected={tab === t.id}
+            aria-controls={`tabpanel-${t.id}`}
+            id={`tab-${t.id}`}
             onClick={() => onNavigate({ type: 'dashboard', tab: t.id })}
             className={`flex-1 py-2.5 text-center text-xs border-b-2 transition-colors ${
               tab === t.id
@@ -203,6 +207,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           placeholder="Search PRs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Search pull requests"
           className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
         />
         {/* Refresh button */}
@@ -211,6 +216,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           disabled={refreshing}
           className="text-[11px] px-2 py-1 rounded-full border border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-400 transition-colors disabled:opacity-50"
           title="Refresh now"
+          aria-label="Refresh pull requests"
         >
           &#x21BB;
         </button>
@@ -225,10 +231,10 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       />
 
       {/* Status bar */}
-      <div className="flex items-center justify-center gap-2 py-1 border-b border-gray-800 min-h-[24px]">
+      <div className="flex items-center justify-center gap-2 py-1 border-b border-gray-800 min-h-[24px]" role="status" aria-live="polite">
         {refreshing ? (
           <>
-            <div className="animate-spin rounded-full h-3 w-3 border border-radar-400 border-t-transparent" />
+            <div className="animate-spin rounded-full h-3 w-3 border border-radar-400 border-t-transparent" aria-hidden="true" />
             <span className="text-[10px] text-radar-400">Updating...</span>
           </>
         ) : lastUpdated ? (
@@ -253,6 +259,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
             onClick={() => { setShowStarBanner(false); dismissStarPrompt(); }}
             className="text-gray-600 hover:text-gray-400 text-xs leading-none flex-shrink-0"
             title="Dismiss"
+            aria-label="Dismiss star banner"
           >
             &#10005;
           </button>
@@ -262,12 +269,12 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       {/* PR list */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-16">
+          <div className="flex items-center justify-center py-16" role="status" aria-label="Loading pull requests">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
           </div>
         ) : error ? (
           <div className="px-4 py-8 text-center">
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-red-400" role="alert">{error}</p>
             <button
               onClick={() => { setError(''); triggerBackgroundRefresh(); }}
               className="mt-2 text-xs text-radar-400 hover:underline"
@@ -277,7 +284,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </div>
         ) : !hasWatchedRepos ? (
           <div className="px-5 py-12 text-center">
-            <div className="text-3xl mb-3">&#x1F4E1;</div>
+            <div className="text-3xl mb-3" aria-hidden="true">&#x1F4E1;</div>
             <p className="text-sm font-medium text-gray-200">No repos selected</p>
             <p className="text-xs text-gray-500 mt-1">
               Choose which repos to watch to see their PRs here
@@ -301,7 +308,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-5 py-12 text-center">
-            <div className="text-3xl mb-3">
+            <div className="text-3xl mb-3" aria-hidden="true">
               {tab === 'review' ? '\u{1F440}' : '\u{1F389}'}
             </div>
             <p className="text-sm font-medium text-gray-200">

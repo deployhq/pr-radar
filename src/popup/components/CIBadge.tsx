@@ -49,10 +49,12 @@ export default function CIBadge({ status, failedChecks, author, durationMs }: CI
     <span
       className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-1 ${BADGE_STYLES[status]}`}
       title={tooltip}
+      role="status"
+      aria-label={tooltip}
     >
-      {BADGE_ICONS[status]}
+      <span aria-hidden="true">{BADGE_ICONS[status]}</span>
       {durationMs !== undefined && (
-        <span className="opacity-80">{formatDuration(durationMs)}</span>
+        <span className="opacity-80" aria-hidden="true">{formatDuration(durationMs)}</span>
       )}
     </span>
   );

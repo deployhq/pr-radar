@@ -16,11 +16,12 @@ export default function Header({ view, onNavigate }: HeaderProps) {
           <button
             onClick={() => onNavigate({ type: 'dashboard', tab: 'mine' })}
             className="text-gray-500 hover:text-gray-300 mr-1"
+            aria-label="Back to dashboard"
           >
             &larr;
           </button>
         ) : (
-          <img src={chrome.runtime.getURL('icons/icon-48.png')} alt="" className="w-5 h-5 rounded" />
+          <img src={chrome.runtime.getURL('icons/icon-48.png')} alt="PR Radar" className="w-5 h-5 rounded" />
         )}
         <span className="font-bold text-[15px] text-gray-100">{title}</span>
         {!showBack && (
@@ -38,6 +39,7 @@ export default function Header({ view, onNavigate }: HeaderProps) {
             onClick={() => onNavigate({ type: 'repos' })}
             className="text-gray-500 hover:text-gray-300 text-sm"
             title="Watched repos"
+            aria-label="Watched repos"
           >
             &#9776;
           </button>
@@ -45,6 +47,7 @@ export default function Header({ view, onNavigate }: HeaderProps) {
             onClick={() => onNavigate({ type: 'settings' })}
             className="text-gray-500 hover:text-gray-300 text-sm"
             title="Settings"
+            aria-label="Settings"
           >
             &#9881;
           </button>

@@ -20,13 +20,15 @@ export default function TriageSummary({ total, counts, activeFilter, onToggleFil
       <button
         onClick={() => onToggleFilter(null)}
         title="All"
+        aria-label={`All: ${total} pull requests`}
+        aria-pressed={isAllActive}
         className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-semibold border cursor-pointer transition-colors ${
           isAllActive
             ? 'bg-radar-900/25 text-radar-300 border-radar-500/50 ring-1 ring-radar-500/15'
             : 'bg-radar-900/10 text-radar-400 border-radar-800/20'
         }`}
       >
-        <span className="text-[11px] leading-none">&#x2630;</span>
+        <span className="text-[11px] leading-none" aria-hidden="true">&#x2630;</span>
         <span className="font-bold">{total}</span>
       </button>
 
@@ -39,11 +41,13 @@ export default function TriageSummary({ total, counts, activeFilter, onToggleFil
             key={category}
             onClick={() => onToggleFilter(isActive ? null : category)}
             title={meta.label}
+            aria-label={`${meta.label}: ${count}`}
+            aria-pressed={isActive}
             className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-semibold border cursor-pointer transition-colors ${
               isActive ? meta.activeColorClasses : meta.colorClasses
             }`}
           >
-            <span className="text-[11px] leading-none">{meta.icon}</span>
+            <span className="text-[11px] leading-none" aria-hidden="true">{meta.icon}</span>
             <span className="font-bold">{count}</span>
           </button>
         );

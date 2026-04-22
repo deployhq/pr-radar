@@ -51,7 +51,7 @@ export const FIREFOX_ADDON_URL =
   'https://addons.mozilla.org/en-US/firefox/addon/pr-radar/';
 
 export const EDGE_ADDON_URL =
-  'https://microsoftedge.microsoft.com/addons/detail/pr-radar/TODO_EDGE_PRODUCT_ID';
+  'https://microsoftedge.microsoft.com/addons/detail/pr-radar/angljeebomgmgepfiglbedjljgjnenhl';
 
 export const STORE_URL =
   __BROWSER__ === 'firefox' ? FIREFOX_ADDON_URL :

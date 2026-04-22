@@ -52,13 +52,12 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
 
-      # TODO: Enable once Edge Add-ons verification is complete and secrets are configured
-      # - name: Upload & publish to Edge Add-ons
-      #   run: npx edge-webstore-upload@latest upload --source extension-edge.zip --auto-publish
-      #   env:
-      #     EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
-      #     EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
-      #     EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+      - name: Upload & publish to Edge Add-ons
+        run: npx edge-webstore-upload@latest upload --source extension-edge.zip --auto-publish
+        env:
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

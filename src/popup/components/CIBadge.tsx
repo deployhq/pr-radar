@@ -2,11 +2,11 @@ import type { CIStatus } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
 
 const BADGE_STYLES: Record<CIStatus, string> = {
-  passed: 'bg-emerald-900/50 text-emerald-400',
-  failed: 'bg-red-900/50 text-red-400',
-  running: 'bg-blue-900/50 text-blue-400',
-  pending: 'bg-amber-900/50 text-amber-400',
-  unknown: 'bg-gray-800 text-gray-500',
+  passed: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400',
+  failed: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400',
+  running: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400',
+  pending: 'bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400',
+  unknown: 'bg-gray-100 dark:bg-gray-800 text-gray-500',
 };
 
 const BADGE_ICONS: Record<CIStatus, string> = {

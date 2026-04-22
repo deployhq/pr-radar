@@ -124,7 +124,7 @@ export default function Repos() {
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="px-4 py-3 border-b border-gray-800">
+      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -132,7 +132,7 @@ export default function Repos() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             aria-label="Filter repositories"
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
+            className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
           />
         </div>
         {connectedPlatforms.size > 1 && (
@@ -141,8 +141,8 @@ export default function Repos() {
               onClick={() => setPlatformFilter('all')}
               className={`text-[11px] px-2 py-0.5 rounded-md border transition-colors ${
                 platformFilter === 'all'
-                  ? 'border-radar-600 text-radar-400 bg-radar-900/30'
-                  : 'border-gray-700 text-gray-500 hover:text-gray-400'
+                  ? 'border-radar-600 text-radar-600 dark:text-radar-400 bg-radar-50 dark:bg-radar-900/30'
+                  : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
               }`}
             >
               All
@@ -159,8 +159,8 @@ export default function Repos() {
                     aria-pressed={platformFilter === p}
                     className={`flex items-center justify-center w-7 h-6 text-[11px] rounded-md border transition-colors ${
                       platformFilter === p
-                        ? 'border-radar-600 bg-radar-900/30'
-                        : 'border-gray-700 text-gray-500 hover:text-gray-400'
+                        ? 'border-radar-600 bg-radar-50 dark:bg-radar-900/30'
+                        : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:text-gray-600 dark:hover:text-gray-400'
                     }`}
                   >
                     <PlatformIcon platform={p} size={12} className={iconColor} />
@@ -202,19 +202,19 @@ export default function Repos() {
                 role="checkbox"
                 aria-checked={repo.enabled}
                 aria-label={`${repo.enabled ? 'Unwatch' : 'Watch'} ${repo.fullName}`}
-                className="flex items-center gap-3 py-2 border-b border-gray-800 w-full text-left hover:bg-gray-800/30 transition-colors"
+                className="flex items-center gap-3 py-2 border-b border-gray-200 dark:border-gray-800 w-full text-left hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors"
               >
                 <span
                   aria-hidden="true"
                   className={`w-4 h-4 rounded flex-shrink-0 flex items-center justify-center text-[10px] border transition-colors ${
                     repo.enabled
                       ? 'bg-radar-600 border-radar-600 text-white'
-                      : 'bg-gray-800 border-gray-600'
+                      : 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600'
                   }`}
                 >
                   {repo.enabled ? '\u2713' : ''}
                 </span>
-                <span className="flex-1 text-[13px] text-gray-200 truncate">
+                <span className="flex-1 text-[13px] text-gray-900 dark:text-gray-200 truncate">
                   {repo.fullName}
                 </span>
                 <span className="flex-shrink-0 text-gray-600">
@@ -225,8 +225,8 @@ export default function Repos() {
                     onClick={(e) => handleTogglePin(e, repo.fullName, repo.platform)}
                     className={`flex-shrink-0 text-sm transition-colors ${
                       repo.pinned
-                        ? 'text-yellow-400'
-                        : 'text-gray-700 hover:text-gray-500'
+                        ? 'text-yellow-500 dark:text-yellow-400'
+                        : 'text-gray-300 dark:text-gray-700 hover:text-gray-400 dark:hover:text-gray-500'
                     }`}
                     title={repo.pinned ? 'Unpin repo' : 'Pin to top'}
                     aria-label={repo.pinned ? `Unpin ${repo.fullName}` : `Pin ${repo.fullName} to top`}
@@ -240,11 +240,11 @@ export default function Repos() {
 
             {/* Token scope callouts */}
             {connectedPlatforms.has('github') && (
-              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  <span className="text-gray-300 font-medium">Missing GitHub repos?</span>{' '}
-                  We recommend using a <span className="text-gray-300">classic token</span> with
-                  the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">Missing GitHub repos?</span>{' '}
+                  We recommend using a <span className="text-gray-700 dark:text-gray-300">classic token</span> with
+                  the <code className="text-radar-600 dark:text-radar-400 bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded text-[10px]">repo</code> scope.
                   Fine-grained tokens may not show all org repos.
                 </p>
                 <a
@@ -258,10 +258,10 @@ export default function Repos() {
               </div>
             )}
             {connectedPlatforms.has('gitlab') && (
-              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  <span className="text-gray-300 font-medium">Missing GitLab projects?</span>{' '}
-                  Your token needs the <code className="text-radar-400 bg-gray-900 px-1 py-0.5 rounded text-[10px]">read_api</code> scope
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">Missing GitLab projects?</span>{' '}
+                  Your token needs the <code className="text-radar-600 dark:text-radar-400 bg-gray-100 dark:bg-gray-900 px-1 py-0.5 rounded text-[10px]">read_api</code> scope
                   to access private projects and merge requests.
                 </p>
                 <a
@@ -275,12 +275,12 @@ export default function Repos() {
               </div>
             )}
             {connectedPlatforms.has('bitbucket') && (
-              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-                <p className="text-[11px] text-gray-400 leading-relaxed">
-                  <span className="text-gray-300 font-medium">Missing Bitbucket repos?</span>{' '}
-                  Your API token needs <span className="text-gray-300">Account: Read</span>,{' '}
-                  <span className="text-gray-300">Repositories: Read</span>, and{' '}
-                  <span className="text-gray-300">Pull requests: Read</span> scopes.
+              <div className="mt-4 mb-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                  <span className="text-gray-700 dark:text-gray-300 font-medium">Missing Bitbucket repos?</span>{' '}
+                  Your API token needs <span className="text-gray-700 dark:text-gray-300">Account: Read</span>,{' '}
+                  <span className="text-gray-700 dark:text-gray-300">Repositories: Read</span>, and{' '}
+                  <span className="text-gray-700 dark:text-gray-300">Pull requests: Read</span> scopes.
                 </p>
                 <a
                   href="https://id.atlassian.com/manage-profile/security/api-tokens"

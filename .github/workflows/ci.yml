@@ -27,11 +27,17 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
+      - name: Build Edge extension
+        run: npm run build:edge
+
       - name: Create Chrome ZIP
         run: cd dist && zip -r ../extension-chrome.zip .
 
       - name: Create Firefox ZIP
         run: cd dist-firefox && zip -r ../extension-firefox.zip .
+
+      - name: Create Edge ZIP
+        run: cd dist-edge && zip -r ../extension-edge.zip .
 
       - name: Upload Chrome extension
         uses: actions/upload-artifact@v4
@@ -44,3 +50,9 @@ jobs:
         with:
           name: pr-radar-firefox
           path: extension-firefox.zip
+
+      - name: Upload Edge extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-radar-edge
+          path: extension-edge.zip

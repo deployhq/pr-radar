@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-edge/
 .DS_Store
 *.log
 .env

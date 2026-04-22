@@ -25,11 +25,17 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
+      - name: Build Edge extension
+        run: npm run build:edge
+
       - name: Create Chrome ZIP
         run: cd dist && zip -r ../extension-chrome.zip .
 
       - name: Create Firefox ZIP
         run: cd dist-firefox && zip -r ../extension-firefox.zip .
+
+      - name: Create Edge ZIP
+        run: cd dist-edge && zip -r ../extension-edge.zip .
 
       - name: Update latest release
         uses: softprops/action-gh-release@v2
@@ -41,8 +47,10 @@ jobs:
 
             **Chrome**: Download `extension-chrome.zip`, unpack it, and load in `chrome://extensions/` with Developer mode enabled.
             **Firefox**: Download `extension-firefox.zip`, unpack it, and load in `about:debugging#/runtime/this-firefox` via Load Temporary Add-on.
+            **Edge**: Download `extension-edge.zip`, unpack it, and load in `edge://extensions/` with Developer mode enabled.
           files: |
             extension-chrome.zip
             extension-firefox.zip
+            extension-edge.zip
           prerelease: true
           make_latest: false

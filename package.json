@@ -21,6 +21,7 @@
     "build": "tsc && BROWSER=chrome vite build",
     "build:chrome": "tsc && BROWSER=chrome vite build",
     "build:firefox": "tsc && BROWSER=firefox vite build",
+    "build:edge": "tsc && BROWSER=edge vite build",
     "preview": "vite preview",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",

@@ -34,6 +34,10 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 
 [Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/) — free, no account required.
 
+### Edge
+
+Install from Edge Add-ons (coming soon) — free, no account required.
+
 ### Manual install (development)
 
 ```bash
@@ -42,11 +46,14 @@ cd pr-radar
 npm install
 npm run build           # Chrome (default)
 npm run build:firefox   # Firefox
+npm run build:edge      # Edge
 ```
 
 **Chrome**: Open `chrome://extensions/` → Enable Developer mode → Load unpacked → select `dist/`
 
 **Firefox**: Open `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → select `dist-firefox/manifest.json`
+
+**Edge**: Open `edge://extensions/` → Enable Developer mode → Load unpacked → select `dist-edge/`
 
 ## Setup
 
@@ -130,6 +137,7 @@ npm run dev              # Chrome dev (watch mode)
 npm run dev:firefox      # Firefox dev (watch mode)
 npm run build            # Chrome production build
 npm run build:firefox    # Firefox production build
+npm run build:edge       # Edge production build
 npm run lint             # ESLint
 npm run typecheck        # TypeScript check
 npm test                 # Run tests

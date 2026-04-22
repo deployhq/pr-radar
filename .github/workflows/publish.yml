@@ -32,11 +32,17 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
+      - name: Build Edge extension
+        run: npm run build:edge
+
       - name: Create Chrome ZIP
         run: cd dist && zip -r ../extension-chrome.zip .
 
       - name: Create Firefox ZIP
         run: cd dist-firefox && zip -r ../extension-firefox.zip .
+
+      - name: Create Edge ZIP
+        run: cd dist-edge && zip -r ../extension-edge.zip .
 
       - name: Upload & publish to Chrome Web Store
         run: npx chrome-webstore-upload-cli@3 upload --auto-publish --source extension-chrome.zip
@@ -46,10 +52,19 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
 
+      - name: Upload & publish to Edge Add-ons
+        if: ${{ secrets.EDGE_PRODUCT_ID != '' }}
+        run: npx edge-webstore-upload@latest upload --source extension-edge.zip --auto-publish
+        env:
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             extension-chrome.zip
             extension-firefox.zip
+            extension-edge.zip
           generate_release_notes: true

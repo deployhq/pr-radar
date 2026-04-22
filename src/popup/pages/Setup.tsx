@@ -68,7 +68,7 @@ const PLATFORMS: PlatformConfig[] = [
 ];
 
 const ICON_COLORS: Record<Platform, string> = {
-  github: 'text-white',
+  github: 'text-gray-900 dark:text-white',
   gitlab: 'text-orange-500',
   bitbucket: 'text-blue-500',
 };
@@ -126,7 +126,7 @@ export default function Setup({ onComplete }: SetupProps) {
     <div className="px-5 py-6">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-2xl">&#x1F4E1;</span>
-        <h1 className="text-lg font-bold text-gray-100">PR Radar</h1>
+        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">PR Radar</h1>
       </div>
       <p className="text-[13px] text-gray-500 mb-6 leading-relaxed">
         Connect your accounts to see all PRs in one place. Your tokens stay on your device.
@@ -143,10 +143,10 @@ export default function Setup({ onComplete }: SetupProps) {
               key={cfg.platform}
               className={`rounded-xl border transition-colors ${
                 cfg.comingSoon
-                  ? 'border-gray-800 bg-gray-800/30 opacity-60'
+                  ? 'border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 opacity-60'
                   : isConnected
-                    ? 'border-emerald-800/50 bg-emerald-900/10'
-                    : 'border-gray-700 bg-gray-800/50 hover:border-gray-600'
+                    ? 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/10'
+                    : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <button
@@ -160,31 +160,31 @@ export default function Setup({ onComplete }: SetupProps) {
                 }}
                 disabled={cfg.comingSoon || isConnected}
               >
-                <span className="w-9 h-9 flex items-center justify-center bg-gray-900 rounded-lg">
+                <span className="w-9 h-9 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg">
                   <PlatformIcon platform={cfg.platform} size={20} className={ICON_COLORS[cfg.platform]} />
                 </span>
                 <div className="flex-1 text-left">
-                  <div className="text-sm font-semibold text-gray-200">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-gray-200">
                     {PLATFORM_LABELS[cfg.platform]}
                   </div>
                   {cfg.comingSoon ? (
-                    <div className="text-[11px] text-gray-600">Coming soon</div>
+                    <div className="text-[11px] text-gray-400 dark:text-gray-600">Coming soon</div>
                   ) : isConnected ? (
-                    <div className="text-[11px] text-emerald-400">Connected as @{connectedUser}</div>
+                    <div className="text-[11px] text-emerald-600 dark:text-emerald-400">Connected as @{connectedUser}</div>
                   ) : (
                     <div className="text-[11px] text-gray-500">Not connected</div>
                   )}
                 </div>
                 {cfg.comingSoon ? (
-                  <span className="text-[11px] px-3 py-1 rounded-md border border-gray-700 text-gray-600">
+                  <span className="text-[11px] px-3 py-1 rounded-md border border-gray-300 dark:border-gray-700 text-gray-400 dark:text-gray-600">
                     Soon
                   </span>
                 ) : isConnected ? (
-                  <span className="text-[11px] px-3 py-1 rounded-md border border-emerald-700/50 text-emerald-400">
+                  <span className="text-[11px] px-3 py-1 rounded-md border border-emerald-300 dark:border-emerald-700/50 text-emerald-600 dark:text-emerald-400">
                     &#10003;
                   </span>
                 ) : (
-                  <span className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400">
+                  <span className="text-[11px] px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
                     Connect
                   </span>
                 )}
@@ -199,7 +199,7 @@ export default function Setup({ onComplete }: SetupProps) {
                       onChange={(e) => setBbEmail(e.target.value)}
                       placeholder="Bitbucket email address"
                       aria-label="Bitbucket email address"
-                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
+                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
                       autoFocus
                     />
                   )}
@@ -209,7 +209,7 @@ export default function Setup({ onComplete }: SetupProps) {
                     onChange={(e) => setToken(e.target.value)}
                     placeholder={cfg.placeholder}
                     aria-label={`${PLATFORM_LABELS[cfg.platform]} personal access token`}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-600 outline-none focus:border-radar-500"
+                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
                     autoFocus={cfg.platform !== 'bitbucket'}
                   />
                   <a
@@ -220,11 +220,11 @@ export default function Setup({ onComplete }: SetupProps) {
                   >
                     {cfg.helpLabel} &rarr;
                   </a>
-                  <div className="rounded-lg bg-gray-900 border border-gray-700 p-2.5">
-                    <p className="text-[10px] text-gray-400 font-medium mb-1.5">Required scopes</p>
+                  <div className="rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-2.5">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mb-1.5">Required scopes</p>
                     {cfg.scopes.map((scope) => (
                       <div key={scope.name} className="py-0.5">
-                        <code className="text-[10px] text-radar-400 bg-gray-800 px-1 py-px rounded">
+                        <code className="text-[10px] text-radar-600 dark:text-radar-400 bg-gray-100 dark:bg-gray-800 px-1 py-px rounded">
                           {scope.name}
                         </code>
                       </div>

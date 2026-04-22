@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import type { AppView, Platform } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
-import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType } from '@/shared/storage';
+import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
+  theme: ThemeMode;
+  onThemeChange: (mode: ThemeMode) => void;
 }
 
-export default function Settings({ onNavigate }: SettingsProps) {
+export default function Settings({ onNavigate, theme, onThemeChange }: SettingsProps) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
 
@@ -80,7 +82,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
                 value={settings.soundId}
                 onChange={(e) => handleChange('soundId', e.target.value as SettingsType['soundId'])}
                 aria-label="Notification sound"
-                className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
+                className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-600 dark:text-gray-400"
               >
                 {SOUND_OPTIONS.map((s) => (
                   <option key={s.id} value={s.id}>{s.label}</option>
@@ -103,10 +105,37 @@ export default function Settings({ onNavigate }: SettingsProps) {
             onClick={() => {
               chrome.runtime.sendMessage({ type: 'TEST_NOTIFICATION' });
             }}
-            className="text-[11px] px-3 py-1 rounded-md border border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-colors"
+            className="text-[11px] px-3 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             Test
           </button>
+        </SettingRow>
+      </Section>
+
+      {/* Appearance */}
+      <Section title="Appearance">
+        <SettingRow
+          label="Theme"
+          description="Switch between light and dark mode"
+        >
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5">
+            {(['light', 'system', 'dark'] as ThemeMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={async () => {
+                  onThemeChange(mode);
+                  await saveSettings({ theme: mode });
+                }}
+                className={`text-[11px] px-2.5 py-1 rounded transition-colors capitalize ${
+                  theme === mode
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
         </SettingRow>
       </Section>
 
@@ -120,7 +149,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
             value={settings.stalePRDays}
             onChange={(e) => handleChange('stalePRDays', Number(e.target.value))}
             aria-label="Stale PR threshold"
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
+            className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-600 dark:text-gray-400"
           >
             <option value={14}>14 days</option>
             <option value={30}>30 days</option>
@@ -139,7 +168,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
             value={settings.pollIntervalSeconds}
             onChange={(e) => handleChange('pollIntervalSeconds', Number(e.target.value))}
             aria-label="Polling interval"
-            className="bg-gray-800 border border-gray-700 rounded-md px-2 py-1 text-xs text-gray-400"
+            className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-600 dark:text-gray-400"
           >
             <option value={30}>30 seconds</option>
             <option value={60}>1 minute</option>
@@ -189,42 +218,42 @@ export default function Settings({ onNavigate }: SettingsProps) {
           href={STORE_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
+          className="block rounded-lg bg-radar-50 dark:bg-radar-950/50 border border-radar-200 dark:border-radar-900/50 px-4 py-3 hover:border-radar-300 dark:hover:border-radar-700/50 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[13px] text-gray-200 font-medium">&#128229; Share with your team</div>
+              <div className="text-[13px] text-gray-800 dark:text-gray-200 font-medium">&#128229; Share with your team</div>
               <div className="text-[11px] text-gray-500 mt-0.5">Works best when your whole team uses it</div>
             </div>
-            <span className="text-gray-600 text-xs">&#8594;</span>
+            <span className="text-gray-400 dark:text-gray-600 text-xs">&#8594;</span>
           </div>
         </a>
         <a
           href={GITHUB_REPO_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
+          className="block rounded-lg bg-radar-50 dark:bg-radar-950/50 border border-radar-200 dark:border-radar-900/50 px-4 py-3 hover:border-radar-300 dark:hover:border-radar-700/50 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[13px] text-gray-200 font-medium">&#9733; Star us on GitHub</div>
+              <div className="text-[13px] text-gray-800 dark:text-gray-200 font-medium">&#9733; Star us on GitHub</div>
               <div className="text-[11px] text-gray-500 mt-0.5">Help others discover PR Radar</div>
             </div>
-            <span className="text-gray-600 text-xs">&#8594;</span>
+            <span className="text-gray-400 dark:text-gray-600 text-xs">&#8594;</span>
           </div>
         </a>
         <a
           href={GITHUB_ISSUES_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-lg bg-radar-950/50 border border-radar-900/50 px-4 py-3 hover:border-radar-700/50 transition-colors"
+          className="block rounded-lg bg-radar-50 dark:bg-radar-950/50 border border-radar-200 dark:border-radar-900/50 px-4 py-3 hover:border-radar-300 dark:hover:border-radar-700/50 transition-colors"
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-[13px] text-gray-200 font-medium">&#128172; Feedback &amp; Ideas</div>
+              <div className="text-[13px] text-gray-800 dark:text-gray-200 font-medium">&#128172; Feedback &amp; Ideas</div>
               <div className="text-[11px] text-gray-500 mt-0.5">Report bugs or suggest features</div>
             </div>
-            <span className="text-gray-600 text-xs">&#8594;</span>
+            <span className="text-gray-400 dark:text-gray-600 text-xs">&#8594;</span>
           </div>
         </a>
       </div>
@@ -253,9 +282,9 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-gray-800">
+    <div className="flex items-center justify-between py-2.5 border-b border-gray-200 dark:border-gray-800">
       <div>
-        <div className="text-[13px] text-gray-200">{label}</div>
+        <div className="text-[13px] text-gray-800 dark:text-gray-200">{label}</div>
         {description && <div className="text-[11px] text-gray-500 mt-0.5">{description}</div>}
       </div>
       {children}
@@ -272,7 +301,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={`relative w-9 h-5 rounded-full transition-colors ${
-        checked ? 'bg-radar-600' : 'bg-gray-700'
+        checked ? 'bg-radar-600' : 'bg-gray-300 dark:bg-gray-700'
       }`}
     >
       <span

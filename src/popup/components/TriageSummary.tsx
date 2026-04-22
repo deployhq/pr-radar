@@ -15,7 +15,7 @@ export default function TriageSummary({ total, counts, activeFilter, onToggleFil
   const isAllActive = activeFilter === null;
 
   return (
-    <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-gray-800">
+    <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
       {/* All chip */}
       <button
         onClick={() => onToggleFilter(null)}
@@ -24,8 +24,8 @@ export default function TriageSummary({ total, counts, activeFilter, onToggleFil
         aria-pressed={isAllActive}
         className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md font-semibold border cursor-pointer transition-colors ${
           isAllActive
-            ? 'bg-radar-900/25 text-radar-300 border-radar-500/50 ring-1 ring-radar-500/15'
-            : 'bg-radar-900/10 text-radar-400 border-radar-800/20'
+            ? 'bg-radar-100 dark:bg-radar-900/25 text-radar-700 dark:text-radar-300 border-radar-300 dark:border-radar-500/50 ring-1 ring-radar-300/30 dark:ring-radar-500/15'
+            : 'bg-radar-50 dark:bg-radar-900/10 text-radar-600 dark:text-radar-400 border-radar-200 dark:border-radar-800/20'
         }`}
       >
         <span className="text-[11px] leading-none" aria-hidden="true">&#x2630;</span>

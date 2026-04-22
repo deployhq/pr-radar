@@ -22,14 +22,14 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
       aria-label="Keyboard shortcuts"
     >
       <div
-        className="bg-gray-900 border border-gray-700 rounded-xl px-5 py-4 w-[280px] shadow-2xl"
+        className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-5 py-4 w-[280px] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-200">Keyboard shortcuts</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-200">Keyboard shortcuts</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-300 text-xs"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xs"
             aria-label="Close shortcuts"
           >
             &#10005;
@@ -38,12 +38,12 @@ export default function KeyboardShortcuts({ onClose }: KeyboardShortcutsProps) {
         <div className="space-y-2">
           {SHORTCUTS.map((s) => (
             <div key={s.action} className="flex items-center justify-between">
-              <span className="text-[12px] text-gray-400">{s.action}</span>
+              <span className="text-[12px] text-gray-600 dark:text-gray-400">{s.action}</span>
               <span className="flex items-center gap-1">
                 {s.keys.map((key, i) => (
                   <span key={i}>
-                    {i > 0 && <span className="text-[10px] text-gray-600 mx-0.5">/</span>}
-                    <kbd className="text-[11px] px-1.5 py-0.5 rounded bg-gray-800 border border-gray-600 text-gray-300 font-mono">
+                    {i > 0 && <span className="text-[10px] text-gray-400 dark:text-gray-600 mx-0.5">/</span>}
+                    <kbd className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-mono">
                       {key}
                     </kbd>
                   </span>

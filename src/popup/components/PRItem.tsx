@@ -62,7 +62,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
   }
 
   return (
-    <div className={`px-4 py-3 border-b border-gray-800 hover:bg-gray-800/30 transition-colors ${isDimmed ? 'opacity-50' : ''} ${focused ? 'ring-1 ring-inset ring-radar-500/60 bg-gray-800/40' : ''}`}>
+    <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors ${isDimmed ? 'opacity-50' : ''} ${focused ? 'ring-1 ring-inset ring-radar-500/60 bg-gray-50 dark:bg-gray-800/40' : ''}`}>
       <a
         href={pr.url}
         target="_blank"
@@ -75,7 +75,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[13px] text-gray-200 font-medium leading-tight truncate flex-1 min-w-0">
+              <span className="text-[13px] text-gray-900 dark:text-gray-200 font-medium leading-tight truncate flex-1 min-w-0">
                 {pr.title}
               </span>
               {!pr.isMerged && mergeState === 'idle' && (
@@ -183,17 +183,17 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
             <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
               <span>{pr.repoFullName} #{pr.number}</span>
               {pr.isAuthor && (
-                <span className="text-[9px] px-1.5 py-px rounded bg-radar-900/50 text-radar-400 font-medium">
+                <span className="text-[9px] px-1.5 py-px rounded bg-radar-100 dark:bg-radar-900/50 text-radar-700 dark:text-radar-400 font-medium">
                   Author
                 </span>
               )}
               {pr.isReviewRequested && !pr.hasReviewed && (
-                <span className="text-[9px] px-1.5 py-px rounded bg-amber-900/50 text-amber-400 font-medium">
+                <span className="text-[9px] px-1.5 py-px rounded bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 font-medium">
                   Review
                 </span>
               )}
               {pr.hasReviewed && !pr.isAuthor && (
-                <span className="text-[9px] px-1.5 py-px rounded bg-gray-700/50 text-gray-400 font-medium">
+                <span className="text-[9px] px-1.5 py-px rounded bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 font-medium">
                   Reviewed
                 </span>
               )}
@@ -202,14 +202,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
         </div>
 
         <div className="flex items-center gap-2 mt-1.5 ml-[30px] flex-wrap">
-          {pr.isDraft && <Badge className="bg-gray-800 text-gray-500">Draft</Badge>}
+          {pr.isDraft && <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-500">Draft</Badge>}
 
           <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} author={pr.author} durationMs={pr.ciDurationMs} />
 
           {pr.approvalCount > 0 && (
             <span title={pr.approvedBy ? `Approved by: ${pr.approvedBy.join(', ')}` : undefined}
               aria-label={`${pr.approvalCount} approval${pr.approvalCount > 1 ? 's' : ''}${pr.approvedBy ? ` by ${pr.approvedBy.join(', ')}` : ''}`}>
-              <Badge className="bg-emerald-900/50 text-emerald-400">
+              <Badge className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400">
                 <span aria-hidden="true">&#x1F464;</span> {pr.approvalCount}
               </Badge>
             </span>
@@ -218,7 +218,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
           {pr.reviewStatus === 'changes_requested' && (
             <span title={pr.changesRequestedBy ? `Changes requested by: ${pr.changesRequestedBy.join(', ')}` : undefined}
               aria-label={`Changes requested${pr.changesRequestedBy ? ` by ${pr.changesRequestedBy.join(', ')}` : ''}`}>
-              <Badge className="bg-red-900/50 text-red-400">
+              <Badge className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400">
                 <span aria-hidden="true">&#x21BB;</span>
               </Badge>
             </span>
@@ -227,7 +227,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
           {pr.unresolvedCommentCount > 0 && (
             <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}
               aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}${pr.unresolvedCommentAuthors ? ` from ${pr.unresolvedCommentAuthors.join(', ')}` : ''}`}>
-              <Badge className="bg-gray-800 text-amber-400">
+              <Badge className="bg-amber-50 dark:bg-gray-800 text-amber-600 dark:text-amber-400">
                 <span aria-hidden="true">&#x1F4AC;</span> {pr.unresolvedCommentCount}
               </Badge>
             </span>
@@ -236,38 +236,38 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
           {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
             <span title={`Pending review from: ${pr.pendingReviewers.join(', ')}`}
               aria-label={`${pr.pendingReviewers.length} pending reviewer${pr.pendingReviewers.length > 1 ? 's' : ''}: ${pr.pendingReviewers.join(', ')}`}>
-              <Badge className="bg-blue-900/50 text-blue-400">
+              <Badge className="bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400">
                 <span aria-hidden="true">&#x23F3;</span> {pr.pendingReviewers.length}
               </Badge>
             </span>
           )}
 
           {pr.hasConflicts && (
-            <Badge className="bg-red-900/50 text-red-400">
+            <Badge className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400">
               Conflicts
             </Badge>
           )}
 
           {pr.deployment && pr.deployment.status !== 'inactive' && (
             <Badge className={
-              pr.deployment.status === 'success' ? 'bg-emerald-900/50 text-emerald-400'
-                : pr.deployment.status === 'failure' ? 'bg-red-900/50 text-red-400'
-                  : 'bg-blue-900/50 text-blue-400'
+              pr.deployment.status === 'success' ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400'
+                : pr.deployment.status === 'failure' ? 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400'
+                  : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400'
             }>
               <span aria-hidden="true">&#x1F680;</span> <span aria-label={`Deployment ${pr.deployment.status}: ${pr.deployment.environment}`}>{pr.deployment.environment}</span>
             </Badge>
           )}
 
           {(pr.additions !== undefined || pr.deletions !== undefined) && (
-            <Badge className="bg-gray-800 text-gray-400">
-              <span className="text-emerald-400">+{pr.additions ?? 0}</span>
+            <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+              <span className="text-emerald-600 dark:text-emerald-400">+{pr.additions ?? 0}</span>
               {' '}
-              <span className="text-red-400">-{pr.deletions ?? 0}</span>
+              <span className="text-red-600 dark:text-red-400">-{pr.deletions ?? 0}</span>
             </Badge>
           )}
 
           <span
-            className="text-[10px] text-gray-600 ml-auto"
+            className="text-[10px] text-gray-400 dark:text-gray-600 ml-auto"
             title={[
               pinned && 'Pinned repo',
               pr.isMerged && 'This PR was merged — tracking CI',
@@ -303,14 +303,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
         <div className="ml-[30px] mt-1">
           <button
             onClick={() => setExpanded(!expanded)}
-            className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors cursor-pointer"
+            className="text-[10px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors cursor-pointer"
             aria-expanded={expanded}
             aria-label={expanded ? 'Hide PR description' : 'Show PR description'}
           >
             <span aria-hidden="true">{expanded ? '\u25BE' : '\u25B8'}</span> {expanded ? 'Hide description' : 'Show description'}
           </button>
           {expanded && (
-            <div className="mt-1 text-[11px] text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">
+            <div className="mt-1 text-[11px] text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap break-words max-h-[120px] overflow-y-auto pr-2">
               {description.length > 500 ? `${description.slice(0, 500)}…` : description}
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { AppView } from '@/shared/types';
-import { getAccounts } from '@/shared/storage';
+import { getAccounts, saveSettings } from '@/shared/storage';
+import { useTheme } from './hooks/useTheme';
 import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
 import Settings from './pages/Settings';
@@ -11,6 +12,7 @@ export default function App() {
   const [view, setView] = useState<AppView | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccounts, setHasAccounts] = useState(false);
+  const { theme, updateTheme } = useTheme();
 
   useEffect(() => {
     async function init() {
@@ -35,7 +37,7 @@ export default function App() {
 
   if (loading || !view) {
     return (
-      <div className="flex items-center justify-center h-[520px] bg-gray-950" role="status" aria-label="Loading PR Radar">
+      <div className="flex items-center justify-center h-[520px] bg-white dark:bg-gray-950" role="status" aria-label="Loading PR Radar">
         <div className="animate-spin rounded-full h-8 w-8 border-2 border-radar-500 border-t-transparent" />
       </div>
     );
@@ -45,8 +47,20 @@ export default function App() {
   const showHeader = view.type !== 'setup' || hasAccounts;
 
   return (
-    <div className="min-h-[520px] flex flex-col bg-gray-950 text-gray-200 rounded-xl overflow-hidden">
-      {showHeader && <Header view={view} onNavigate={setView} />}
+    <div className="min-h-[520px] flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-200 overflow-hidden">
+      {showHeader && (
+        <Header
+          view={view}
+          onNavigate={setView}
+          theme={theme}
+          onThemeToggle={async () => {
+            const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            const next = isDark ? 'light' : 'dark';
+            updateTheme(next);
+            await saveSettings({ theme: next });
+          }}
+        />
+      )}
       <div className="flex-1 overflow-y-auto">
         {view.type === 'setup' && (
           <Setup onComplete={() => setView({ type: 'dashboard', tab: 'mine' })} />
@@ -54,10 +68,10 @@ export default function App() {
         {view.type === 'dashboard' && (
           <Dashboard tab={view.tab ?? 'mine'} onNavigate={setView} />
         )}
-        {view.type === 'settings' && <Settings onNavigate={setView} />}
+        {view.type === 'settings' && <Settings onNavigate={setView} theme={theme} onThemeChange={updateTheme} />}
         {view.type === 'repos' && <Repos />}
       </div>
-      <footer className="flex items-center justify-between px-4 py-2.5 border-t border-gray-800 text-[11px] text-gray-500">
+      <footer className="flex items-center justify-between px-4 py-2.5 border-t border-gray-200 dark:border-gray-800 text-[11px] text-gray-400 dark:text-gray-500">
         <span>
           Made with &lt;3 by{' '}
           <a
@@ -70,8 +84,8 @@ export default function App() {
           </a>
         </span>
         {view.type === 'dashboard' && (
-          <span className="text-gray-600">
-            Press <kbd className="px-1 py-px rounded bg-gray-800 border border-gray-700 text-gray-400 font-mono text-[10px]">?</kbd> for shortcuts
+          <span className="text-gray-400 dark:text-gray-600">
+            Press <kbd className="px-1 py-px rounded bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-mono text-[10px]">?</kbd> for shortcuts
           </span>
         )}
       </footer>

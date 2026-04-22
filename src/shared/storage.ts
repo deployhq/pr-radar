@@ -7,6 +7,8 @@ const REPOS_KEY = 'pr_radar_repos';
 
 // === Settings ===
 
+export type ThemeMode = 'light' | 'dark' | 'system';
+
 export interface Settings {
   pollIntervalSeconds: number;
   notificationsEnabled: boolean;
@@ -15,6 +17,7 @@ export interface Settings {
   soundVolume: number;
   notifyOnComments: boolean;
   stalePRDays: number;
+  theme: ThemeMode;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +28,7 @@ const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.7,
   notifyOnComments: false,
   stalePRDays: 45,
+  theme: 'system',
 };
 
 export async function getSettings(): Promise<Settings> {

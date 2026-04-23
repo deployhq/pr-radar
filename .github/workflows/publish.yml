@@ -52,6 +52,12 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
 
+      - name: Upload & publish to Firefox Add-ons
+        run: npx web-ext-submit@7 --source-dir dist-firefox --channel listed
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+
       - name: Upload & publish to Edge Add-ons
         run: npx edge-webstore-upload@latest upload --source extension-edge.zip --auto-publish
         env:

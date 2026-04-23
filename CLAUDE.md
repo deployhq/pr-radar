@@ -157,8 +157,10 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 
 - **CI**: GitHub Actions runs lint + typecheck + build on push/PR
 - **CWS publish**: Triggered on `v*` tags via `chrome-webstore-upload-cli`
-- **Edge publish**: Triggered on `v*` tags via `edge-webstore-upload` (skipped if secrets not configured)
+- **Firefox publish**: Triggered on `v*` tags via `web-ext-submit`
+- **Edge publish**: Triggered on `v*` tags via `edge-webstore-upload`
 - **Secrets needed (Chrome)**: `CWS_EXTENSION_ID`, `CWS_CLIENT_ID`, `CWS_CLIENT_SECRET`, `CWS_REFRESH_TOKEN`
+- **Secrets needed (Firefox)**: `AMO_JWT_ISSUER`, `AMO_JWT_SECRET`
 - **Secrets needed (Edge)**: `EDGE_PRODUCT_ID`, `EDGE_CLIENT_ID`, `EDGE_API_KEY`
 
 ## Icon

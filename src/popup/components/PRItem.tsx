@@ -134,7 +134,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
                   title={!isMergeable
                     ? [pr.isDraft && 'Draft PR', pr.hasConflicts && 'Has conflicts', pr.ciStatus === 'failed' && 'CI is failing'].filter(Boolean).join(', ')
                     : 'Merge pull request'}
-                  className={`flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border transition-colors ${
+                  className={`flex-shrink-0 text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border transition-colors w-[52px] text-center ${
                     isMergeable
                       ? 'bg-[#238636] text-white border-[#2ea043] hover:bg-[#2ea043] cursor-pointer'
                       : 'bg-[#21262d] text-[#484f58] border-[#30363d] cursor-not-allowed'
@@ -252,7 +252,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeployClick(); }}
                       title="Deploy with DeployHQ"
-                      className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#5740cf] text-white border-[#6b54d9] hover:bg-[#6b54d9] cursor-pointer transition-colors"
+                      className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#5740cf] text-white border-[#6b54d9] hover:bg-[#6b54d9] cursor-pointer transition-colors w-[52px] text-center"
                     >
                       Deploy
                     </button>

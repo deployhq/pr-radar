@@ -202,8 +202,6 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
         </div>
 
         <div className="flex items-center gap-2 mt-1.5 ml-[30px] flex-wrap">
-          {pr.isDraft && <Badge className="bg-gray-100 dark:bg-gray-800 text-gray-500">Draft</Badge>}
-
           <CIBadge status={pr.ciStatus} failedChecks={pr.ciFailedChecks} author={pr.author} durationMs={pr.ciDurationMs} />
 
           {pr.approvalCount > 0 && (
@@ -271,12 +269,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
             title={[
               pinned && 'Pinned repo',
               pr.isMerged && 'This PR was merged — tracking CI',
+              pr.isDraft && !pr.isMerged && 'This PR is a draft',
               pr.isBot && !pr.isMerged && 'This PR was created by a bot',
               isStale && !pr.isMerged && 'This PR is stale — consider closing it',
             ].filter(Boolean).join(' · ') || undefined}
           >
             {pinned && <span className="mr-1 text-yellow-400" aria-label="Pinned repo">{'\u2605'}</span>}
             {pr.isMerged && <span className="mr-1" aria-label="Merged">&#x1F500;</span>}
+            {pr.isDraft && !pr.isMerged && <span className="mr-1" aria-label="Draft PR">&#x270D;&#xFE0F;</span>}
             {pr.isBot && !pr.isMerged && <span className="mr-1" aria-label="Bot PR">&#x1F916;</span>}
             {isStale && !pr.isMerged && <span className="mr-1" aria-label="Stale PR">&#x1F4A4;</span>}
             <span aria-label={`Updated ${timeAgo}`}>{timeAgo}</span>

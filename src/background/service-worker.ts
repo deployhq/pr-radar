@@ -1,9 +1,10 @@
 import type { PullRequest, CIStatus, Message } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
+import * as deployhq from '@/shared/api/deployhq';
 
 const ALARM_NAME = 'pr-radar-poll';
 const STATUS_CACHE_KEY = 'pr_radar_last_statuses';
@@ -109,6 +110,67 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
     settings.then((s) => {
       if (s.soundEnabled) playSound(s.soundId, s.soundVolume);
     });
+  } else if (message.type === 'TEST_DEPLOYHQ') {
+    const { slug, email, apiKey } = message.payload;
+    (async () => {
+      const result = await deployhq.testConnection(slug, email, apiKey);
+      if (result.success) {
+        await saveDeployHQAccount({
+          slug,
+          email,
+          apiKey,
+          connected: true,
+          accountName: result.accountName,
+        });
+      }
+      sendResponse(result);
+    })();
+    return true;
+  } else if (message.type === 'GET_DEPLOYHQ_SERVERS') {
+    const { repoFullName } = message.payload;
+    (async () => {
+      const dhqAccount = await getDeployHQAccount();
+      if (!dhqAccount?.connected) {
+        sendResponse({ success: false, servers: [], message: 'DeployHQ not connected' });
+        return;
+      }
+      const mapping = await getDeployHQRepoMapping();
+      const permalink = mapping[repoFullName];
+      if (!permalink) {
+        sendResponse({ success: false, servers: [], message: 'No matching project' });
+        return;
+      }
+      try {
+        const servers = await deployhq.fetchServers(
+          dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey, permalink,
+        );
+        sendResponse({ success: true, servers });
+      } catch (err) {
+        sendResponse({ success: false, servers: [], message: err instanceof Error ? err.message : 'Failed to fetch servers' });
+      }
+    })();
+    return true;
+  } else if (message.type === 'CREATE_DEPLOYHQ_DEPLOYMENT') {
+    const { repoFullName, serverIdentifier } = message.payload;
+    (async () => {
+      const dhqAccount = await getDeployHQAccount();
+      if (!dhqAccount?.connected) {
+        sendResponse({ success: false, message: 'DeployHQ not connected' });
+        return;
+      }
+      const mapping = await getDeployHQRepoMapping();
+      const permalink = mapping[repoFullName];
+      if (!permalink) {
+        sendResponse({ success: false, message: 'No matching project' });
+        return;
+      }
+      const result = await deployhq.createDeployment(
+        dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey, permalink, serverIdentifier,
+      );
+      sendResponse(result);
+      if (result.success) pollPRs();
+    })();
+    return true;
   }
 });
 
@@ -258,6 +320,49 @@ async function pollPRs() {
           // GitLab/Bitbucket: keep merged PR with last-known CI status during TTL
           allPRs.push(pr);
         }
+      }
+    }
+
+    // Enrich PRs with DeployHQ project matching and deployment status
+    const dhqAccount = await getDeployHQAccount();
+    if (dhqAccount?.connected) {
+      try {
+        const projects = await deployhq.fetchProjects(
+          dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey,
+        );
+        const mapping: Record<string, string> = {};
+
+        for (const pr of allPRs) {
+          const project = deployhq.matchRepoToProject(pr.repoFullName, pr.platform, projects);
+          if (project) {
+            pr.deployhqProjectId = project.permalink;
+            mapping[pr.repoFullName] = project.permalink;
+          }
+        }
+
+        await saveDeployHQRepoMapping(mapping);
+
+        // Fetch latest deployments for matched projects and set deployment status
+        const checkedPermalinks = new Set<string>();
+        const deploymentsByPermalink: Record<string, Array<{ endRevision: string; serverName: string; url: string }>> = {};
+
+        for (const pr of allPRs) {
+          if (!pr.deployhqProjectId || !pr.headSha) continue;
+          const permalink = pr.deployhqProjectId;
+          if (!checkedPermalinks.has(permalink)) {
+            checkedPermalinks.add(permalink);
+            deploymentsByPermalink[permalink] = await deployhq.fetchLatestDeployments(
+              dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey, permalink,
+            );
+          }
+          const deployments = deploymentsByPermalink[permalink] || [];
+          const match = deployments.find((d) => d.endRevision === pr.headSha);
+          if (match) {
+            pr.deployhqDeployment = { serverName: match.serverName, url: match.url };
+          }
+        }
+      } catch (err) {
+        console.error('[PR Radar] DeployHQ enrichment failed:', err);
       }
     }
 

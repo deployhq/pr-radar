@@ -27,6 +27,7 @@ Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=git
 - **Toolbar badge** — Icon shows pass/fail/running count at a glance
 - **Instant load** — Cached data shown immediately, refreshes in background
 - **Keyboard shortcuts** — Navigate PRs with `j`/`k`, open with `o`, switch tabs with `1`/`2`/`3`, search with `/`, press `?` for the full list
+- **DeployHQ integration** — Optionally connect your [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme) account to deploy directly from the dashboard with server selection
 - **Privacy-first** — Your token stays on your device. No backend, no tracking
 
 ## Install
@@ -119,6 +120,15 @@ The popup shows cached data instantly and refreshes in the background — no loa
 | Gray `?` | Polling error |
 
 Stale PRs are excluded from the badge count.
+
+## DeployHQ Integration (optional)
+
+PR Radar works perfectly on its own — the DeployHQ integration is entirely opt-in. If you use [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme) for deployments, you can connect your account to:
+
+- **Deploy from the dashboard** — Click Deploy on any PR whose repo matches a DeployHQ project, pick a server or server group, and confirm
+- **See deployment status** — A persistent badge shows which server a PR's revision is deployed to, linking directly to the DeployHQ dashboard
+
+To set up: go to **Settings > Accounts > DeployHQ > Connect**, enter your account slug, email, and API key (found in DeployHQ > Settings > Security), and click Connect.
 
 ## Settings
 

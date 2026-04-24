@@ -55,6 +55,34 @@ export interface PullRequest {
     status: 'success' | 'failure' | 'pending' | 'inactive';
     url?: string;
   };
+  deployhqProjectId?: string;
+  deployhqDeployment?: {
+    serverName: string;
+    url: string;
+  };
+}
+
+// === DeployHQ ===
+
+export interface DeployHQAccount {
+  slug: string;
+  email: string;
+  apiKey: string;
+  connected: boolean;
+  accountName?: string;
+}
+
+export interface DeployHQProject {
+  identifier: string;
+  name: string;
+  permalink: string;
+  repoUrl: string;
+}
+
+export interface DeployHQServer {
+  identifier: string;
+  name: string;
+  serverType: 'server' | 'server_group';
 }
 
 // === Watched repos ===
@@ -86,4 +114,7 @@ export type Message =
   | { type: 'GET_PRS'; payload: { tab: DashboardTab } }
   | { type: 'TEST_NOTIFICATION' }
   | { type: 'MERGE_PR'; payload: { platform: Platform; repoFullName: string; prNumber: number } }
-  | { type: 'DELETE_BRANCH'; payload: { platform: Platform; repoFullName: string; branch: string } };
+  | { type: 'DELETE_BRANCH'; payload: { platform: Platform; repoFullName: string; branch: string } }
+  | { type: 'TEST_DEPLOYHQ'; payload: { slug: string; email: string; apiKey: string } }
+  | { type: 'GET_DEPLOYHQ_SERVERS'; payload: { repoFullName: string } }
+  | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string } };

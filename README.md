@@ -1,5 +1,10 @@
 # PR Radar
 
+[![GitHub stars](https://img.shields.io/github/stars/deployhq/pr-radar?style=social)](https://github.com/deployhq/pr-radar)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/users/hkombgibegjffiadmekpiabdakkoidmh?label=Chrome%20users)](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh)
+[![Firefox Add-on](https://img.shields.io/amo/users/pr-radar?label=Firefox%20users)](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/)
+[![License: MIT](https://img.shields.io/github/license/deployhq/pr-radar)](LICENSE)
+
 **All your PRs in one place.** CI status, unresolved comments, deployments, and sound alerts — right from your browser toolbar. No tab required.
 
 <img width="1119" height="623" alt="image" src="https://github.com/user-attachments/assets/f70cbb13-89d3-4f20-adf4-0c22e21f5fb4" />

@@ -252,6 +252,8 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
               description="Not connected"
             >
               <button
+                aria-expanded={dhqExpanded}
+                aria-controls="deployhq-connect-form"
                 onClick={() => setDhqExpanded(!dhqExpanded)}
                 className="text-[11px] text-radar-400 hover:underline"
               >
@@ -259,7 +261,7 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
               </button>
             </SettingRow>
             {dhqExpanded && (
-              <div className="py-3 border-b border-gray-200 dark:border-gray-800">
+              <div id="deployhq-connect-form" className="py-3 border-b border-gray-200 dark:border-gray-800">
                 <div className="space-y-2.5">
                   <div>
                     <label htmlFor="dhq-slug" className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Account</label>
@@ -307,7 +309,7 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
                   {' '}in DeployHQ
                 </p>
                 {dhqError && (
-                  <p className="text-[11px] text-red-400 mt-1.5">{dhqError}</p>
+                  <p role="alert" className="text-[11px] text-red-400 mt-1.5">{dhqError}</p>
                 )}
                 <button
                   onClick={async () => {

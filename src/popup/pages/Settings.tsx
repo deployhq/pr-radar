@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { AppView, Platform } from '@/shared/types';
+import type { AppView, Platform, DeployHQAccount } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
-import { getSettings, saveSettings, getAccounts, removeAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
+import { getSettings, saveSettings, getAccounts, removeAccount, getDeployHQAccount, removeDeployHQAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
 
 interface SettingsProps {
@@ -14,11 +14,26 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
 
+  // DeployHQ state
+  const [dhqAccount, setDhqAccount] = useState<DeployHQAccount | null>(null);
+  const [dhqSlug, setDhqSlug] = useState('');
+  const [dhqEmail, setDhqEmail] = useState('');
+  const [dhqApiKey, setDhqApiKey] = useState('');
+  const [dhqTesting, setDhqTesting] = useState(false);
+  const [dhqError, setDhqError] = useState('');
+  const [dhqExpanded, setDhqExpanded] = useState(false);
+
   useEffect(() => {
     async function load() {
-      const [s, accounts] = await Promise.all([getSettings(), getAccounts()]);
+      const [s, accounts, dhq] = await Promise.all([getSettings(), getAccounts(), getDeployHQAccount()]);
       setSettings(s);
       setConnectedPlatforms(accounts.map((a) => ({ platform: a.platform, username: a.username })));
+      if (dhq) {
+        setDhqAccount(dhq);
+        setDhqSlug(dhq.slug);
+        setDhqEmail(dhq.email);
+        setDhqApiKey(dhq.apiKey);
+      }
     }
     load();
   }, []);
@@ -210,6 +225,129 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
               </button>
             </SettingRow>
           ))}
+        {dhqAccount?.connected ? (
+          <SettingRow
+            label="DeployHQ"
+            description={`${dhqAccount.slug}.deployhq.com`}
+          >
+            <button
+              onClick={async () => {
+                await removeDeployHQAccount();
+                setDhqAccount(null);
+                setDhqSlug('');
+                setDhqEmail('');
+                setDhqApiKey('');
+                setDhqError('');
+                setDhqExpanded(false);
+              }}
+              className="text-[11px] text-gray-500 hover:text-red-400 transition-colors"
+            >
+              Disconnect
+            </button>
+          </SettingRow>
+        ) : (
+          <>
+            <SettingRow
+              label="DeployHQ"
+              description="Not connected"
+            >
+              <button
+                onClick={() => setDhqExpanded(!dhqExpanded)}
+                className="text-[11px] text-radar-400 hover:underline"
+              >
+                {dhqExpanded ? 'Cancel' : 'Connect'}
+              </button>
+            </SettingRow>
+            {dhqExpanded && (
+              <div className="py-3 border-b border-gray-200 dark:border-gray-800">
+                <div className="space-y-2.5">
+                  <div>
+                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Account</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={dhqSlug}
+                        onChange={(e) => { setDhqSlug(e.target.value); setDhqError(''); }}
+                        placeholder="my-company"
+                        disabled={dhqTesting}
+                        className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-800 dark:text-gray-200 w-[130px] disabled:opacity-50"
+                      />
+                      <span className="text-[11px] text-gray-500">.deployhq.com</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={dhqEmail}
+                      onChange={(e) => { setDhqEmail(e.target.value); setDhqError(''); }}
+                      placeholder="you@company.com"
+                      disabled={dhqTesting}
+                      className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-800 dark:text-gray-200 w-full disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">API key</label>
+                    <input
+                      type="password"
+                      value={dhqApiKey}
+                      onChange={(e) => { setDhqApiKey(e.target.value); setDhqError(''); }}
+                      placeholder="Your API key"
+                      disabled={dhqTesting}
+                      className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2 py-1 text-xs text-gray-800 dark:text-gray-200 w-full disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-2">
+                  Find your API key in{' '}
+                  <span className="text-radar-400">Settings &#8594; Security</span>
+                  {' '}in DeployHQ
+                </p>
+                {dhqError && (
+                  <p className="text-[11px] text-red-400 mt-1.5">{dhqError}</p>
+                )}
+                <button
+                  onClick={async () => {
+                    if (!dhqSlug || !dhqEmail || !dhqApiKey) {
+                      setDhqError('All fields are required');
+                      return;
+                    }
+                    setDhqTesting(true);
+                    setDhqError('');
+                    try {
+                      const result = await chrome.runtime.sendMessage({
+                        type: 'TEST_DEPLOYHQ',
+                        payload: { slug: dhqSlug, email: dhqEmail, apiKey: dhqApiKey },
+                      }) as { success: boolean; accountName?: string; message?: string };
+                      if (result.success) {
+                        setDhqAccount({
+                          slug: dhqSlug,
+                          email: dhqEmail,
+                          apiKey: dhqApiKey,
+                          connected: true,
+                          accountName: result.accountName,
+                        });
+                        setDhqExpanded(false);
+                      } else {
+                        setDhqError(result.message || 'Connection failed');
+                      }
+                    } catch (err) {
+                      setDhqError(err instanceof Error ? err.message : 'Failed to connect');
+                    }
+                    setDhqTesting(false);
+                  }}
+                  disabled={dhqTesting}
+                  className="mt-3 text-[11px] px-3 py-1.5 rounded-md font-semibold bg-[#5740cf] text-white border border-[#6b54d9] hover:bg-[#6b54d9] transition-colors disabled:opacity-60 disabled:cursor-wait flex items-center gap-1.5"
+                >
+                  {dhqTesting && (
+                    <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  )}
+                  {dhqTesting ? 'Connecting...' : 'Connect'}
+                </button>
+              </div>
+            )}
+          </>
+        )}
       </Section>
 
       {/* Community */}

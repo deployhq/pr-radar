@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { PullRequest, Message } from '@/shared/types';
+import type { PullRequest, Message, DeployHQServer } from '@/shared/types';
 import CIBadge from './CIBadge';
 import PlatformIcon from './PlatformIcon';
 
@@ -16,6 +16,10 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
   const [branchError, setBranchError] = useState('');
+  const [deployState, setDeployState] = useState<'idle' | 'loading' | 'selecting' | 'deploying' | 'deployed' | 'error'>('idle');
+  const [deployError, setDeployError] = useState('');
+  const [servers, setServers] = useState<DeployHQServer[]>([]);
+  const [selectedServer, setSelectedServer] = useState('');
   const [expanded, setExpanded] = useState(false);
   const description = pr.description?.trim();
   const timeAgo = getTimeAgo(pr.updatedAt);
@@ -58,6 +62,51 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
     } catch {
       setBranchError('Failed to delete branch');
       setBranchState('error');
+    }
+  }
+
+  async function handleDeployClick() {
+    setDeployState('loading');
+    setDeployError('');
+    try {
+      const result = await chrome.runtime.sendMessage({
+        type: 'GET_DEPLOYHQ_SERVERS',
+        payload: { repoFullName: pr.repoFullName },
+      } satisfies Message) as { success: boolean; servers: DeployHQServer[]; message?: string };
+      if (result.success && result.servers.length > 0) {
+        setServers(result.servers);
+        setSelectedServer(result.servers[0].identifier);
+        setDeployState('selecting');
+      } else {
+        setDeployError(result.message || 'No servers found');
+        setDeployState('error');
+      }
+    } catch {
+      setDeployError('Failed to fetch servers');
+      setDeployState('error');
+    }
+  }
+
+  async function handleDeploy() {
+    if (!selectedServer) return;
+    const server = servers.find((s) => s.identifier === selectedServer);
+    if (!server) return;
+    setDeployState('deploying');
+    setDeployError('');
+    try {
+      const result = await chrome.runtime.sendMessage({
+        type: 'CREATE_DEPLOYHQ_DEPLOYMENT',
+        payload: { repoFullName: pr.repoFullName, serverIdentifier: server.identifier, serverType: server.serverType },
+      } satisfies Message) as { success: boolean; message: string };
+      if (result.success) {
+        setDeployState('deployed');
+      } else {
+        setDeployError(result.message);
+        setDeployState('error');
+      }
+    } catch {
+      setDeployError('Failed to create deployment');
+      setDeployState('error');
     }
   }
 
@@ -197,6 +246,75 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
                   Reviewed
                 </span>
               )}
+              {pr.deployhqProjectId && (
+                <span className="ml-auto flex items-center gap-1">
+                  {deployState === 'idle' && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeployClick(); }}
+                      title="Deploy with DeployHQ"
+                      className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#5740cf] text-white border-[#6b54d9] hover:bg-[#6b54d9] cursor-pointer transition-colors"
+                    >
+                      Deploy
+                    </button>
+                  )}
+                  {deployState === 'loading' && (
+                    <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#a78bfa] border-[#30363d]" role="status" aria-label="Loading servers">
+                      <span className="inline-block w-2.5 h-2.5 border-[1.5px] border-[#a78bfa]/30 border-t-[#a78bfa] rounded-full animate-spin align-middle" />
+                    </span>
+                  )}
+                  {deployState === 'selecting' && (
+                    <>
+                      <select
+                        value={selectedServer}
+                        onChange={(e) => { e.stopPropagation(); setSelectedServer(e.target.value); }}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                        className="bg-gray-50 dark:bg-[#12121e] border border-gray-300 dark:border-[#2a2a3e] rounded-md px-1 py-0.5 text-[10px] text-gray-800 dark:text-gray-200 max-w-[140px]"
+                        aria-label="Select server"
+                      >
+                        {servers.map((s) => (
+                          <option key={s.identifier} value={s.identifier}>
+                            {s.name}{s.serverType === 'server_group' ? ' (Group)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeploy(); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#5740cf] text-white border-[#6b54d9] hover:bg-[#6b54d9] cursor-pointer transition-colors"
+                      >
+                        Deploy
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeployState('idle'); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#c9d1d9] border-[#30363d] hover:bg-[#30363d] cursor-pointer transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  {deployState === 'deploying' && (
+                    <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#a78bfa] border-[#30363d]" role="status" aria-label="Deploying">
+                      <span className="inline-block w-2.5 h-2.5 border-[1.5px] border-[#a78bfa]/30 border-t-[#a78bfa] rounded-full animate-spin align-middle mr-1" />
+                      Deploying...
+                    </span>
+                  )}
+                  {deployState === 'deployed' && (
+                    <span className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#5740cf] text-white border-[#5740cf]">
+                      &#x2714; Deployed
+                    </span>
+                  )}
+                  {deployState === 'error' && (
+                    <>
+                      <span className="text-[10px] text-red-400 truncate max-w-[120px]" title={deployError}>{deployError}</span>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDeployState('idle'); }}
+                        className="text-[10px] leading-none px-2 py-0.5 rounded-md font-semibold border bg-[#21262d] text-[#c9d1d9] border-[#30363d] hover:bg-[#30363d] cursor-pointer transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -254,6 +372,21 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
             }>
               <span aria-hidden="true">&#x1F680;</span> <span aria-label={`Deployment ${pr.deployment.status}: ${pr.deployment.environment}`}>{pr.deployment.environment}</span>
             </Badge>
+          )}
+
+          {pr.deployhqDeployment && (
+            <a
+              href={pr.deployhqDeployment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={`Deployed to ${pr.deployhqDeployment.serverName} \u2014 View in DeployHQ`}
+              aria-label={`Deployed to ${pr.deployhqDeployment.serverName}`}
+            >
+              <Badge className="bg-[#5740cf]/15 text-[#a78bfa] hover:bg-[#5740cf]/25 cursor-pointer transition-colors">
+                <span aria-hidden="true">&#x1F680;</span> {pr.deployhqDeployment.serverName}
+              </Badge>
+            </a>
           )}
 
           {(pr.additions !== undefined || pr.deletions !== undefined) && (

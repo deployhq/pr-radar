@@ -1,4 +1,4 @@
-import type { PlatformAccount, WatchedRepo, Platform } from './types';
+import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount } from './types';
 import type { SoundId } from './constants';
 
 const ACCOUNTS_KEY = 'pr_radar_accounts';
@@ -106,6 +106,33 @@ export async function saveCachedPRs(prs: PullRequest[]): Promise<void> {
   });
 }
 
+// === DeployHQ ===
+
+const DEPLOYHQ_ACCOUNT_KEY = 'pr_radar_deployhq';
+const DEPLOYHQ_MAPPING_KEY = 'pr_radar_deployhq_mapping';
+
+export async function getDeployHQAccount(): Promise<DeployHQAccount | null> {
+  const result = await chrome.storage.local.get(DEPLOYHQ_ACCOUNT_KEY);
+  return result[DEPLOYHQ_ACCOUNT_KEY] ?? null;
+}
+
+export async function saveDeployHQAccount(account: DeployHQAccount): Promise<void> {
+  await chrome.storage.local.set({ [DEPLOYHQ_ACCOUNT_KEY]: account });
+}
+
+export async function removeDeployHQAccount(): Promise<void> {
+  await chrome.storage.local.remove([DEPLOYHQ_ACCOUNT_KEY, DEPLOYHQ_MAPPING_KEY]);
+}
+
+export async function getDeployHQRepoMapping(): Promise<Record<string, string>> {
+  const result = await chrome.storage.local.get(DEPLOYHQ_MAPPING_KEY);
+  return result[DEPLOYHQ_MAPPING_KEY] ?? {};
+}
+
+export async function saveDeployHQRepoMapping(mapping: Record<string, string>): Promise<void> {
+  await chrome.storage.local.set({ [DEPLOYHQ_MAPPING_KEY]: mapping });
+}
+
 // === Install date & star prompt ===
 
 const INSTALL_DATE_KEY = 'pr_radar_install_date';
@@ -119,6 +146,8 @@ export async function clearAll(): Promise<void> {
     PR_CACHE_KEY,
     INSTALL_DATE_KEY,
     STAR_PROMPT_DISMISSED_KEY,
+    DEPLOYHQ_ACCOUNT_KEY,
+    DEPLOYHQ_MAPPING_KEY,
   ]);
 }
 

@@ -70,6 +70,7 @@ src/
       github.ts                  # GitHub REST + GraphQL API (PRs, CI, reviews, threads, deployments, orgs, merge)
       gitlab.ts                  # GitLab REST API (MRs, CI pipelines, discussions, approvals, deployments, merge)
       bitbucket.ts               # Bitbucket REST API (PRs, pipelines, comments, participants, merge, workspaces)
+      deployhq.ts                # DeployHQ REST API (projects, servers, deployments — opt-in integration)
 public/
   offscreen.html                 # Offscreen document for audio playback (references offscreen.js)
   offscreen.js                   # Audio player (separate file required by MV3 CSP - no inline scripts)
@@ -106,6 +107,17 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **CI status**: From pipelines API filtered by source branch
 - **Review tracking**: `hasReviewed` derived from participant state
 - **Limitations**: No draft PR detection (Bitbucket doesn't support drafts), no conflict detection via API
+
+### DeployHQ (opt-in)
+
+The extension works fully without DeployHQ. This integration is entirely opt-in — configured in Settings > Accounts > DeployHQ.
+
+- **Auth**: HTTP Basic auth (`email:apiKey` base64-encoded) against `https://{slug}.deployhq.com`
+- **REST endpoints**: `/account` (test connection), `/projects` + `/projects/{permalink}` (list projects with repo URLs), `/projects/{permalink}/servers` + `/server_groups` (deployment targets), `/projects/{permalink}/deployments` (create deployment)
+- **Repo matching**: During polling, fetches DeployHQ projects and matches their repository URLs against PR `repoFullName`. Mapping cached in `chrome.storage.local`
+- **Deployment status**: Checks each server's `last_revision` against PR `headSha` to show persistent deployment badges
+- **Deploy from dashboard**: Deploy button on subtitle row for matched PRs; inline server/group selector with confirm/cancel flow
+- **Deployment badge**: Shown in badge row as clickable `🚀 ServerName` linking to the DeployHQ dashboard
 
 ## Key Design Decisions
 
@@ -151,6 +163,7 @@ Uses PATs (Personal Access Tokens) — no backend needed. Setup page links pre-f
 - **Compact badges** — Icon-only CI status, icon+count for approvals (👤), unresolved comments (💬), pending reviewers (⏳), changes requested (↻); full details in tooltips
 - **Keyboard shortcuts** — `j`/`k` or arrows navigate PR list with visual focus ring, `o`/`Enter` opens PR, `1`/`2`/`3` switch tabs, `/` focuses search, `r` refreshes, `Escape` clears search/filter/focus, `?` toggles cheat sheet overlay; all shortcuts disabled when search input is focused (except Escape); "Press ? for shortcuts" hint in footer
 - **Accessibility** — ARIA labels/roles on all interactive elements, `role="tab"`/`role="switch"`/`role="checkbox"` semantics, `aria-live` regions for status updates, `aria-expanded` on collapsible sections, decorative icons hidden from screen readers, form inputs labeled
+- **DeployHQ integration (opt-in)** — Connect your DeployHQ account in Settings to deploy directly from the dashboard; select server/group with confirm step; persistent deployment badge (`🚀 ServerName`) links to DeployHQ dashboard; works for deployments made inside or outside PR Radar; the extension works fully without enabling this
 - **Branding** — "Made with love by DeployHQ" footer with UTM tracking
 
 ## Publishing

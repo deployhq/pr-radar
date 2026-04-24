@@ -24,7 +24,8 @@
     "https://api.github.com/*",
     "https://gitlab.com/*",
     "https://api.bitbucket.org/*",
-    "https://id.atlassian.com/*"
+    "https://id.atlassian.com/*",
+    "https://*.deployhq.com/*"
   ],
   "{{chrome}}.background": {
     "service_worker": "src/background/service-worker.ts",

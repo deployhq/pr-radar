@@ -1,6 +1,6 @@
 {
   "name": "pr-radar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "PR Radar - All your PRs in one place. CI status, comments, sound alerts. Free, by DeployHQ.",
   "private": false,
   "type": "module",

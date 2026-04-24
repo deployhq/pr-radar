@@ -117,4 +117,4 @@ export type Message =
   | { type: 'DELETE_BRANCH'; payload: { platform: Platform; repoFullName: string; branch: string } }
   | { type: 'TEST_DEPLOYHQ'; payload: { slug: string; email: string; apiKey: string } }
   | { type: 'GET_DEPLOYHQ_SERVERS'; payload: { repoFullName: string } }
-  | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string; serverType: 'server' | 'server_group' } };
+  | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string } };

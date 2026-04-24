@@ -96,7 +96,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
     try {
       const result = await chrome.runtime.sendMessage({
         type: 'CREATE_DEPLOYHQ_DEPLOYMENT',
-        payload: { repoFullName: pr.repoFullName, serverIdentifier: server.identifier, serverType: server.serverType },
+        payload: { repoFullName: pr.repoFullName, serverIdentifier: server.identifier },
       } satisfies Message) as { success: boolean; message: string };
       if (result.success) {
         setDeployState('deployed');

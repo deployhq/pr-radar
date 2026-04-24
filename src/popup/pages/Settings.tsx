@@ -262,9 +262,10 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
               <div className="py-3 border-b border-gray-200 dark:border-gray-800">
                 <div className="space-y-2.5">
                   <div>
-                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Account</label>
+                    <label htmlFor="dhq-slug" className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Account</label>
                     <div className="flex items-center gap-1">
                       <input
+                        id="dhq-slug"
                         type="text"
                         value={dhqSlug}
                         onChange={(e) => { setDhqSlug(e.target.value); setDhqError(''); }}
@@ -276,8 +277,9 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Email</label>
+                    <label htmlFor="dhq-email" className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">Email</label>
                     <input
+                      id="dhq-email"
                       type="email"
                       value={dhqEmail}
                       onChange={(e) => { setDhqEmail(e.target.value); setDhqError(''); }}
@@ -287,8 +289,9 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
                     />
                   </div>
                   <div>
-                    <label className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">API key</label>
+                    <label htmlFor="dhq-api-key" className="block text-[12px] text-gray-500 dark:text-gray-400 mb-1">API key</label>
                     <input
+                      id="dhq-api-key"
                       type="password"
                       value={dhqApiKey}
                       onChange={(e) => { setDhqApiKey(e.target.value); setDhqError(''); }}

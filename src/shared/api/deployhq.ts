@@ -1,4 +1,4 @@
-import type { DeployHQProject, DeployHQServer } from '../types';
+import type { DeployHQProject, DeployHQServer, Platform } from '../types';
 
 // === Base fetch helper ===
 
@@ -101,7 +101,28 @@ export async function fetchProjects(
 
 // === Repo matching ===
 
-function normalizeRepoPath(url: string): string {
+export function extractRepoHost(url: string): string {
+  let cleaned = url;
+
+  // Handle SSH URLs: git@github.com:owner/repo → github.com
+  if (cleaned.includes('@') && cleaned.includes(':') && !cleaned.includes('://')) {
+    cleaned = cleaned.replace(/^.*@/, '').replace(/:.*$/, '');
+    return cleaned.toLowerCase();
+  }
+
+  // Strip protocol
+  cleaned = cleaned.replace(/^(https?:\/\/|ssh:\/\/)/, '');
+
+  // Extract host (everything before first /)
+  const slashIdx = cleaned.indexOf('/');
+  if (slashIdx > 0) {
+    return cleaned.substring(0, slashIdx).toLowerCase();
+  }
+
+  return cleaned.toLowerCase();
+}
+
+export function extractRepoPath(url: string): string {
   let path = url;
 
   // Handle SSH URLs: git@github.com:owner/repo.git → github.com/owner/repo
@@ -124,15 +145,27 @@ function normalizeRepoPath(url: string): string {
   return path.toLowerCase();
 }
 
+const PLATFORM_HOSTS: Record<Platform, string[]> = {
+  github: ['github.com'],
+  gitlab: ['gitlab.com'],
+  bitbucket: ['bitbucket.org'],
+};
+
 export function matchRepoToProject(
   repoFullName: string,
+  platform: Platform,
   projects: DeployHQProject[],
 ): DeployHQProject | null {
   const normalizedRepo = repoFullName.toLowerCase();
+  const platformHosts = PLATFORM_HOSTS[platform];
 
   for (const project of projects) {
-    const normalizedProjectRepo = normalizeRepoPath(project.repoUrl);
-    if (normalizedProjectRepo === normalizedRepo) {
+    const projectPath = extractRepoPath(project.repoUrl);
+    if (projectPath !== normalizedRepo) continue;
+
+    // Verify the host matches the platform to avoid cross-provider collisions
+    const projectHost = extractRepoHost(project.repoUrl);
+    if (platformHosts.some((h) => projectHost.includes(h))) {
       return project;
     }
   }

@@ -333,7 +333,7 @@ async function pollPRs() {
         const mapping: Record<string, string> = {};
 
         for (const pr of allPRs) {
-          const project = deployhq.matchRepoToProject(pr.repoFullName, projects);
+          const project = deployhq.matchRepoToProject(pr.repoFullName, pr.platform, projects);
           if (project) {
             pr.deployhqProjectId = project.permalink;
             mapping[pr.repoFullName] = project.permalink;

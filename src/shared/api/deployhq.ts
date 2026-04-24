@@ -110,16 +110,17 @@ export function extractRepoHost(url: string): string {
     return cleaned.toLowerCase();
   }
 
-  // Strip protocol
+  // Strip protocol and user@
   cleaned = cleaned.replace(/^(https?:\/\/|ssh:\/\/)/, '');
+  cleaned = cleaned.replace(/^[^@]+@/, '');
 
-  // Extract host (everything before first /)
+  // Extract host (everything before first /), strip port
   const slashIdx = cleaned.indexOf('/');
   if (slashIdx > 0) {
-    return cleaned.substring(0, slashIdx).toLowerCase();
+    return cleaned.substring(0, slashIdx).replace(/:\d+$/, '').toLowerCase();
   }
 
-  return cleaned.toLowerCase();
+  return cleaned.replace(/:\d+$/, '').toLowerCase();
 }
 
 export function extractRepoPath(url: string): string {
@@ -165,7 +166,7 @@ export function matchRepoToProject(
 
     // Verify the host matches the platform to avoid cross-provider collisions
     const projectHost = extractRepoHost(project.repoUrl);
-    if (platformHosts.some((h) => projectHost.includes(h))) {
+    if (platformHosts.includes(projectHost)) {
       return project;
     }
   }

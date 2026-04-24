@@ -161,10 +161,13 @@ async function hydratePR(
     fetchDiffStats(token, repoFullName, pr.id),
   ]);
 
-  const reviewStatus = deriveBBReviewStatus(pr.participants);
-  const approvalCount = pr.participants.filter((p) => p.approved).length;
+  const participants = pr.participants ?? [];
+  const reviewers = pr.reviewers ?? [];
+
+  const reviewStatus = deriveBBReviewStatus(participants);
+  const approvalCount = participants.filter((p) => p.approved).length;
   const changesRequestedBy = [...new Set(
-    pr.participants
+    participants
       .filter((p) => p.role === 'REVIEWER' && p.state === 'changes_requested')
       .map((p) => p.user.nickname),
   )];
@@ -173,11 +176,11 @@ async function hydratePR(
   const unresolvedCommentAuthors = [...new Set(
     unresolvedComments.map((c) => c.user?.nickname).filter((n): n is string => !!n),
   )];
-  const isReviewRequested = pr.reviewers.some((r) => r.nickname === username);
-  const hasReviewed = pr.participants.some(
+  const isReviewRequested = reviewers.some((r) => r.nickname === username);
+  const hasReviewed = participants.some(
     (p) => p.user.nickname === username && p.role === 'REVIEWER' && p.state !== null,
   );
-  const pendingReviewers = pr.participants
+  const pendingReviewers = participants
     .filter((p) => p.role === 'REVIEWER' && p.state === null && !p.approved)
     .map((p) => p.user.nickname);
 
@@ -281,6 +284,7 @@ async function fetchComments(token: string, repoFullName: string, prId: number):
 }
 
 export function deriveBBReviewStatus(participants: { user: { display_name: string; nickname: string; links: { avatar: { href: string } } }; role: string; approved: boolean; state: string | null }[]): ReviewStatus {
+  if (!participants?.length) return 'none';
   const reviewers = participants.filter((p) => p.role === 'REVIEWER');
   if (!reviewers.length) return 'none';
 

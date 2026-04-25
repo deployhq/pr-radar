@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "PR Radar – Pull Request Dashboard for GitHub, GitLab & Bitbucket",
+  "name": "PR Radar – GitHub, GitLab & Bitbucket PRs",
   "description": "Track PRs, CI status, code reviews & deployments across GitHub, GitLab and Bitbucket. No backend, free forever. By DeployHQ.",
   "version": "0.4.2",
   "icons": {

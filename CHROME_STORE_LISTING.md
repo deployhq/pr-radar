@@ -2,13 +2,13 @@
 
 Exact copy to paste into the CWS developer dashboard. Each section matches a field in the dashboard.
 
-## Title (max 75 chars)
+## Title (max 75 chars — set in CWS dashboard, overrides manifest name)
 
 ```
 PR Radar – Pull Request Dashboard for GitHub, GitLab & Bitbucket
 ```
 
-66 characters.
+66 characters. Note: the manifest `name` field is limited to 45 chars by `vite-plugin-web-extension`, so it uses the shorter "PR Radar – GitHub, GitLab & Bitbucket PRs". The full title above should be set directly in the CWS developer dashboard.
 
 ## Short Description (max 132 chars)
 

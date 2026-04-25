@@ -174,7 +174,13 @@ async function hydrateMR(
     d.notes.some((n) => n.author.username === username && n.resolvable),
   );
 
-  const ciStatus = mapGLPipelineStatus(mr.head_pipeline?.status);
+  // head_pipeline can be null even when pipelines exist (timing, detached pipelines)
+  let pipeline = mr.head_pipeline;
+  if (!pipeline) {
+    pipeline = await fetchLatestPipeline(token, encodedPath, mr.source_branch);
+  }
+
+  const ciStatus = mapGLPipelineStatus(pipeline?.status);
   const reviewStatus = deriveGLReviewStatus(approvals);
   const isReviewRequested = mr.reviewers?.some((r) => r.username === username) ?? false;
   const approvedUsernames = new Set(approvals.approved_by.map((a) => a.user.username));
@@ -196,8 +202,8 @@ async function hydrateMR(
     createdAt: mr.created_at,
     updatedAt: mr.updated_at,
     ciStatus,
-    ciDurationMs: mr.head_pipeline?.duration != null ? mr.head_pipeline.duration * 1000 : undefined,
-    ciUrl: mr.head_pipeline?.web_url,
+    ciDurationMs: pipeline?.duration != null ? pipeline.duration * 1000 : undefined,
+    ciUrl: pipeline?.web_url,
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
@@ -238,6 +244,23 @@ async function fetchDiffStats(
     return { additions, deletions };
   } catch {
     return undefined;
+  }
+}
+
+async function fetchLatestPipeline(
+  token: string,
+  encodedPath: string,
+  ref: string,
+): Promise<{ status: string; web_url: string; duration: number | null } | null> {
+  try {
+    const pipelines = await glFetch<{ id: number; status: string; web_url: string }[]>(
+      `/projects/${encodedPath}/pipelines?ref=${encodeURIComponent(ref)}&per_page=1&order_by=id&sort=desc`,
+      token,
+    );
+    if (!pipelines.length) return null;
+    return { status: pipelines[0].status, web_url: pipelines[0].web_url, duration: null };
+  } catch {
+    return null;
   }
 }
 

@@ -323,50 +323,7 @@ async function pollPRs() {
       }
     }
 
-    // Enrich PRs with DeployHQ project matching and deployment status
-    const dhqAccount = await getDeployHQAccount();
-    if (dhqAccount?.connected) {
-      try {
-        const projects = await deployhq.fetchProjects(
-          dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey,
-        );
-        const mapping: Record<string, string> = {};
-
-        for (const pr of allPRs) {
-          const project = deployhq.matchRepoToProject(pr.repoFullName, pr.platform, projects);
-          if (project) {
-            pr.deployhqProjectId = project.permalink;
-            mapping[pr.repoFullName] = project.permalink;
-          }
-        }
-
-        await saveDeployHQRepoMapping(mapping);
-
-        // Fetch latest deployments for matched projects and set deployment status
-        const checkedPermalinks = new Set<string>();
-        const deploymentsByPermalink: Record<string, Array<{ endRevision: string; serverName: string; url: string }>> = {};
-
-        for (const pr of allPRs) {
-          if (!pr.deployhqProjectId || !pr.headSha) continue;
-          const permalink = pr.deployhqProjectId;
-          if (!checkedPermalinks.has(permalink)) {
-            checkedPermalinks.add(permalink);
-            deploymentsByPermalink[permalink] = await deployhq.fetchLatestDeployments(
-              dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey, permalink,
-            );
-          }
-          const deployments = deploymentsByPermalink[permalink] || [];
-          const match = deployments.find((d) => d.endRevision === pr.headSha);
-          if (match) {
-            pr.deployhqDeployment = { serverName: match.serverName, url: match.url };
-          }
-        }
-      } catch (err) {
-        console.error('[PR Radar] DeployHQ enrichment failed:', err);
-      }
-    }
-
-    // Cache PRs for instant popup load
+    // Cache PRs and update badge immediately — don't wait for DeployHQ
     allPRs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
     await saveCachedPRs(allPRs);
 
@@ -388,9 +345,66 @@ async function pollPRs() {
     } else {
       updateBadge('ok');
     }
+
+    // Enrich PRs with DeployHQ data asynchronously — updates cache when done
+    enrichWithDeployHQ(allPRs);
   } catch (err) {
     console.error('Poll error:', err);
     updateBadge('error');
+  }
+}
+
+// === DeployHQ background enrichment ===
+
+async function enrichWithDeployHQ(prs: PullRequest[]) {
+  const dhqAccount = await getDeployHQAccount();
+  if (!dhqAccount?.connected) return;
+
+  try {
+    const projects = await deployhq.fetchProjects(
+      dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey,
+    );
+    const mapping: Record<string, string> = {};
+    let changed = false;
+
+    for (const pr of prs) {
+      const project = deployhq.matchRepoToProject(pr.repoFullName, pr.platform, projects);
+      if (project) {
+        pr.deployhqProjectId = project.permalink;
+        mapping[pr.repoFullName] = project.permalink;
+        changed = true;
+      }
+    }
+
+    await saveDeployHQRepoMapping(mapping);
+
+    // Fetch latest deployments for matched projects
+    const checkedPermalinks = new Set<string>();
+    const deploymentsByPermalink: Record<string, Array<{ endRevision: string; serverName: string; url: string }>> = {};
+
+    for (const pr of prs) {
+      if (!pr.deployhqProjectId || !pr.headSha) continue;
+      const permalink = pr.deployhqProjectId;
+      if (!checkedPermalinks.has(permalink)) {
+        checkedPermalinks.add(permalink);
+        deploymentsByPermalink[permalink] = await deployhq.fetchLatestDeployments(
+          dhqAccount.slug, dhqAccount.email, dhqAccount.apiKey, permalink,
+        );
+      }
+      const deployments = deploymentsByPermalink[permalink] || [];
+      const match = deployments.find((d) => d.endRevision === pr.headSha);
+      if (match) {
+        pr.deployhqDeployment = { serverName: match.serverName, url: match.url };
+        changed = true;
+      }
+    }
+
+    // Update cache with enriched data if anything changed
+    if (changed) {
+      await saveCachedPRs(prs);
+    }
+  } catch (err) {
+    console.error('[PR Radar] DeployHQ enrichment failed:', err);
   }
 }
 

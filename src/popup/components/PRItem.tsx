@@ -231,6 +231,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
             </div>
             <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
               <span>{pr.repoFullName} #{pr.number}</span>
+              <span className="text-gray-400 dark:text-gray-500">by {pr.author}</span>
               {pr.isAuthor && (
                 <span className="text-[9px] px-1.5 py-px rounded bg-radar-100 dark:bg-radar-900/50 text-radar-700 dark:text-radar-400 font-medium">
                   Author

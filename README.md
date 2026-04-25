@@ -5,11 +5,23 @@
 [![Firefox Add-on](https://img.shields.io/amo/users/pr-radar?label=Firefox%20users)](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/)
 [![License: MIT](https://img.shields.io/github/license/deployhq/pr-radar)](LICENSE)
 
-**All your PRs in one place.** CI status, unresolved comments, deployments, and sound alerts — right from your browser toolbar. No tab required.
+**One dashboard for every pull request across GitHub, GitLab, and Bitbucket.** CI status, code reviews, deployments, and notifications — right from your browser toolbar. No tab required.
 
-<img width="1119" height="623" alt="image" src="https://github.com/user-attachments/assets/f70cbb13-89d3-4f20-adf4-0c22e21f5fb4" />
+<p>
+  <a href="https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh"><img src="https://img.shields.io/badge/Install_for_Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Install for Chrome" /></a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/pr-radar/"><img src="https://img.shields.io/badge/Install_for_Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Install for Firefox" /></a>
+</p>
 
-Free, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme). [Learn more →](https://www.deployhq.com/features/pr-radar)
+<img width="1119" height="623" alt="PR Radar dashboard showing PRs from GitHub, GitLab, and Bitbucket with CI status badges" src="https://github.com/user-attachments/assets/f70cbb13-89d3-4f20-adf4-0c22e21f5fb4" />
+
+Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-radar&utm_medium=github&utm_campaign=readme). [Learn more →](https://www.deployhq.com/features/pr-radar)
+
+## Why PR Radar
+
+- **Multi-provider** — GitHub, GitLab, and Bitbucket in one view. No more juggling tabs.
+- **No backend** — Your tokens stay on your device. All API calls go directly from your browser to the platform APIs.
+- **Privacy-first** — No analytics, no tracking, no accounts. Just a browser extension.
+- **Free and open source** — MIT licensed, free forever. No premium tier, no feature gates.
 
 ## Features
 

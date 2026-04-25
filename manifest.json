@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "PR Radar - PR Dashboard & CI Notifications",
-  "description": "All your PRs in one place. CI status, unresolved comments, sound alerts for GitHub, GitLab & Bitbucket. Free, by DeployHQ.",
+  "name": "PR Radar – Pull Request Dashboard for GitHub, GitLab & Bitbucket",
+  "description": "Track PRs, CI status, code reviews & deployments across GitHub, GitLab and Bitbucket. No backend, free forever. By DeployHQ.",
   "version": "0.4.1",
   "icons": {
     "16": "icons/icon-16.png",

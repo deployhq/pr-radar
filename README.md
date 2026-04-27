@@ -56,6 +56,10 @@ Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-rada
 
 Install from Edge Add-ons (coming soon) — free, no account required.
 
+### Other Chromium browsers
+
+PR Radar works on any Chromium-based browser — including Brave, Arc, Opera, Vivaldi, and Perplexity. Just install from the [Chrome Web Store](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh).
+
 ### Manual install (development)
 
 ```bash

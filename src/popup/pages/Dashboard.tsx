@@ -27,6 +27,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [hasWatchedRepos, setHasWatchedRepos] = useState(true);
   const [pinnedRepos, setPinnedRepos] = useState<Set<string>>(new Set());
   const [stalePRDays, setStalePRDays] = useState(45);
+  const [longWaitDays, setLongWaitDays] = useState(2);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
   const [showStarBanner, setShowStarBanner] = useState(false);
@@ -75,6 +76,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     async function init() {
       const [settings] = await Promise.all([getSettings(), loadPinnedRepos()]);
       setStalePRDays(settings.stalePRDays);
+      setLongWaitDays(settings.longWaitDays);
 
       const hadCache = await loadFromCache();
       setLoading(false);
@@ -143,13 +145,13 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   // Compute urgency counts from tab-filtered list (before urgency filter)
   const urgencyCounts = useMemo(
-    () => computeUrgencyCounts(filteredByTab, stalePRDays),
-    [filteredByTab, stalePRDays],
+    () => computeUrgencyCounts(filteredByTab, stalePRDays, longWaitDays),
+    [filteredByTab, stalePRDays, longWaitDays],
   );
 
   // Filter by urgency
   const filteredByUrgency = urgencyFilter
-    ? filteredByTab.filter((pr) => matchesUrgencyFilter(pr, urgencyFilter, stalePRDays))
+    ? filteredByTab.filter((pr) => matchesUrgencyFilter(pr, urgencyFilter, stalePRDays, longWaitDays))
     : filteredByTab;
 
   // Filter by search
@@ -162,7 +164,11 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     : filteredByUrgency;
 
   // Sort by priority first, then pinned within same priority tier, then date
+  // When long_wait filter is active, sort by longest waiting first
   const filtered = [...searched].sort((a, b) => {
+    if (urgencyFilter === 'long_wait') {
+      return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    }
     const pa = prPriority(a, stalePRDays);
     const pb = prPriority(b, stalePRDays);
     if (pa !== pb) return pa - pb;

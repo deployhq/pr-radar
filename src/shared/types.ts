@@ -104,7 +104,7 @@ export type AppView =
 
 export type DashboardTab = 'mine' | 'review' | 'all';
 
-export type UrgencyCategory = 'ci_failed' | 'changes_requested' | 'review_requested' | 'conflicts' | 'stale';
+export type UrgencyCategory = 'ci_failed' | 'changes_requested' | 'review_requested' | 'conflicts' | 'stale' | 'long_wait';
 
 // === Messages (popup <-> service worker) ===
 

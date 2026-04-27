@@ -17,6 +17,7 @@ export interface Settings {
   soundVolume: number;
   notifyOnComments: boolean;
   stalePRDays: number;
+  longWaitDays: number;
   theme: ThemeMode;
 }
 
@@ -28,6 +29,7 @@ const DEFAULT_SETTINGS: Settings = {
   soundVolume: 0.7,
   notifyOnComments: false,
   stalePRDays: 45,
+  longWaitDays: 2,
   theme: 'system',
 };
 

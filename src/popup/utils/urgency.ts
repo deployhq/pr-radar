@@ -3,6 +3,7 @@ import type { PullRequest, UrgencyCategory } from '@/shared/types';
 export function getUrgencyCategories(
   pr: PullRequest,
   stalePRDays: number,
+  longWaitDays: number,
 ): Set<UrgencyCategory> {
   const categories = new Set<UrgencyCategory>();
 
@@ -22,6 +23,12 @@ export function getUrgencyCategories(
   if (pr.isReviewRequested && !pr.hasReviewed) categories.add('review_requested');
   if (pr.hasConflicts) categories.add('conflicts');
 
+  const isLongWait =
+    longWaitDays > 0 &&
+    (pr.pendingReviewers?.length ?? 0) > 0 &&
+    Date.now() - new Date(pr.updatedAt).getTime() > longWaitDays * 86400000;
+  if (isLongWait) categories.add('long_wait');
+
   return categories;
 }
 
@@ -29,8 +36,9 @@ export function matchesUrgencyFilter(
   pr: PullRequest,
   filter: UrgencyCategory,
   stalePRDays: number,
+  longWaitDays: number,
 ): boolean {
-  return getUrgencyCategories(pr, stalePRDays).has(filter);
+  return getUrgencyCategories(pr, stalePRDays, longWaitDays).has(filter);
 }
 
 const CATEGORY_ORDER: UrgencyCategory[] = [
@@ -39,18 +47,20 @@ const CATEGORY_ORDER: UrgencyCategory[] = [
   'review_requested',
   'conflicts',
   'stale',
+  'long_wait',
 ];
 
 export function computeUrgencyCounts(
   prs: PullRequest[],
   stalePRDays: number,
+  longWaitDays: number,
 ): Map<UrgencyCategory, number> {
   const counts = new Map<UrgencyCategory, number>(
     CATEGORY_ORDER.map((c) => [c, 0]),
   );
 
   for (const pr of prs) {
-    const cats = getUrgencyCategories(pr, stalePRDays);
+    const cats = getUrgencyCategories(pr, stalePRDays, longWaitDays);
     for (const cat of cats) {
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
@@ -92,5 +102,11 @@ export const URGENCY_META: Record<
     icon: '\uD83D\uDCA4',
     colorClasses: 'bg-gray-100 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700/50',
     activeColorClasses: 'bg-gray-200 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-500/50 ring-1 ring-gray-300/30 dark:ring-gray-500/15',
+  },
+  long_wait: {
+    label: 'Long wait',
+    icon: '\u{1F550}',
+    colorClasses: 'bg-orange-50 dark:bg-orange-900/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/20',
+    activeColorClasses: 'bg-orange-100 dark:bg-orange-900/25 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-500/50 ring-1 ring-orange-300/30 dark:ring-orange-500/15',
   },
 };

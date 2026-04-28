@@ -1,6 +1,6 @@
 {
   "name": "pr-radar",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Track PRs, CI status, code reviews & deployments across GitHub, GitLab and Bitbucket. No backend, free forever. By DeployHQ.",
   "private": false,
   "type": "module",

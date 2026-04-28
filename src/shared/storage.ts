@@ -16,6 +16,7 @@ export interface Settings {
   soundId: SoundId;
   soundVolume: number;
   notifyOnComments: boolean;
+  notifyOnCommentsTabs: ('mine' | 'review' | 'all')[];
   stalePRDays: number;
   longWaitDays: number;
   theme: ThemeMode;
@@ -28,6 +29,7 @@ const DEFAULT_SETTINGS: Settings = {
   soundId: 'ding',
   soundVolume: 0.7,
   notifyOnComments: false,
+  notifyOnCommentsTabs: ['mine'],
   stalePRDays: 45,
   longWaitDays: 2,
   theme: 'system',

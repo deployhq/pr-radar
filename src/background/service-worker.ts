@@ -248,11 +248,18 @@ async function pollPRs() {
     // Check for new unresolved comments on the user's PRs
     const settings0 = await getSettings();
     if (settings0.notifyOnComments) {
+      const commentTabs = settings0.notifyOnCommentsTabs;
       const lastComments = await getLastCommentCounts();
       const newComments: Record<string, number> = {};
 
       for (const pr of allPRs) {
-        if (!pr.isAuthor) continue;
+        const inMine = pr.isAuthor;
+        const inReview = pr.isReviewRequested && !pr.isDraft;
+        const shouldNotify =
+          (commentTabs.includes('all')) ||
+          (commentTabs.includes('mine') && inMine) ||
+          (commentTabs.includes('review') && inReview);
+        if (!shouldNotify) continue;
         if (staleThreshold && (Date.now() - new Date(pr.updatedAt).getTime()) > staleThreshold) continue;
 
         const prevCount = lastComments[pr.id];

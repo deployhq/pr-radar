@@ -108,9 +108,34 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
         )}
         <SettingRow
           label="New comments"
-          description="Notify when new comments appear"
+          description="Select which PRs trigger alerts"
         >
-          <Toggle checked={settings.notifyOnComments} onChange={(v) => handleToggle('notifyOnComments', v)} label="New comment notifications" />
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5">
+            {(['mine', 'review', 'all'] as const).map((tab) => {
+              const active = settings.notifyOnCommentsTabs.includes(tab);
+              return (
+                <button
+                  key={tab}
+                  onClick={async () => {
+                    const tabs = active
+                      ? settings.notifyOnCommentsTabs.filter((t) => t !== tab)
+                      : [...settings.notifyOnCommentsTabs, tab];
+                    const updated = { ...settings, notifyOnCommentsTabs: tabs, notifyOnComments: tabs.length > 0 };
+                    setSettings(updated);
+                    await saveSettings({ notifyOnCommentsTabs: tabs, notifyOnComments: tabs.length > 0 });
+                  }}
+                  aria-pressed={active}
+                  className={`text-[11px] px-2.5 py-1 rounded transition-colors capitalize ${
+                    active
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
         </SettingRow>
         <SettingRow
           label="Test"

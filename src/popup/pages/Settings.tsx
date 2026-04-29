@@ -232,6 +232,9 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
             <option value={60}>1 minute</option>
             <option value={120}>2 minutes</option>
             <option value={300}>5 minutes</option>
+            <option value={600}>10 minutes</option>
+            <option value={1800}>30 minutes</option>
+            <option value={3600}>60 minutes</option>
           </select>
         </SettingRow>
       </Section>

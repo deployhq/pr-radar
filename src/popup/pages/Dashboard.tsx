@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { AppView, DashboardTab, PullRequest, UrgencyCategory } from '@/shared/types';
+import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
@@ -31,6 +31,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [longWaitDays, setLongWaitDays] = useState(2);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('default');
   const [showStarBanner, setShowStarBanner] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -82,11 +83,17 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       const hadCache = await loadFromCache();
       setLoading(false);
 
-      // Ask the service worker to refresh — it will update chrome.storage
-      if (hadCache) {
+      if (!hadCache) {
         triggerBackgroundRefresh();
-      } else {
-        // No cache — trigger poll and wait for result
+        return;
+      }
+
+      // Skip auto-refresh on popup open when cache is fresher than the polling interval.
+      // Why: re-polling every popup open is wasteful, especially on long intervals.
+      // Users can still hit the manual refresh button for fresh data.
+      const cached = await getCachedPRs();
+      const ageMs = cached ? Date.now() - cached.updatedAt : Infinity;
+      if (ageMs > settings.pollIntervalSeconds * 1000) {
         triggerBackgroundRefresh();
       }
     }
@@ -134,6 +141,10 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     setUrgencyFilter(category);
   }, []);
 
+  const handleCycleSort = useCallback(() => {
+    setSortMode((mode) => (mode === 'default' ? 'recent' : mode === 'recent' ? 'oldest' : 'default'));
+  }, []);
+
   // Reset focused index when list changes
   useEffect(() => { setFocusedIndex(-1); }, [tab, urgencyFilter, search]);
 
@@ -157,16 +168,26 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   // Filter by search
   const searched = search.trim()
-    ? filteredByUrgency.filter(
-        (pr) =>
-          pr.title.toLowerCase().includes(search.toLowerCase()) ||
-          pr.repoFullName.toLowerCase().includes(search.toLowerCase()),
-      )
+    ? filteredByUrgency.filter((pr) => {
+        const q = search.toLowerCase();
+        return (
+          pr.title.toLowerCase().includes(q) ||
+          pr.repoFullName.toLowerCase().includes(q) ||
+          pr.author.toLowerCase().includes(q)
+        );
+      })
     : filteredByUrgency;
 
-  // Sort by priority first, then pinned within same priority tier, then date
-  // When long_wait filter is active, sort by longest waiting first
+  // Sort by priority first, then pinned within same priority tier, then date.
+  // Explicit sort mode overrides default ordering. When long_wait filter is active,
+  // surface the longest-waiting PRs first.
   const filtered = [...searched].sort((a, b) => {
+    if (sortMode === 'recent') {
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    }
+    if (sortMode === 'oldest') {
+      return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    }
     if (urgencyFilter === 'long_wait') {
       return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
     }
@@ -328,6 +349,8 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         counts={urgencyCounts}
         activeFilter={urgencyFilter}
         onToggleFilter={handleToggleUrgencyFilter}
+        sortMode={sortMode}
+        onCycleSort={handleCycleSort}
       />
 
       {/* Status bar */}

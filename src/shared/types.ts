@@ -135,6 +135,8 @@ export type DashboardTab = 'mine' | 'review' | 'all';
 
 export type UrgencyCategory = 'ci_failed' | 'changes_requested' | 'review_requested' | 'conflicts' | 'stale' | 'long_wait';
 
+export type SortMode = 'default' | 'recent' | 'oldest';
+
 // === Messages (popup <-> service worker) ===
 
 export type Message =

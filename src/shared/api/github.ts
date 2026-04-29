@@ -1,9 +1,39 @@
-import type { PullRequest, CIStatus, ReviewStatus } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
 
 const BASE_URL = 'https://api.github.com';
 const HYDRATE_CONCURRENCY = 5;
 const ORG_FETCH_CONCURRENCY = 4;
 const MAX_PAGINATED_PAGES = 20;
+
+let lastRateLimit: RateLimitInfo | null = null;
+
+export function getLastRateLimit(): RateLimitInfo | null {
+  return lastRateLimit;
+}
+
+function captureRateLimit(res: Response): void {
+  const limit = res.headers.get('X-RateLimit-Limit');
+  const remaining = res.headers.get('X-RateLimit-Remaining');
+  const reset = res.headers.get('X-RateLimit-Reset');
+  if (limit && remaining && reset) {
+    lastRateLimit = {
+      platform: 'github',
+      limit: Number(limit),
+      remaining: Number(remaining),
+      resetAt: Number(reset) * 1000,
+      capturedAt: Date.now(),
+    };
+  }
+}
+
+export class GitHubAPIError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'GitHubAPIError';
+  }
+}
 
 async function ghFetchRaw(path: string, token: string): Promise<Response> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -13,8 +43,9 @@ async function ghFetchRaw(path: string, token: string): Promise<Response> {
       'X-GitHub-Api-Version': '2022-11-28',
     },
   });
+  captureRateLimit(res);
   if (!res.ok) {
-    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    throw new GitHubAPIError(res.status, `GitHub API error: ${res.status} ${res.statusText}`);
   }
   return res;
 }

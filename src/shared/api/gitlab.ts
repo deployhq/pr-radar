@@ -1,6 +1,36 @@
-import type { PullRequest, CIStatus, ReviewStatus } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
 
 const BASE_URL = 'https://gitlab.com/api/v4';
+
+let lastRateLimit: RateLimitInfo | null = null;
+
+export function getLastRateLimit(): RateLimitInfo | null {
+  return lastRateLimit;
+}
+
+function captureRateLimit(res: Response): void {
+  const limit = res.headers.get('RateLimit-Limit');
+  const remaining = res.headers.get('RateLimit-Remaining');
+  const reset = res.headers.get('RateLimit-Reset');
+  if (limit && remaining && reset) {
+    lastRateLimit = {
+      platform: 'gitlab',
+      limit: Number(limit),
+      remaining: Number(remaining),
+      resetAt: Number(reset) * 1000,
+      capturedAt: Date.now(),
+    };
+  }
+}
+
+export class GitLabAPIError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'GitLabAPIError';
+  }
+}
 
 async function glFetch<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -8,9 +38,10 @@ async function glFetch<T>(path: string, token: string): Promise<T> {
       'PRIVATE-TOKEN': token,
     },
   });
+  captureRateLimit(res);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`GitLab API error: ${res.status} ${body}`);
+    throw new GitLabAPIError(res.status, `GitLab API error: ${res.status} ${body}`);
   }
   return res.json();
 }

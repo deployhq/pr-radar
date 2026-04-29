@@ -85,6 +85,35 @@ export interface DeployHQServer {
   serverType: 'server' | 'server_group';
 }
 
+// === Poll errors & rate limits ===
+
+export type PollErrorKind =
+  | 'rate_limit'
+  | 'auth'
+  | 'forbidden'
+  | 'not_found'
+  | 'timeout'
+  | 'server'
+  | 'network'
+  | 'unknown';
+
+export interface PollError {
+  platform: Platform;
+  repoFullName: string;
+  kind: PollErrorKind;
+  status?: number;
+  message: string;
+  timestamp: number;
+}
+
+export interface RateLimitInfo {
+  platform: Platform;
+  limit: number;
+  remaining: number;
+  resetAt: number; // ms epoch
+  capturedAt: number;
+}
+
 // === Watched repos ===
 
 export interface WatchedRepo {

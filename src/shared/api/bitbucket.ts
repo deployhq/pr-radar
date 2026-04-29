@@ -2,6 +2,15 @@ import type { PullRequest, CIStatus, ReviewStatus } from '../types';
 
 const BASE_URL = 'https://api.bitbucket.org/2.0';
 
+export class BitbucketAPIError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = 'BitbucketAPIError';
+  }
+}
+
 async function bbFetch<T>(path: string, token: string): Promise<T> {
   const url = path.startsWith('http') ? path : `${BASE_URL}${path}`;
   const res = await fetch(url, {
@@ -12,7 +21,7 @@ async function bbFetch<T>(path: string, token: string): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`Bitbucket API error: ${res.status} ${res.statusText} ${body}`);
+    throw new BitbucketAPIError(res.status, `Bitbucket API error: ${res.status} ${res.statusText} ${body}`);
   }
   return res.json();
 }

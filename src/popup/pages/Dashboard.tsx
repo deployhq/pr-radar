@@ -6,6 +6,7 @@ import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
 import TriageSummary from '../components/TriageSummary';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
+import StatusBanners from '../components/StatusBanners';
 
 interface DashboardProps {
   tab: DashboardTab;
@@ -317,6 +318,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           &#x21BB;
         </button>
       </div>
+
+      {/* Poll errors & rate limit warnings */}
+      <StatusBanners />
 
       {/* Triage summary */}
       <TriageSummary

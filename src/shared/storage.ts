@@ -1,9 +1,13 @@
-import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount } from './types';
+import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo } from './types';
 import type { SoundId } from './constants';
 
 const ACCOUNTS_KEY = 'pr_radar_accounts';
 const SETTINGS_KEY = 'pr_radar_settings';
 const REPOS_KEY = 'pr_radar_repos';
+export const POLL_ERRORS_KEY = 'pr_radar_poll_errors';
+export const RATE_LIMITS_KEY = 'pr_radar_rate_limits';
+const POLL_ERRORS_DISMISSED_KEY = 'pr_radar_poll_errors_dismissed_at';
+const RATE_LIMIT_DISMISSED_KEY = 'pr_radar_rate_limit_dismissed_at';
 
 // === Settings ===
 
@@ -137,6 +141,44 @@ export async function saveDeployHQRepoMapping(mapping: Record<string, string>): 
   await chrome.storage.local.set({ [DEPLOYHQ_MAPPING_KEY]: mapping });
 }
 
+// === Poll errors & rate limits ===
+
+export async function getPollErrors(): Promise<PollError[]> {
+  const result = await chrome.storage.local.get(POLL_ERRORS_KEY);
+  return result[POLL_ERRORS_KEY] ?? [];
+}
+
+export async function savePollErrors(errors: PollError[]): Promise<void> {
+  await chrome.storage.local.set({ [POLL_ERRORS_KEY]: errors });
+}
+
+export async function getRateLimits(): Promise<Record<Platform, RateLimitInfo | undefined>> {
+  const result = await chrome.storage.local.get(RATE_LIMITS_KEY);
+  return result[RATE_LIMITS_KEY] ?? {};
+}
+
+export async function saveRateLimits(limits: Record<Platform, RateLimitInfo | undefined>): Promise<void> {
+  await chrome.storage.local.set({ [RATE_LIMITS_KEY]: limits });
+}
+
+export async function getPollErrorsDismissedAt(): Promise<number> {
+  const result = await chrome.storage.local.get(POLL_ERRORS_DISMISSED_KEY);
+  return result[POLL_ERRORS_DISMISSED_KEY] ?? 0;
+}
+
+export async function dismissPollErrors(): Promise<void> {
+  await chrome.storage.local.set({ [POLL_ERRORS_DISMISSED_KEY]: Date.now() });
+}
+
+export async function getRateLimitDismissedAt(): Promise<number> {
+  const result = await chrome.storage.local.get(RATE_LIMIT_DISMISSED_KEY);
+  return result[RATE_LIMIT_DISMISSED_KEY] ?? 0;
+}
+
+export async function dismissRateLimitWarning(): Promise<void> {
+  await chrome.storage.local.set({ [RATE_LIMIT_DISMISSED_KEY]: Date.now() });
+}
+
 // === Install date & star prompt ===
 
 const INSTALL_DATE_KEY = 'pr_radar_install_date';
@@ -152,6 +194,10 @@ export async function clearAll(): Promise<void> {
     STAR_PROMPT_DISMISSED_KEY,
     DEPLOYHQ_ACCOUNT_KEY,
     DEPLOYHQ_MAPPING_KEY,
+    POLL_ERRORS_KEY,
+    RATE_LIMITS_KEY,
+    POLL_ERRORS_DISMISSED_KEY,
+    RATE_LIMIT_DISMISSED_KEY,
   ]);
 }
 

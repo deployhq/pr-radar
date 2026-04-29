@@ -1,6 +1,6 @@
-import type { PullRequest, CIStatus, Message } from '@/shared/types';
+import type { PullRequest, CIStatus, Message, PollError, PollErrorKind, Platform, RateLimitInfo } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -184,6 +184,44 @@ async function setupPolling() {
   chrome.alarms.create(ALARM_NAME, { periodInMinutes });
 }
 
+// === Rate limit persistence ===
+
+async function persistRateLimits(): Promise<void> {
+  const current = await getRateLimits();
+  const next: Record<Platform, RateLimitInfo | undefined> = { ...current };
+  const gh = github.getLastRateLimit();
+  if (gh) next.github = gh;
+  const gl = gitlab.getLastRateLimit();
+  if (gl) next.gitlab = gl;
+  await saveRateLimits(next);
+}
+
+// === Error classification ===
+
+function classifyError(err: unknown): { kind: PollErrorKind; status?: number; message: string } {
+  const status = err && typeof err === 'object' && 'status' in err && typeof (err as { status: unknown }).status === 'number'
+    ? (err as { status: number }).status
+    : undefined;
+  const message = err instanceof Error ? err.message : String(err);
+  const lower = message.toLowerCase();
+
+  if (status === 401) return { kind: 'auth', status, message };
+  if (status === 403) {
+    if (lower.includes('rate limit') || lower.includes('api rate limit exceeded')) {
+      return { kind: 'rate_limit', status, message };
+    }
+    return { kind: 'forbidden', status, message };
+  }
+  if (status === 404) return { kind: 'not_found', status, message };
+  if (status === 429) return { kind: 'rate_limit', status, message };
+  if (status === 504 || status === 408) return { kind: 'timeout', status, message };
+  if (status && status >= 500) return { kind: 'server', status, message };
+  if (!status && (lower.includes('failed to fetch') || lower.includes('networkerror'))) {
+    return { kind: 'network', message };
+  }
+  return { kind: 'unknown', status, message };
+}
+
 // === Main poll loop ===
 
 async function pollPRs() {
@@ -204,6 +242,7 @@ async function pollPRs() {
 
   try {
     const allPRs: PullRequest[] = [];
+    const pollErrors: PollError[] = [];
 
     for (const account of accounts) {
       const repos = enabledRepos.filter((r) => r.platform === account.platform);
@@ -222,9 +261,21 @@ async function pollPRs() {
           }
         } catch (err) {
           console.error(`Failed to poll ${repo.fullName}:`, err);
+          const classified = classifyError(err);
+          pollErrors.push({
+            platform: account.platform,
+            repoFullName: repo.fullName,
+            kind: classified.kind,
+            status: classified.status,
+            message: classified.message,
+            timestamp: Date.now(),
+          });
         }
       }
     }
+
+    await savePollErrors(pollErrors);
+    await persistRateLimits();
 
     // Check for CI status changes on the user's PRs (skip stale)
     const staleDays = (await getSettings()).stalePRDays;

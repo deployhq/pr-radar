@@ -60,11 +60,29 @@ jobs:
 
       - name: Upload & publish to Edge Add-ons
         run: |
+          set +e
           npx --yes --package=edge-webstore-upload@1.0.0 edge-upload \
             --client-id "$EDGE_CLIENT_ID" \
             --api-key "$EDGE_API_KEY" \
             --product-id "$EDGE_PRODUCT_ID" \
-            workflow extension-edge.zip
+            workflow extension-edge.zip 2>&1 | tee edge-output.txt
+          edge_exit=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$edge_exit" -eq 0 ]; then
+            exit 0
+          fi
+
+          # Edge rejects new publishes while a prior submission is still in review.
+          # The package is uploaded fine — only the publish call fails. Treat this as
+          # a soft warning so the GitHub Release step still runs. Publish manually
+          # from Partner Center once the prior submission clears.
+          if grep -q 'InProgressSubmission' edge-output.txt; then
+            echo "::warning title=Edge publish skipped::A previous Edge submission is still in review. The ${GITHUB_REF_NAME} package was uploaded successfully; publish manually via Edge Partner Center once the prior submission clears."
+            exit 0
+          fi
+
+          exit "$edge_exit"
         env:
           EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
           EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}

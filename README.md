@@ -10,6 +10,7 @@
 <p>
   <a href="https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh"><img src="https://img.shields.io/badge/Install_for_Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Install for Chrome" /></a>
   <a href="https://addons.mozilla.org/en-US/firefox/addon/pr-radar/"><img src="https://img.shields.io/badge/Install_for_Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Install for Firefox" /></a>
+  <a href="https://microsoftedge.microsoft.com/addons/detail/pr-radar-pr-dashboard-/angljeebomgmgepfiglbedjljgjnenhl"><img src="https://img.shields.io/badge/Install_for_Edge-0078D4?style=for-the-badge&logo=microsoftedge&logoColor=white" alt="Install for Edge" /></a>
 </p>
 
 <img width="1119" height="623" alt="PR Radar dashboard showing PRs from GitHub, GitLab, and Bitbucket with CI status badges" src="https://github.com/user-attachments/assets/f70cbb13-89d3-4f20-adf4-0c22e21f5fb4" />
@@ -54,7 +55,7 @@ Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-rada
 
 ### Edge
 
-Install from Edge Add-ons (coming soon) — free, no account required.
+[Install from Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/pr-radar-pr-dashboard-/angljeebomgmgepfiglbedjljgjnenhl) — free, no account required.
 
 ### Other Chromium browsers
 

@@ -32,8 +32,8 @@ jobs:
       - name: Build Firefox extension
         run: npm run build:firefox
 
-      # - name: Build Edge extension
-      #   run: npm run build:edge
+      - name: Build Edge extension
+        run: npm run build:edge
 
       - name: Create Chrome ZIP
         run: cd dist && zip -r ../extension-chrome.zip .
@@ -41,8 +41,8 @@ jobs:
       - name: Create Firefox ZIP
         run: cd dist-firefox && zip -r ../extension-firefox.zip .
 
-      # - name: Create Edge ZIP
-      #   run: cd dist-edge && zip -r ../extension-edge.zip .
+      - name: Create Edge ZIP
+        run: cd dist-edge && zip -r ../extension-edge.zip .
 
       - name: Upload & publish to Chrome Web Store
         run: npx chrome-webstore-upload-cli@3 upload --auto-publish --source extension-chrome.zip
@@ -58,12 +58,17 @@ jobs:
           WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
           WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
 
-      # - name: Upload & publish to Edge Add-ons
-      #   run: npx edge-webstore-upload@latest upload --source extension-edge.zip --auto-publish
-      #   env:
-      #     EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
-      #     EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
-      #     EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+      - name: Upload & publish to Edge Add-ons
+        run: |
+          npx --yes --package=edge-webstore-upload@1.0.0 edge-upload \
+            --client-id "$EDGE_CLIENT_ID" \
+            --api-key "$EDGE_API_KEY" \
+            --product-id "$EDGE_PRODUCT_ID" \
+            workflow extension-edge.zip
+        env:
+          EDGE_PRODUCT_ID: ${{ secrets.EDGE_PRODUCT_ID }}
+          EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+          EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -71,4 +76,5 @@ jobs:
           files: |
             extension-chrome.zip
             extension-firefox.zip
+            extension-edge.zip
           generate_release_notes: true

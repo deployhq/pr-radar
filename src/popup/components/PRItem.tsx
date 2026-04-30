@@ -361,7 +361,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
 
           {pr.hasConflicts && (
             <Badge className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400">
-              Conflicts
+              <span aria-hidden="true">&#x26A0;&#xFE0F;</span> Conflicts
             </Badge>
           )}
 

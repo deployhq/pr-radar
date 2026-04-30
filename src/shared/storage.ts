@@ -1,4 +1,4 @@
-import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo } from './types';
+import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo, DashboardTab, SortMode } from './types';
 import type { SoundId } from './constants';
 
 const ACCOUNTS_KEY = 'pr_radar_accounts';
@@ -24,6 +24,8 @@ export interface Settings {
   stalePRDays: number;
   longWaitDays: number;
   theme: ThemeMode;
+  lastTab: DashboardTab;
+  sortMode: SortMode;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -37,6 +39,8 @@ const DEFAULT_SETTINGS: Settings = {
   stalePRDays: 45,
   longWaitDays: 2,
   theme: 'system',
+  lastTab: 'mine',
+  sortMode: 'default',
 };
 
 export async function getSettings(): Promise<Settings> {

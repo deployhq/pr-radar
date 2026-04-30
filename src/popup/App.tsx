@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { AppView } from '@/shared/types';
-import { getAccounts, saveSettings } from '@/shared/storage';
+import { getAccounts, getSettings, saveSettings } from '@/shared/storage';
 import { useTheme } from './hooks/useTheme';
 import Setup from './pages/Setup';
 import Dashboard from './pages/Dashboard';
@@ -16,12 +16,12 @@ export default function App() {
 
   useEffect(() => {
     async function init() {
-      const accounts = await getAccounts();
+      const [accounts, settings] = await Promise.all([getAccounts(), getSettings()]);
       setHasAccounts(accounts.length > 0);
       if (accounts.length === 0) {
         setView({ type: 'setup' });
       } else {
-        setView({ type: 'dashboard', tab: 'mine' });
+        setView({ type: 'dashboard', tab: settings.lastTab });
       }
       setLoading(false);
     }

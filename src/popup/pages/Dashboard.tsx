@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } from '@/shared/types';
-import { getWatchedRepos, getCachedPRs, getSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
+import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import PRItem from '../components/PRItem';
@@ -79,6 +79,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       const [settings] = await Promise.all([getSettings(), loadPinnedRepos()]);
       setStalePRDays(settings.stalePRDays);
       setLongWaitDays(settings.longWaitDays);
+      setSortMode(settings.sortMode);
 
       const hadCache = await loadFromCache();
       setLoading(false);
@@ -134,15 +135,22 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     checkStarBanner();
   }, []);
 
-  // Reset urgency filter on tab change
-  useEffect(() => { setUrgencyFilter(null); }, [tab]);
+  // Reset urgency filter on tab change and persist the active tab
+  useEffect(() => {
+    setUrgencyFilter(null);
+    saveSettings({ lastTab: tab });
+  }, [tab]);
 
   const handleToggleUrgencyFilter = useCallback((category: UrgencyCategory | null) => {
     setUrgencyFilter(category);
   }, []);
 
   const handleCycleSort = useCallback(() => {
-    setSortMode((mode) => (mode === 'default' ? 'recent' : mode === 'recent' ? 'oldest' : 'default'));
+    setSortMode((mode) => {
+      const next: SortMode = mode === 'default' ? 'recent' : mode === 'recent' ? 'oldest' : 'default';
+      saveSettings({ sortMode: next });
+      return next;
+    });
   }, []);
 
   // Reset focused index when list changes

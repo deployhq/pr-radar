@@ -162,6 +162,44 @@
   .disconnect { font-size: 11px; color: #6b7280; }
   .connect-link { font-size: 11px; color: #a78bfa; }
 
+  .segmented {
+    display: inline-flex;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .seg {
+    font-size: 11px;
+    padding: 4px 10px;
+    color: #6b7280;
+  }
+
+  .seg.active {
+    background: rgba(139,92,246,0.18);
+    color: #c4b5fd;
+  }
+
+  .pill-group {
+    display: inline-flex;
+    gap: 4px;
+  }
+
+  .pill {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    border: 1px solid #30363d;
+    color: #6b7280;
+  }
+
+  .pill.active {
+    background: rgba(139,92,246,0.15);
+    border-color: rgba(139,92,246,0.4);
+    color: #c4b5fd;
+  }
+
   .about-link {
     font-size: 11px;
     color: #6b7280;
@@ -204,7 +242,7 @@
       </div>
 
       <div class="settings-body">
-        <!-- Notifications (collapsed) -->
+        <!-- Notifications -->
         <div class="section">
           <div class="section-title">Notifications</div>
           <div class="setting-row">
@@ -216,22 +254,38 @@
           </div>
           <div class="setting-row">
             <div>
+              <div class="setting-label">Comment notifications</div>
+              <div class="setting-desc">Notify on new unresolved comments</div>
+            </div>
+            <div class="pill-group">
+              <span class="pill">Mine</span>
+              <span class="pill active">Review</span>
+              <span class="pill">All</span>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div>
               <div class="setting-label">Sound alerts</div>
               <div class="setting-desc">Play a sound on CI pass or fail</div>
             </div>
             <div class="toggle on"><div class="toggle-knob"></div></div>
-          </div>
-          <div class="setting-row">
-            <div>
-              <div class="setting-label">Sound</div>
-            </div>
-            <span class="select">Ding</span>
           </div>
         </div>
 
         <!-- Display -->
         <div class="section">
           <div class="section-title">Display</div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-label">Theme</div>
+              <div class="setting-desc">Match system or pick a side</div>
+            </div>
+            <div class="segmented">
+              <span class="seg">System</span>
+              <span class="seg">Light</span>
+              <span class="seg active">Dark</span>
+            </div>
+          </div>
           <div class="setting-row">
             <div>
               <div class="setting-label">Dim stale PRs after</div>
@@ -253,10 +307,10 @@
           </div>
           <div class="setting-row">
             <div>
-              <div class="setting-label">GitLab</div>
-              <div class="setting-desc">Not connected</div>
+              <div class="setting-label">DeployHQ</div>
+              <div class="setting-desc">acme.deployhq.com</div>
             </div>
-            <span class="connect-link">Connect</span>
+            <span class="disconnect">Disconnect</span>
           </div>
         </div>
 

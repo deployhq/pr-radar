@@ -131,45 +131,6 @@
   .tab.active .tab-count { background: rgba(139,92,246,0.15); color: #a78bfa; }
   .tab:not(.active) .tab-count { background: #21262d; color: #6b7280; }
 
-  .search-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-bottom: 1px solid #21262d;
-  }
-
-  .search-input {
-    flex: 1;
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 12px;
-    color: #6b7280;
-  }
-
-  .refresh-btn {
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    border: 1px solid #30363d;
-    color: #6b7280;
-    background: none;
-  }
-
-  .sort-chip {
-    font-size: 11px;
-    padding: 4px 8px;
-    border-radius: 20px;
-    border: 1px solid #30363d;
-    color: #9ca3af;
-    background: none;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
   .updated-bar {
     text-align: center;
     padding: 4px;
@@ -178,48 +139,12 @@
     color: #4b5563;
   }
 
-  .urgency-bar {
-    display: flex;
-    gap: 6px;
-    padding: 8px 16px;
-    border-bottom: 1px solid #21262d;
-    overflow-x: hidden;
-  }
-
-  .urgency-chip {
-    font-size: 11px;
-    padding: 3px 9px;
-    border-radius: 20px;
-    border: 1px solid #30363d;
-    color: #9ca3af;
-    background: none;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    white-space: nowrap;
-  }
-
-  .urgency-chip.active {
-    background: rgba(139,92,246,0.15);
-    border-color: rgba(139,92,246,0.4);
-    color: #c4b5fd;
-  }
-
-  .urgency-chip .count {
-    font-weight: 600;
-    color: #e5e7eb;
-  }
-
-  .urgency-chip.active .count { color: #c4b5fd; }
-
   .pr-list { padding: 0; }
 
   .pr-item {
     padding: 12px 16px;
     border-bottom: 1px solid #21262d;
   }
-
-  .pr-item.dimmed { opacity: 0.5; }
 
   .pr-top {
     display: flex;
@@ -268,18 +193,6 @@
     color: #fff;
   }
 
-  .merge-btn.disabled {
-    background: #21262d;
-    color: #484f58;
-    border-color: #30363d;
-  }
-
-  .merge-btn.merged {
-    background: #8957e5;
-    color: #fff;
-    border-color: #8957e5;
-  }
-
   .pr-meta {
     display: flex;
     align-items: center;
@@ -287,6 +200,18 @@
     margin-top: 2px;
     font-size: 11px;
     color: #6b7280;
+  }
+
+  .deploy-btn {
+    font-size: 10px;
+    line-height: 1;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid rgba(139,92,246,0.4);
+    background: rgba(139,92,246,0.15);
+    color: #c4b5fd;
+    margin-left: auto;
   }
 
   .pr-badge {
@@ -320,12 +245,13 @@
   }
 
   .ci-passed { background: rgba(34,197,94,0.15); color: #4ade80; }
-  .ci-failed { background: rgba(239,68,68,0.15); color: #f87171; }
   .ci-running { background: rgba(59,130,246,0.15); color: #60a5fa; }
   .ci-approved { background: rgba(34,197,94,0.15); color: #4ade80; }
-  .ci-comments { background: #21262d; color: #fbbf24; }
-  .ci-deploy { background: rgba(34,197,94,0.15); color: #4ade80; }
-  .ci-changes { background: rgba(239,68,68,0.15); color: #f87171; }
+  .ci-deploy {
+    background: rgba(139,92,246,0.15);
+    color: #c4b5fd;
+    border: 1px solid rgba(139,92,246,0.3);
+  }
 
   .pr-time {
     font-size: 10px;
@@ -333,7 +259,63 @@
     margin-left: auto;
   }
 
-  .star { color: #facc15; margin-right: 2px; }
+  /* Inline deploy selector */
+  .deploy-card {
+    margin-top: 8px;
+    margin-left: 30px;
+    background: rgba(139,92,246,0.06);
+    border: 1px solid rgba(139,92,246,0.25);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .deploy-card-title {
+    font-size: 11px;
+    color: #c4b5fd;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .deploy-select {
+    width: 100%;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    color: #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .deploy-select .caret { color: #6b7280; }
+
+  .deploy-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .deploy-actions .btn {
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    border: 1px solid #30363d;
+    background: none;
+    color: #9ca3af;
+  }
+
+  .deploy-actions .btn.primary {
+    background: #7c3aed;
+    color: #fff;
+    border-color: #7c3aed;
+  }
 
   .footer {
     display: flex;
@@ -347,19 +329,18 @@
   }
 
   .footer a { color: #a78bfa; text-decoration: none; }
-
   .footer a:visited { color: #a78bfa; }
 </style>
 </head>
 <body>
   <div class="container">
     <div class="left">
-      <h1>All your <span>PRs</span> in one place</h1>
-      <p>CI status, merge PRs, unresolved comments, deployment previews, and sound alerts — right from your toolbar.</p>
+      <h1>Ship from your <span>toolbar</span></h1>
+      <p>Deploy any PR to DeployHQ without leaving the dashboard. Persistent badges show what's live, even for deploys made elsewhere.</p>
       <div class="badges">
         <span class="badge badge-green">Free</span>
         <span class="badge badge-purple">Open Source</span>
-        <span class="badge badge-blue">No Backend</span>
+        <span class="badge badge-blue">Opt-in integration</span>
       </div>
     </div>
 
@@ -377,109 +358,67 @@
       </div>
 
       <div class="tabs">
-        <div class="tab active">Mine<span class="tab-count">4</span></div>
+        <div class="tab active">Mine<span class="tab-count">3</span></div>
         <div class="tab">Review<span class="tab-count">2</span></div>
-        <div class="tab">All<span class="tab-count">11</span></div>
-      </div>
-
-      <div class="search-bar">
-        <div class="search-input">Search PRs or @author...</div>
-        <div class="sort-chip">↕ Newest</div>
-        <div class="refresh-btn">↻</div>
+        <div class="tab">All<span class="tab-count">8</span></div>
       </div>
 
       <div class="updated-bar">Updated just now</div>
 
-      <div class="urgency-bar">
-        <div class="urgency-chip active">All <span class="count">4</span></div>
-        <div class="urgency-chip">❌ <span class="count">1</span></div>
-        <div class="urgency-chip">✏️ <span class="count">1</span></div>
-        <div class="urgency-chip">💬 <span class="count">1</span></div>
-        <div class="urgency-chip">💤 <span class="count">1</span></div>
-      </div>
-
       <div class="pr-list">
+        <!-- PR 1: deploy in progress (selector open) -->
         <div class="pr-item">
           <div class="pr-top">
             <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
             <div style="flex:1;min-width:0">
               <div class="pr-title-row">
-                <div class="pr-title">Add deployment preview URLs to PR dashboard</div>
+                <div class="pr-title">Add account-level webhooks for deployments</div>
                 <span class="merge-btn">Merge</span>
               </div>
               <div class="pr-meta">
-                <span>deployhq/pr-radar #42 · @facundofarias</span>
+                <span>deployhq/deployhq #1212 · @maria</span>
                 <span class="pr-badge badge-author">Author</span>
+                <span class="deploy-btn">🚀 Deploy</span>
               </div>
             </div>
           </div>
           <div class="pr-badges">
             <span class="ci-badge ci-passed">✓ Passed</span>
             <span class="ci-badge ci-approved">✓ 2 approved</span>
-            <span class="ci-badge ci-deploy">🚀 production</span>
-            <span class="pr-time"><span class="star">★</span> 3m ago</span>
+            <span class="pr-time">5m ago</span>
           </div>
-        </div>
-
-        <div class="pr-item">
-          <div class="pr-top">
-            <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fc6d26"><path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 0 0-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 0 0-.867 0L1.386 9.45.045 13.587a.924.924 0 0 0 .331 1.023L12 23.054l11.624-8.443a.92.92 0 0 0 .331-1.024"/></svg></div>
-            <div style="flex:1;min-width:0">
-              <div class="pr-title-row">
-                <div class="pr-title">Fix notification sound volume not persisting</div>
-                <span class="merge-btn">Merge</span>
-              </div>
-              <div class="pr-meta">
-                <span>deployhq/deploy-api !138 · @maria</span>
-                <span class="pr-badge badge-review-req">Review</span>
-              </div>
+          <div class="deploy-card">
+            <div class="deploy-card-title">🚀 Deploy to DeployHQ</div>
+            <div class="deploy-select">
+              <span>production · web-cluster</span>
+              <span class="caret">▾</span>
+            </div>
+            <div class="deploy-actions">
+              <span class="btn">Cancel</span>
+              <span class="btn primary">Deploy</span>
             </div>
           </div>
-          <div class="pr-badges">
-            <span class="ci-badge ci-running">● Running</span>
-            <span class="ci-badge ci-comments">💬 1 unresolved</span>
-            <span class="pr-time">12m ago</span>
-          </div>
         </div>
 
+        <!-- PR 2: already deployed (persistent badge) -->
         <div class="pr-item">
           <div class="pr-top">
             <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12Z"/></svg></div>
             <div style="flex:1;min-width:0">
               <div class="pr-title-row">
-                <div class="pr-title">Upgrade to Rails 7.1 and Ruby 3.3</div>
-                <span class="merge-btn disabled">Merge</span>
+                <div class="pr-title">Refresh marketing copy on pricing page</div>
+                <span class="merge-btn">Merge</span>
               </div>
               <div class="pr-meta">
-                <span>deployhq/deployhq #1204 · @facundofarias</span>
+                <span>deployhq/website #318 · @facundofarias</span>
                 <span class="pr-badge badge-author">Author</span>
               </div>
             </div>
           </div>
           <div class="pr-badges">
-            <span class="ci-badge ci-failed">✗ Failed</span>
-            <span class="ci-badge ci-changes">↻ Changes requested</span>
-            <span class="pr-time"><span class="star">★</span> 2h ago</span>
-          </div>
-        </div>
-
-        <div class="pr-item dimmed">
-          <div class="pr-top">
-            <div class="pr-platform"><svg width="18" height="18" viewBox="0 0 24 24" fill="#2684ff"><path d="M.778 1.213a.768.768 0 0 0-.768.892l3.263 19.81c.084.5.515.868 1.022.873H19.95a.772.772 0 0 0 .77-.646L24.012 2.104a.768.768 0 0 0-.768-.892zM14.52 15.53H9.522L8.17 8.466h7.561z"/></svg></div>
-            <div style="flex:1;min-width:0">
-              <div class="pr-title-row">
-                <div class="pr-title">Update CI pipeline for Node 20</div>
-                <span class="merge-btn disabled">Merge</span>
-              </div>
-              <div class="pr-meta">
-                <span>team-ops/infra-config #87 · @ben</span>
-                <span class="pr-badge badge-reviewed">Reviewed</span>
-              </div>
-            </div>
-          </div>
-          <div class="pr-badges">
             <span class="ci-badge ci-passed">✓ Passed</span>
-            <span class="pr-time">💤 48d ago</span>
+            <span class="ci-badge ci-deploy">🚀 production</span>
+            <span class="pr-time">1h ago</span>
           </div>
         </div>
       </div>

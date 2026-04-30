@@ -20,6 +20,7 @@ export function getUrgencyCategories(
 
   if (pr.ciStatus === 'failed') categories.add('ci_failed');
   if (pr.reviewStatus === 'changes_requested') categories.add('changes_requested');
+  if (pr.unresolvedCommentCount > 0) categories.add('unresolved_comments');
   if (pr.isReviewRequested && !pr.hasReviewed) categories.add('review_requested');
   if (pr.hasConflicts) categories.add('conflicts');
 
@@ -44,6 +45,7 @@ export function matchesUrgencyFilter(
 const CATEGORY_ORDER: UrgencyCategory[] = [
   'ci_failed',
   'changes_requested',
+  'unresolved_comments',
   'review_requested',
   'conflicts',
   'stale',
@@ -75,25 +77,31 @@ export const URGENCY_META: Record<
 > = {
   ci_failed: {
     label: 'CI failing',
-    icon: '\u2717',
+    icon: '\u274C',
     colorClasses: 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/20',
     activeColorClasses: 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/50 ring-1 ring-red-300/30 dark:ring-red-500/15',
   },
   changes_requested: {
     label: 'Changes requested',
-    icon: '\u21BB',
+    icon: '\u270F\uFE0F',
     colorClasses: 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/20',
     activeColorClasses: 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/50 ring-1 ring-red-300/30 dark:ring-red-500/15',
   },
+  unresolved_comments: {
+    label: 'Unresolved comments',
+    icon: '\uD83D\uDCAC',
+    colorClasses: 'bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/20',
+    activeColorClasses: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/50 ring-1 ring-amber-300/30 dark:ring-amber-500/15',
+  },
   review_requested: {
     label: 'Review requested',
-    icon: '\uD83D\uDC41',
+    icon: '\uD83D\uDC40',
     colorClasses: 'bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800/20',
     activeColorClasses: 'bg-amber-100 dark:bg-amber-900/25 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/50 ring-1 ring-amber-300/30 dark:ring-amber-500/15',
   },
   conflicts: {
     label: 'Conflicts',
-    icon: '\u26A0',
+    icon: '\u26A0\uFE0F',
     colorClasses: 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/20',
     activeColorClasses: 'bg-red-100 dark:bg-red-900/25 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/50 ring-1 ring-red-300/30 dark:ring-red-500/15',
   },

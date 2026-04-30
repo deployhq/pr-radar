@@ -360,9 +360,11 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
           )}
 
           {pr.hasConflicts && (
-            <Badge className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400">
-              <span aria-hidden="true">&#x26A0;&#xFE0F;</span> Conflicts
-            </Badge>
+            <span title="Conflicts" aria-label="Has merge conflicts">
+              <Badge className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400">
+                <span aria-hidden="true">&#x26A0;&#xFE0F;</span>
+              </Badge>
+            </span>
           )}
 
           {pr.deployment && pr.deployment.status !== 'inactive' && (

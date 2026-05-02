@@ -268,4 +268,18 @@ describe('GitHub Enterprise Server URL routing', () => {
     expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
       .toBe('https://github.example.com/api/v3/repos/acme/alpha/pulls/7/merge');
   });
+
+  it('routes to api.github.com when instanceUrl is the canonical github.com', async () => {
+    // Defensive: legacy or accidentally-persisted instanceUrl='https://github.com'
+    // must not become 'https://github.com/api/v3' (which is not the cloud REST API).
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://api.github.com/user');
+  });
+
+  it('handles trailing slash on canonical github.com', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.com/');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://api.github.com/user');
+  });
 });

@@ -2,10 +2,15 @@ import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../type
 
 const CANONICAL_INSTANCE = 'https://gitlab.com';
 
-/** Resolve the REST v4 base URL from a user-facing instance URL (canonical default when absent). */
+/**
+ * Resolve the REST v4 base URL from a user-facing instance URL.
+ * Falls back to the canonical service when no instance URL is set, and
+ * defensively maps a canonical-matching instance URL back to the canonical
+ * base (so legacy data with `instanceUrl: 'https://gitlab.com'` works).
+ */
 function resolveBaseUrl(instanceUrl?: string): string {
-  const root = instanceUrl ?? CANONICAL_INSTANCE;
-  return `${root.replace(/\/+$/, '')}/api/v4`;
+  const root = (instanceUrl ?? CANONICAL_INSTANCE).replace(/\/+$/, '');
+  return `${root}/api/v4`;
 }
 
 let lastRateLimit: RateLimitInfo | null = null;

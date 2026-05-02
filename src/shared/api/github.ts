@@ -1,5 +1,6 @@
 import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
 
+const CANONICAL_INSTANCE = 'https://github.com';
 const CANONICAL_BASE_URL = 'https://api.github.com';
 const CANONICAL_GRAPHQL_URL = 'https://api.github.com/graphql';
 const HYDRATE_CONCURRENCY = 5;
@@ -9,16 +10,22 @@ const MAX_PAGINATED_PAGES = 20;
 /**
  * Resolve REST API base from a user-facing instance URL. GitHub Enterprise Server
  * mounts the API at `/api/v3`; canonical github.com uses `api.github.com`.
+ * Defensive: if a caller passes the canonical instance URL (e.g. legacy data),
+ * route to the cloud REST endpoint instead of `https://github.com/api/v3`.
  */
 function resolveBaseUrl(instanceUrl?: string): string {
   if (!instanceUrl) return CANONICAL_BASE_URL;
-  return `${instanceUrl.replace(/\/+$/, '')}/api/v3`;
+  const stripped = instanceUrl.replace(/\/+$/, '');
+  if (stripped === CANONICAL_INSTANCE) return CANONICAL_BASE_URL;
+  return `${stripped}/api/v3`;
 }
 
 /** Resolve GraphQL endpoint URL from a user-facing instance URL. */
 function resolveGraphQLUrl(instanceUrl?: string): string {
   if (!instanceUrl) return CANONICAL_GRAPHQL_URL;
-  return `${instanceUrl.replace(/\/+$/, '')}/api/graphql`;
+  const stripped = instanceUrl.replace(/\/+$/, '');
+  if (stripped === CANONICAL_INSTANCE) return CANONICAL_GRAPHQL_URL;
+  return `${stripped}/api/graphql`;
 }
 
 let lastRateLimit: RateLimitInfo | null = null;

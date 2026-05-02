@@ -42,6 +42,45 @@ describe('normalizeInstanceUrl', () => {
   it('preserves port', () => {
     expect(normalizeInstanceUrl('https://gitlab.example.com:8443')).toBe('https://gitlab.example.com:8443');
   });
+
+  describe('with platform argument', () => {
+    it('strips a trailing /api/v4 for GitLab', () => {
+      expect(normalizeInstanceUrl('https://gitlab.example.com/api/v4', 'gitlab'))
+        .toBe('https://gitlab.example.com');
+    });
+
+    it('strips a trailing /api/v3 for GitHub', () => {
+      expect(normalizeInstanceUrl('https://github.example.com/api/v3', 'github'))
+        .toBe('https://github.example.com');
+    });
+
+    it('strips a trailing /api/graphql for GitHub', () => {
+      expect(normalizeInstanceUrl('https://github.example.com/api/graphql', 'github'))
+        .toBe('https://github.example.com');
+    });
+
+    it('returns null when the cleaned URL matches the canonical service (GitHub)', () => {
+      expect(normalizeInstanceUrl('https://github.com', 'github')).toBeNull();
+      expect(normalizeInstanceUrl('https://github.com/', 'github')).toBeNull();
+    });
+
+    it('returns null when the cleaned URL matches the canonical service (GitLab)', () => {
+      expect(normalizeInstanceUrl('https://gitlab.com', 'gitlab')).toBeNull();
+      expect(normalizeInstanceUrl('https://gitlab.com/', 'gitlab')).toBeNull();
+    });
+
+    it('returns null when stripping an API suffix lands on the canonical', () => {
+      expect(normalizeInstanceUrl('https://gitlab.com/api/v4', 'gitlab')).toBeNull();
+      expect(normalizeInstanceUrl('https://github.com/api/v3', 'github')).toBeNull();
+    });
+
+    it('keeps a real self-hosted URL untouched when there is no API suffix', () => {
+      expect(normalizeInstanceUrl('https://gitlab.example.com', 'gitlab'))
+        .toBe('https://gitlab.example.com');
+      expect(normalizeInstanceUrl('https://github.acme.com', 'github'))
+        .toBe('https://github.acme.com');
+    });
+  });
 });
 
 describe('getInstanceUrl', () => {

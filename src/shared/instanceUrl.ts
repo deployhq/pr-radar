@@ -18,11 +18,25 @@ export function isSelfHosted(account: { platform: Platform; instanceUrl?: string
   return !!normalized && normalized !== CANONICAL_INSTANCE_URLS[account.platform];
 }
 
+/** Platform-specific API path suffixes to strip when a user pastes an API endpoint. */
+const API_PATH_SUFFIXES: Record<Platform, RegExp> = {
+  github: /\/api\/(?:v3|graphql)$/i,
+  gitlab: /\/api\/v4$/i,
+  bitbucket: /\/2\.0$/, // not used today (Phase 3 deferred) but harmless to define
+};
+
 /**
  * Normalize a user-entered instance URL: trim whitespace, drop trailing slash,
  * require https. Returns null if the input is empty or invalid.
+ *
+ * When `platform` is provided:
+ *   - strips well-known API path suffixes (e.g. `/api/v4`, `/api/v3`, `/api/graphql`)
+ *     so users can paste an API endpoint by mistake without breaking us;
+ *   - returns null when the cleaned result matches the canonical service URL,
+ *     so the caller can treat that case as "use cloud" rather than persisting
+ *     a bogus self-hosted instance.
  */
-export function normalizeInstanceUrl(input: string | undefined | null): string | null {
+export function normalizeInstanceUrl(input: string | undefined | null, platform?: Platform): string | null {
   if (!input) return null;
   const trimmed = input.trim().replace(/\/+$/, '');
   if (!trimmed) return null;
@@ -30,7 +44,12 @@ export function normalizeInstanceUrl(input: string | undefined | null): string |
     const url = new URL(trimmed);
     if (url.protocol !== 'https:') return null;
     if (!url.hostname) return null;
-    return `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}`;
+    let normalized = `${url.protocol}//${url.host}${url.pathname.replace(/\/+$/, '')}`;
+    if (platform) {
+      normalized = normalized.replace(API_PATH_SUFFIXES[platform], '');
+      if (normalized === CANONICAL_INSTANCE_URLS[platform]) return null;
+    }
+    return normalized;
   } catch {
     return null;
   }

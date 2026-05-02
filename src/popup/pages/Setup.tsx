@@ -118,9 +118,18 @@ export default function Setup({ onComplete }: SetupProps) {
 
     let normalizedInstance: string | undefined;
     if (selfHosted) {
-      const normalized = normalizeInstanceUrl(instanceUrl);
-      if (!normalized) {
+      const trimmed = instanceUrl.trim();
+      if (!trimmed) {
         setError('Enter a valid HTTPS instance URL (e.g. https://gitlab.example.com).');
+        return;
+      }
+      const normalized = normalizeInstanceUrl(trimmed, platform);
+      if (!normalized) {
+        // Distinguish "this is just the canonical" from "this is invalid"
+        const isCanonical = normalizeInstanceUrl(trimmed) !== null;
+        setError(isCanonical
+          ? `That's the public ${PLATFORM_LABELS[platform]} URL — untoggle "Self-hosted instance" to use the public service.`
+          : 'Enter a valid HTTPS instance URL (e.g. https://gitlab.example.com).');
         return;
       }
       normalizedInstance = normalized;

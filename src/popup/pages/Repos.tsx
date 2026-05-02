@@ -23,7 +23,7 @@ export default function Repos() {
       for (const account of accounts) {
         try {
           if (account.platform === 'github') {
-            const ghRepos = await github.getUserRepos(account.token);
+            const ghRepos = await github.getUserRepos(account.token, account.instanceUrl);
             for (const r of ghRepos) {
               const key = `github:${r.full_name}`;
               const saved = watchedMap.get(key);
@@ -35,7 +35,7 @@ export default function Repos() {
               });
             }
           } else if (account.platform === 'gitlab') {
-            const glRepos = await gitlab.getUserProjects(account.token);
+            const glRepos = await gitlab.getUserProjects(account.token, account.instanceUrl);
             for (const r of glRepos) {
               const key = `gitlab:${r.path_with_namespace}`;
               const saved = watchedMap.get(key);

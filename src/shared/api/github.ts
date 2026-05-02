@@ -1,9 +1,25 @@
 import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
 
-const BASE_URL = 'https://api.github.com';
+const CANONICAL_BASE_URL = 'https://api.github.com';
+const CANONICAL_GRAPHQL_URL = 'https://api.github.com/graphql';
 const HYDRATE_CONCURRENCY = 5;
 const ORG_FETCH_CONCURRENCY = 4;
 const MAX_PAGINATED_PAGES = 20;
+
+/**
+ * Resolve REST API base from a user-facing instance URL. GitHub Enterprise Server
+ * mounts the API at `/api/v3`; canonical github.com uses `api.github.com`.
+ */
+function resolveBaseUrl(instanceUrl?: string): string {
+  if (!instanceUrl) return CANONICAL_BASE_URL;
+  return `${instanceUrl.replace(/\/+$/, '')}/api/v3`;
+}
+
+/** Resolve GraphQL endpoint URL from a user-facing instance URL. */
+function resolveGraphQLUrl(instanceUrl?: string): string {
+  if (!instanceUrl) return CANONICAL_GRAPHQL_URL;
+  return `${instanceUrl.replace(/\/+$/, '')}/api/graphql`;
+}
 
 let lastRateLimit: RateLimitInfo | null = null;
 
@@ -35,8 +51,8 @@ export class GitHubAPIError extends Error {
   }
 }
 
-async function ghFetchRaw(path: string, token: string): Promise<Response> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function ghFetchRaw(path: string, token: string, baseUrl: string): Promise<Response> {
+  const res = await fetch(`${baseUrl}${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
@@ -50,12 +66,12 @@ async function ghFetchRaw(path: string, token: string): Promise<Response> {
   return res;
 }
 
-async function ghFetch<T>(path: string, token: string): Promise<T> {
-  const res = await ghFetchRaw(path, token);
+async function ghFetch<T>(path: string, token: string, baseUrl: string): Promise<T> {
+  const res = await ghFetchRaw(path, token, baseUrl);
   return res.json();
 }
 
-export function getNextPagePath(linkHeader: string | null): string | null {
+export function getNextPagePath(linkHeader: string | null, baseUrl: string = CANONICAL_BASE_URL): string | null {
   if (!linkHeader) return null;
 
   for (const part of linkHeader.split(',')) {
@@ -63,14 +79,22 @@ export function getNextPagePath(linkHeader: string | null): string | null {
     if (!match || match[2] !== 'next') continue;
 
     const url = new URL(match[1]);
-    if (url.origin !== BASE_URL) return null;
-    return `${url.pathname}${url.search}`;
+    const expectedOrigin = new URL(baseUrl).origin;
+    if (url.origin !== expectedOrigin) return null;
+
+    // Strip the API base path (e.g. /api/v3 on GHES) so we get a path that's
+    // relative to the same baseUrl we'll prepend on the next call.
+    const basePath = new URL(baseUrl).pathname.replace(/\/+$/, '');
+    const pagePath = basePath && url.pathname.startsWith(basePath)
+      ? url.pathname.slice(basePath.length)
+      : url.pathname;
+    return `${pagePath}${url.search}`;
   }
 
   return null;
 }
 
-async function ghPaginate<T>(path: string, token: string, maxPages = MAX_PAGINATED_PAGES): Promise<T[]> {
+async function ghPaginate<T>(path: string, token: string, baseUrl: string, maxPages = MAX_PAGINATED_PAGES): Promise<T[]> {
   const results: T[] = [];
   const seenPaths = new Set<string>();
   let nextPath: string | null = path;
@@ -78,10 +102,10 @@ async function ghPaginate<T>(path: string, token: string, maxPages = MAX_PAGINAT
 
   while (nextPath && pageCount < maxPages && !seenPaths.has(nextPath)) {
     seenPaths.add(nextPath);
-    const res = await ghFetchRaw(nextPath, token);
+    const res = await ghFetchRaw(nextPath, token, baseUrl);
     const page = await res.json() as T[];
     results.push(...page);
-    nextPath = getNextPagePath(res.headers.get('link'));
+    nextPath = getNextPagePath(res.headers.get('link'), baseUrl);
     pageCount += 1;
   }
 
@@ -144,21 +168,23 @@ export interface GHReview {
   commit_id: string;
 }
 
-export async function getAuthenticatedUser(token: string): Promise<{ login: string; avatar_url: string }> {
-  return ghFetch('/user', token);
+export async function getAuthenticatedUser(token: string, instanceUrl?: string): Promise<{ login: string; avatar_url: string }> {
+  return ghFetch('/user', token, resolveBaseUrl(instanceUrl));
 }
 
-export async function getUserRepos(token: string): Promise<{ full_name: string }[]> {
+export async function getUserRepos(token: string, instanceUrl?: string): Promise<{ full_name: string }[]> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   // Fetch personal repos
   const userRepos = await ghPaginate<{ full_name: string }>(
     '/user/repos?sort=pushed&per_page=100&affiliation=owner,collaborator,organization_member',
     token,
+    baseUrl,
   );
 
   // Fetch orgs the user belongs to, then fetch repos from each org
   // Use type=member to include private repos the user has access to
   try {
-    const orgs = await ghFetch<{ login: string }[]>('/user/orgs?per_page=100', token);
+    const orgs = await ghFetch<{ login: string }[]>('/user/orgs?per_page=100', token, baseUrl);
     const orgRepoLists = await mapWithConcurrencyLimit(
       orgs,
       ORG_FETCH_CONCURRENCY,
@@ -167,10 +193,12 @@ export async function getUserRepos(token: string): Promise<{ full_name: string }
           ghPaginate<{ full_name: string }>(
             `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=member`,
             token,
+            baseUrl,
           ).catch(() => [] as { full_name: string }[]),
           ghPaginate<{ full_name: string }>(
             `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=all`,
             token,
+            baseUrl,
           ).catch(() => [] as { full_name: string }[]),
         ]);
 
@@ -200,9 +228,11 @@ export async function mergePullRequest(
   token: string,
   repoFullName: string,
   prNumber: number,
+  instanceUrl?: string,
 ): Promise<{ success: boolean; message: string }> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   try {
-    const res = await fetch(`${BASE_URL}/repos/${repoFullName}/pulls/${prNumber}/merge`, {
+    const res = await fetch(`${baseUrl}/repos/${repoFullName}/pulls/${prNumber}/merge`, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -225,9 +255,11 @@ export async function deleteBranch(
   token: string,
   repoFullName: string,
   branch: string,
+  instanceUrl?: string,
 ): Promise<{ success: boolean; message: string }> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   try {
-    const res = await fetch(`${BASE_URL}/repos/${repoFullName}/git/refs/heads/${branch}`, {
+    const res = await fetch(`${baseUrl}/repos/${repoFullName}/git/refs/heads/${branch}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -245,33 +277,39 @@ export async function deleteBranch(
   }
 }
 
-export async function checkIfMerged(token: string, repoFullName: string, prNumber: number): Promise<boolean> {
+export async function checkIfMerged(token: string, repoFullName: string, prNumber: number, instanceUrl?: string): Promise<boolean> {
   try {
-    const pr = await ghFetch<{ merged: boolean }>(`/repos/${repoFullName}/pulls/${prNumber}`, token);
+    const baseUrl = resolveBaseUrl(instanceUrl);
+    const pr = await ghFetch<{ merged: boolean }>(`/repos/${repoFullName}/pulls/${prNumber}`, token, baseUrl);
     return pr.merged;
   } catch {
     return false;
   }
 }
 
-export async function refreshCIStatus(token: string, repoFullName: string, headSha: string): Promise<{ status: CIStatus; failedChecks: string[] }> {
-  return fetchCIStatus(token, repoFullName, headSha);
+export async function refreshCIStatus(token: string, repoFullName: string, headSha: string, instanceUrl?: string): Promise<{ status: CIStatus; failedChecks: string[] }> {
+  return fetchCIStatus(token, repoFullName, headSha, resolveBaseUrl(instanceUrl));
 }
 
 export async function fetchPullRequests(
   token: string,
   repoFullName: string,
   username: string,
+  instanceUrl?: string,
 ): Promise<PullRequest[]> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
+  const graphqlUrl = resolveGraphQLUrl(instanceUrl);
+
   const prs = await ghPaginate<GHPullRequest>(
     `/repos/${repoFullName}/pulls?state=open&per_page=100`,
     token,
+    baseUrl,
   );
 
   const results = await mapWithConcurrencyLimit(
     prs,
     HYDRATE_CONCURRENCY,
-    (pr) => hydratePR(token, repoFullName, pr, username),
+    (pr) => hydratePR(token, repoFullName, pr, username, baseUrl, graphqlUrl),
   );
 
   return results;
@@ -282,13 +320,15 @@ async function hydratePR(
   repoFullName: string,
   pr: GHPullRequest,
   username: string,
+  baseUrl: string,
+  graphqlUrl: string,
 ): Promise<PullRequest> {
   // Fetch CI status, reviews, unresolved threads, and deployments in parallel
   const [ciResult, reviews, graphqlDetails, deployment] = await Promise.all([
-    fetchCIStatus(token, repoFullName, pr.head.sha),
-    ghFetch<GHReview[]>(`/repos/${repoFullName}/pulls/${pr.number}/reviews`, token),
-    fetchGraphQLDetails(token, repoFullName, pr.number),
-    fetchDeployment(token, repoFullName, pr.head.sha),
+    fetchCIStatus(token, repoFullName, pr.head.sha, baseUrl),
+    ghFetch<GHReview[]>(`/repos/${repoFullName}/pulls/${pr.number}/reviews`, token, baseUrl),
+    fetchGraphQLDetails(token, repoFullName, pr.number, graphqlUrl),
+    fetchDeployment(token, repoFullName, pr.head.sha, baseUrl),
   ]);
 
   const reviewStatus = deriveReviewStatus(reviews, pr.head.sha);
@@ -348,17 +388,19 @@ interface CIResult {
   durationMs?: number;
 }
 
-async function fetchCIStatus(token: string, repoFullName: string, headSha: string): Promise<CIResult> {
+async function fetchCIStatus(token: string, repoFullName: string, headSha: string, baseUrl: string): Promise<CIResult> {
   try {
     // Use the combined status endpoint for the PR's head commit
     const [combinedStatus, checkRuns] = await Promise.all([
       ghFetch<{ state: string }>(
         `/repos/${repoFullName}/commits/${headSha}/status`,
         token,
+        baseUrl,
       ),
       ghFetch<{ total_count: number; check_runs: { name: string; status: string; conclusion: string | null; started_at: string | null; completed_at: string | null }[] }>(
         `/repos/${repoFullName}/commits/${headSha}/check-runs`,
         token,
+        baseUrl,
       ),
     ]);
 
@@ -460,12 +502,14 @@ async function fetchDeployment(
   token: string,
   repoFullName: string,
   headSha: string,
+  baseUrl: string,
 ): Promise<PullRequest['deployment']> {
   try {
     // Get deployments for this specific SHA
     const deployments = await ghFetch<{ id: number; environment: string }[]>(
       `/repos/${repoFullName}/deployments?sha=${headSha}&per_page=1`,
       token,
+      baseUrl,
     );
 
     if (!deployments.length) return undefined;
@@ -474,6 +518,7 @@ async function fetchDeployment(
     const statuses = await ghFetch<{ state: string; environment_url?: string }[]>(
       `/repos/${repoFullName}/deployments/${deployment.id}/statuses?per_page=1`,
       token,
+      baseUrl,
     );
 
     if (!statuses.length) {
@@ -529,8 +574,8 @@ interface GraphQLPullRequestData {
 
 type GraphQLPullRequest = NonNullable<NonNullable<GraphQLPullRequestData['repository']>['pullRequest']>;
 
-async function ghGraphQL<T>(token: string, query: string, variables: Record<string, unknown>): Promise<T | null> {
-  const res = await fetch('https://api.github.com/graphql', {
+async function ghGraphQL<T>(token: string, query: string, variables: Record<string, unknown>, graphqlUrl: string): Promise<T | null> {
+  const res = await fetch(graphqlUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -545,7 +590,7 @@ async function ghGraphQL<T>(token: string, query: string, variables: Record<stri
   return data.data ?? null;
 }
 
-async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber: number): Promise<GraphQLPRDetails> {
+async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber: number, graphqlUrl: string): Promise<GraphQLPRDetails> {
   // GitHub REST API doesn't expose resolved/unresolved state or mergeable status reliably.
   // Use GraphQL which has isResolved on reviewThreads and mergeable on pullRequest.
   const [owner, repo] = repoFullName.split('/');
@@ -584,7 +629,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
         repo,
         prNumber,
         after,
-      });
+      }, graphqlUrl);
 
       const pr: GraphQLPullRequest | undefined = data?.repository?.pullRequest;
       if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };

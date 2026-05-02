@@ -1,6 +1,12 @@
 import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
 
-const BASE_URL = 'https://gitlab.com/api/v4';
+const CANONICAL_INSTANCE = 'https://gitlab.com';
+
+/** Resolve the REST v4 base URL from a user-facing instance URL (canonical default when absent). */
+function resolveBaseUrl(instanceUrl?: string): string {
+  const root = instanceUrl ?? CANONICAL_INSTANCE;
+  return `${root.replace(/\/+$/, '')}/api/v4`;
+}
 
 let lastRateLimit: RateLimitInfo | null = null;
 
@@ -32,8 +38,8 @@ export class GitLabAPIError extends Error {
   }
 }
 
-async function glFetch<T>(path: string, token: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function glFetch<T>(path: string, token: string, baseUrl: string): Promise<T> {
+  const res = await fetch(`${baseUrl}${path}`, {
     headers: {
       'PRIVATE-TOKEN': token,
     },
@@ -93,18 +99,19 @@ interface GLDeployment {
   environment: { name: string; external_url?: string };
 }
 
-export async function getAuthenticatedUser(token: string): Promise<{ username: string; avatar_url: string }> {
-  return glFetch('/user', token);
+export async function getAuthenticatedUser(token: string, instanceUrl?: string): Promise<{ username: string; avatar_url: string }> {
+  return glFetch('/user', token, resolveBaseUrl(instanceUrl));
 }
 
-export async function getUserProjects(token: string): Promise<{ path_with_namespace: string }[]> {
+export async function getUserProjects(token: string, instanceUrl?: string): Promise<{ path_with_namespace: string }[]> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   // Paginate through all projects (GitLab returns x-next-page header)
   const allProjects: { path_with_namespace: string }[] = [];
   let page = 1;
   const maxPages = 10; // safety limit: 1000 projects
 
   while (page <= maxPages) {
-    const res = await fetch(`${BASE_URL}/projects?membership=true&order_by=last_activity_at&per_page=100&page=${page}`, {
+    const res = await fetch(`${baseUrl}/projects?membership=true&order_by=last_activity_at&per_page=100&page=${page}`, {
       headers: { 'PRIVATE-TOKEN': token },
     });
     if (!res.ok) {
@@ -126,10 +133,12 @@ export async function mergeMergeRequest(
   token: string,
   projectPath: string,
   mrIid: number,
+  instanceUrl?: string,
 ): Promise<{ success: boolean; message: string }> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   const encodedPath = encodeURIComponent(projectPath);
   try {
-    const res = await fetch(`${BASE_URL}/projects/${encodedPath}/merge_requests/${mrIid}/merge`, {
+    const res = await fetch(`${baseUrl}/projects/${encodedPath}/merge_requests/${mrIid}/merge`, {
       method: 'PUT',
       headers: {
         'PRIVATE-TOKEN': token,
@@ -146,10 +155,11 @@ export async function mergeMergeRequest(
   }
 }
 
-export async function checkIfMerged(token: string, projectPath: string, mrIid: number): Promise<boolean> {
+export async function checkIfMerged(token: string, projectPath: string, mrIid: number, instanceUrl?: string): Promise<boolean> {
   try {
+    const baseUrl = resolveBaseUrl(instanceUrl);
     const encodedPath = encodeURIComponent(projectPath);
-    const mr = await glFetch<{ state: string }>(`/projects/${encodedPath}/merge_requests/${mrIid}`, token);
+    const mr = await glFetch<{ state: string }>(`/projects/${encodedPath}/merge_requests/${mrIid}`, token, baseUrl);
     return mr.state === 'merged';
   } catch {
     return false;
@@ -160,16 +170,19 @@ export async function fetchMergeRequests(
   token: string,
   projectPath: string,
   username: string,
+  instanceUrl?: string,
 ): Promise<PullRequest[]> {
+  const baseUrl = resolveBaseUrl(instanceUrl);
   const encodedPath = encodeURIComponent(projectPath);
 
   const mrs = await glFetch<GLMergeRequest[]>(
     `/projects/${encodedPath}/merge_requests?state=opened&per_page=50`,
     token,
+    baseUrl,
   );
 
   const results = await Promise.all(
-    mrs.map((mr) => hydrateMR(token, encodedPath, projectPath, mr, username)),
+    mrs.map((mr) => hydrateMR(token, baseUrl, encodedPath, projectPath, mr, username)),
   );
 
   return results;
@@ -177,6 +190,7 @@ export async function fetchMergeRequests(
 
 async function hydrateMR(
   token: string,
+  baseUrl: string,
   encodedPath: string,
   projectPath: string,
   mr: GLMergeRequest,
@@ -186,13 +200,15 @@ async function hydrateMR(
     glFetch<GLDiscussion[]>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/discussions`,
       token,
+      baseUrl,
     ),
     glFetch<GLApproval>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/approvals`,
       token,
+      baseUrl,
     ),
-    fetchDeployment(token, encodedPath, mr.sha),
-    fetchDiffStats(token, encodedPath, mr.iid),
+    fetchDeployment(token, baseUrl, encodedPath, mr.sha),
+    fetchDiffStats(token, baseUrl, encodedPath, mr.iid),
   ]);
 
   const unresolvedNotes = discussions.flatMap((d) =>
@@ -208,7 +224,7 @@ async function hydrateMR(
   // head_pipeline can be null even when pipelines exist (timing, detached pipelines)
   let pipeline = mr.head_pipeline;
   if (!pipeline) {
-    pipeline = await fetchLatestPipeline(token, encodedPath, mr.source_branch);
+    pipeline = await fetchLatestPipeline(token, baseUrl, encodedPath, mr.source_branch);
   }
 
   const ciStatus = mapGLPipelineStatus(pipeline?.status);
@@ -255,6 +271,7 @@ async function hydrateMR(
 
 async function fetchDiffStats(
   token: string,
+  baseUrl: string,
   encodedPath: string,
   mrIid: number,
 ): Promise<{ additions: number; deletions: number } | undefined> {
@@ -262,6 +279,7 @@ async function fetchDiffStats(
     const response = await glFetch<{ overflow?: boolean; changes: { diff: string }[] }>(
       `/projects/${encodedPath}/merge_requests/${mrIid}/changes?access_raw_diffs=false`,
       token,
+      baseUrl,
     );
     if (response.overflow) return undefined;
     let additions = 0;
@@ -280,6 +298,7 @@ async function fetchDiffStats(
 
 async function fetchLatestPipeline(
   token: string,
+  baseUrl: string,
   encodedPath: string,
   ref: string,
 ): Promise<{ status: string; web_url: string; duration: number | null } | null> {
@@ -287,6 +306,7 @@ async function fetchLatestPipeline(
     const pipelines = await glFetch<{ id: number; status: string; web_url: string }[]>(
       `/projects/${encodedPath}/pipelines?ref=${encodeURIComponent(ref)}&per_page=1&order_by=id&sort=desc`,
       token,
+      baseUrl,
     );
     if (!pipelines.length) return null;
     return { status: pipelines[0].status, web_url: pipelines[0].web_url, duration: null };
@@ -297,6 +317,7 @@ async function fetchLatestPipeline(
 
 async function fetchDeployment(
   token: string,
+  baseUrl: string,
   encodedPath: string,
   sha: string,
 ): Promise<PullRequest['deployment']> {
@@ -304,6 +325,7 @@ async function fetchDeployment(
     const deployments = await glFetch<GLDeployment[]>(
       `/projects/${encodedPath}/deployments?order_by=created_at&sort=desc&per_page=1&sha=${sha}`,
       token,
+      baseUrl,
     );
 
     if (!deployments.length) return undefined;

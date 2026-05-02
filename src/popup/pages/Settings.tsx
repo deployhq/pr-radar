@@ -3,6 +3,7 @@ import type { AppView, Platform, DeployHQAccount } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, getDeployHQAccount, removeDeployHQAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
+import { getDisplayHost } from '@/shared/instanceUrl';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -12,7 +13,7 @@ interface SettingsProps {
 
 export default function Settings({ onNavigate, theme, onThemeChange }: SettingsProps) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
-  const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string; instanceHost: string | null }[]>([]);
 
   // DeployHQ state
   const [dhqAccount, setDhqAccount] = useState<DeployHQAccount | null>(null);
@@ -27,7 +28,11 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
     async function load() {
       const [s, accounts, dhq] = await Promise.all([getSettings(), getAccounts(), getDeployHQAccount()]);
       setSettings(s);
-      setConnectedPlatforms(accounts.map((a) => ({ platform: a.platform, username: a.username })));
+      setConnectedPlatforms(accounts.map((a) => ({
+        platform: a.platform,
+        username: a.username,
+        instanceHost: getDisplayHost(a),
+      })));
       if (dhq) {
         setDhqAccount(dhq);
         setDhqSlug(dhq.slug);
@@ -241,11 +246,11 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
 
       {/* Accounts */}
       <Section title="Accounts">
-        {connectedPlatforms.map(({ platform, username }) => (
+        {connectedPlatforms.map(({ platform, username, instanceHost }) => (
           <SettingRow
             key={platform}
             label={PLATFORM_LABELS[platform]}
-            description={`@${username}`}
+            description={instanceHost ? `@${username} · ${instanceHost}` : `@${username}`}
           >
             <button
               onClick={() => handleDisconnect(platform)}

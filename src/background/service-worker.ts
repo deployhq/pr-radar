@@ -14,13 +14,42 @@ const COMMENT_CACHE_KEY = 'pr_radar_last_comments';
 // Service workers get killed by Chrome — in-memory maps don't survive.
 // Persist to chrome.storage so we can detect changes across restarts.
 
-async function getLastStatuses(): Promise<Record<string, CIStatus>> {
-  const result = await chrome.storage.local.get(STATUS_CACHE_KEY);
-  return result[STATUS_CACHE_KEY] ?? {};
+// Tracks the (status, headSha) we LAST NOTIFIED about per PR. Keying on the head SHA prevents
+// re-notifying when a deployment workflow fires after CI on the same commit (passed → running →
+// passed cycle). A new commit produces a new SHA, so genuine new events still notify.
+interface NotifiedCIState {
+  status: CIStatus;
+  headSha?: string;
 }
 
-async function saveLastStatuses(statuses: Record<string, CIStatus>): Promise<void> {
+async function getLastStatuses(): Promise<Record<string, NotifiedCIState>> {
+  const result = await chrome.storage.local.get(STATUS_CACHE_KEY);
+  const raw = result[STATUS_CACHE_KEY] ?? {};
+  // Migrate the old shape (Record<string, CIStatus>) into the new one. Old 'unknown' entries are
+  // dropped so a stale failure sentinel doesn't trigger a one-off notify after the upgrade.
+  const migrated: Record<string, NotifiedCIState> = {};
+  for (const [id, value] of Object.entries(raw)) {
+    if (typeof value === 'string') {
+      if (value === 'unknown') continue;
+      migrated[id] = { status: value as CIStatus };
+    } else if (value && typeof value === 'object' && 'status' in (value as object)) {
+      migrated[id] = value as NotifiedCIState;
+    }
+  }
+  return migrated;
+}
+
+async function saveLastStatuses(statuses: Record<string, NotifiedCIState>): Promise<void> {
   await chrome.storage.local.set({ [STATUS_CACHE_KEY]: statuses });
+}
+
+function shouldNotifyCI(prev: NotifiedCIState, current: NotifiedCIState): boolean {
+  // Legacy 'unknown' carried over from older clients — treat as no real signal.
+  if (prev.status === 'unknown') return false;
+  if (prev.status !== current.status) return true;
+  // Same status: only treat it as a new event when both SHAs are known and differ.
+  if (prev.headSha && current.headSha && prev.headSha !== current.headSha) return true;
+  return false;
 }
 
 async function getLastCommentCounts(): Promise<Record<string, number>> {
@@ -277,21 +306,40 @@ async function pollPRs() {
     await savePollErrors(pollErrors);
     await persistRateLimits();
 
-    // Check for CI status changes on the user's PRs (skip stale)
+    // Check for CI status changes on the user's PRs (skip stale).
+    // The store tracks what we LAST NOTIFIED, not what we last saw — non-terminal states
+    // (running/pending) carry the prior notified state forward, so a passed → running → passed
+    // cycle on the same SHA (e.g. a deployment workflow firing after CI) doesn't re-notify.
     const staleDays = (await getSettings()).stalePRDays;
     const staleThreshold = staleDays > 0 ? staleDays * 86400000 : 0;
     const lastStatuses = await getLastStatuses();
-    const newStatuses: Record<string, CIStatus> = {};
+    const newStatuses: Record<string, NotifiedCIState> = {};
 
     for (const pr of allPRs) {
       if (!pr.isAuthor) continue;
       if (staleThreshold && (Date.now() - new Date(pr.updatedAt).getTime()) > staleThreshold) continue;
 
-      const prevStatus = lastStatuses[pr.id];
-      if (prevStatus && prevStatus !== pr.ciStatus) {
+      const prev = lastStatuses[pr.id];
+
+      // Transient fetch failure — don't notify, don't update.
+      if (pr.ciStatus === 'unknown') {
+        if (prev) newStatuses[pr.id] = prev;
+        continue;
+      }
+
+      // Non-terminal status — don't notify, carry prev forward so dedup survives the cycle.
+      const isTerminal = pr.ciStatus === 'passed' || pr.ciStatus === 'failed';
+      if (!isTerminal) {
+        if (prev) newStatuses[pr.id] = prev;
+        continue;
+      }
+
+      // Terminal status — notify only when the (status, head SHA) is genuinely new.
+      const current: NotifiedCIState = { status: pr.ciStatus, headSha: pr.headSha };
+      if (prev && shouldNotifyCI(prev, current)) {
         notifyCIChange(pr);
       }
-      newStatuses[pr.id] = pr.ciStatus;
+      newStatuses[pr.id] = current;
     }
 
     await saveLastStatuses(newStatuses);
@@ -312,6 +360,14 @@ async function pollPRs() {
           (commentTabs.includes('review') && inReview);
         if (!shouldNotify) continue;
         if (staleThreshold && (Date.now() - new Date(pr.updatedAt).getTime()) > staleThreshold) continue;
+
+        // Comment count fetch failed for this PR — preserve the previous count so a transient
+        // 0 doesn't re-notify the same comments when the API recovers.
+        if (pr.unresolvedCommentCountKnown === false) {
+          const prev = lastComments[pr.id];
+          if (prev !== undefined) newComments[pr.id] = prev;
+          continue;
+        }
 
         const prevCount = lastComments[pr.id];
         if (prevCount !== undefined && pr.unresolvedCommentCount > prevCount) {

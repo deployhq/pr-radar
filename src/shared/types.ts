@@ -36,6 +36,9 @@ export interface PullRequest {
   approvedBy?: string[];
   changesRequestedBy?: string[];
   unresolvedCommentCount: number;
+  // false when the comment-count fetch failed for this PR; undefined/true means trustworthy.
+  // The notifier uses this to avoid re-notifying when a transient API failure resets count to 0.
+  unresolvedCommentCountKnown?: boolean;
   unresolvedCommentAuthors?: string[];
   additions?: number;
   deletions?: number;

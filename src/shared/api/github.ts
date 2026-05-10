@@ -326,6 +326,7 @@ async function hydratePR(
     approvedBy: approvedBy.length > 0 ? approvedBy : undefined,
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount: graphqlDetails.unresolvedCommentCount,
+    unresolvedCommentCountKnown: graphqlDetails.available,
     unresolvedCommentAuthors: graphqlDetails.unresolvedCommentAuthors?.length ? graphqlDetails.unresolvedCommentAuthors : undefined,
     additions: graphqlDetails.additions,
     deletions: graphqlDetails.deletions,
@@ -502,6 +503,8 @@ interface GraphQLPRDetails {
   hasConflicts: boolean;
   additions: number;
   deletions: number;
+  // false when the GraphQL fetch failed; consumers should not trust the count.
+  available: boolean;
 }
 
 interface GraphQLResponse<T> {
@@ -587,7 +590,7 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       });
 
       const pr: GraphQLPullRequest | undefined = data?.repository?.pullRequest;
-      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
+      if (!pr) return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0, available: false };
 
       const threads = pr.reviewThreads?.nodes ?? [];
       for (const t of threads) {
@@ -608,8 +611,8 @@ async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber
       pageCount += 1;
     }
 
-    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts, additions, deletions };
+    return { unresolvedCommentCount, unresolvedCommentAuthors: [...unresolvedAuthors], hasConflicts, additions, deletions, available: true };
   } catch {
-    return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0 };
+    return { unresolvedCommentCount: 0, hasConflicts: false, additions: 0, deletions: 0, available: false };
   }
 }

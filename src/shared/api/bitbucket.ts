@@ -164,11 +164,12 @@ async function hydratePR(
   pr: BBPullRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [ciResult, comments, diffStats] = await Promise.all([
+  const [ciResult, commentsResult, diffStats] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr),
     fetchComments(token, repoFullName, pr.id),
     fetchDiffStats(token, repoFullName, pr.id),
   ]);
+  const { comments, available: commentsAvailable } = commentsResult;
 
   const participants = pr.participants ?? [];
   const reviewers = pr.reviewers ?? [];
@@ -212,6 +213,7 @@ async function hydratePR(
     approvalCount,
     changesRequestedBy: changesRequestedBy.length > 0 ? changesRequestedBy : undefined,
     unresolvedCommentCount,
+    unresolvedCommentCountKnown: commentsAvailable,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
     additions: diffStats?.additions,
     deletions: diffStats?.deletions,
@@ -280,15 +282,19 @@ async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequ
   }
 }
 
-async function fetchComments(token: string, repoFullName: string, prId: number): Promise<BBComment[]> {
+async function fetchComments(
+  token: string,
+  repoFullName: string,
+  prId: number,
+): Promise<{ comments: BBComment[]; available: boolean }> {
   try {
     const result = await bbFetch<{ values: BBComment[] }>(
       `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
       token,
     );
-    return result.values;
+    return { comments: result.values, available: true };
   } catch {
-    return [];
+    return { comments: [], available: false };
   }
 }
 

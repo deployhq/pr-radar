@@ -91,9 +91,9 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
       }
       let result: { success: boolean; message: string };
       if (platform === 'github') {
-        result = await github.mergePullRequest(account.token, repoFullName, prNumber);
+        result = await github.mergePullRequest(account.token, repoFullName, prNumber, account.instanceUrl);
       } else if (platform === 'gitlab') {
-        result = await gitlab.mergeMergeRequest(account.token, repoFullName, prNumber);
+        result = await gitlab.mergeMergeRequest(account.token, repoFullName, prNumber, account.instanceUrl);
       } else {
         result = await bitbucket.mergePullRequest(account.token, repoFullName, prNumber);
       }
@@ -111,7 +111,7 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
         return;
       }
       if (platform === 'github') {
-        const result = await github.deleteBranch(account.token, repoFullName, branch);
+        const result = await github.deleteBranch(account.token, repoFullName, branch, account.instanceUrl);
         sendResponse(result);
       } else {
         sendResponse({ success: false, message: 'Not supported for this platform' });
@@ -279,10 +279,10 @@ async function pollPRs() {
       for (const repo of repos) {
         try {
           if (account.platform === 'github') {
-            const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
+            const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username, account.instanceUrl);
             allPRs.push(...prs);
           } else if (account.platform === 'gitlab') {
-            const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
+            const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username, account.instanceUrl);
             allPRs.push(...prs);
           } else if (account.platform === 'bitbucket') {
             const prs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
@@ -398,9 +398,9 @@ async function pollPRs() {
         try {
           let merged = false;
           if (pr.platform === 'github') {
-            merged = await github.checkIfMerged(account.token, pr.repoFullName, pr.number);
+            merged = await github.checkIfMerged(account.token, pr.repoFullName, pr.number, account.instanceUrl);
           } else if (pr.platform === 'gitlab') {
-            merged = await gitlab.checkIfMerged(account.token, pr.repoFullName, pr.number);
+            merged = await gitlab.checkIfMerged(account.token, pr.repoFullName, pr.number, account.instanceUrl);
           } else if (pr.platform === 'bitbucket') {
             merged = await bitbucket.checkIfMerged(account.token, pr.repoFullName, pr.number);
           }
@@ -425,7 +425,7 @@ async function pollPRs() {
         const account = accounts.find((a) => a.platform === pr.platform);
         if (pr.platform === 'github' && pr.headSha && account) {
           try {
-            const ciResult = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha);
+            const ciResult = await github.refreshCIStatus(account.token, pr.repoFullName, pr.headSha, account.instanceUrl);
             allPRs.push({ ...pr, ciStatus: ciResult.status, ciFailedChecks: ciResult.failedChecks.length > 0 ? ciResult.failedChecks : undefined });
           } catch {
             allPRs.push(pr); // keep with old status

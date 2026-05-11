@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Platform, PlatformAccount } from '@/shared/types';
 import { PLATFORM_LABELS } from '@/shared/constants';
 import { getAccounts, saveAccount } from '@/shared/storage';
+import { normalizeInstanceUrl, requestInstanceHostPermission } from '@/shared/instanceUrl';
 import PlatformIcon from '../components/PlatformIcon';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
@@ -24,6 +25,12 @@ interface PlatformConfig {
   comingSoon: boolean;
   scopes: ScopeInfo[];
   note?: string;
+  /** Whether the self-hosted instance toggle is offered for this platform. */
+  supportsSelfHosted: boolean;
+  /** Build a token-creation URL for the user's instance (canonical or self-hosted). */
+  buildTokenUrl?: (instanceUrl: string) => string;
+  /** Placeholder shown in the Instance URL input. */
+  instancePlaceholder?: string;
 }
 
 const PLATFORMS: PlatformConfig[] = [
@@ -38,6 +45,10 @@ const PLATFORMS: PlatformConfig[] = [
       { name: 'read:org', reason: 'List organization repositories' },
     ],
     note: 'If your org uses SSO, authorize the token for that org after creating it.',
+    supportsSelfHosted: true,
+    buildTokenUrl: (instanceUrl) =>
+      `${instanceUrl.replace(/\/+$/, '')}/settings/tokens/new?scopes=repo,read:org&description=PR%20Radar`,
+    instancePlaceholder: 'https://github.example.com',
   },
   {
     platform: 'gitlab',
@@ -50,6 +61,10 @@ const PLATFORMS: PlatformConfig[] = [
       { name: 'read_user', reason: 'Identify your account' },
     ],
     note: 'The api scope is needed to merge MRs. read_api is sufficient if you don\'t need merge.',
+    supportsSelfHosted: true,
+    buildTokenUrl: (instanceUrl) =>
+      `${instanceUrl.replace(/\/+$/, '')}/-/user_settings/personal_access_tokens?name=PR+Radar&scopes=api,read_user`,
+    instancePlaceholder: 'https://gitlab.example.com',
   },
   {
     platform: 'bitbucket',
@@ -64,6 +79,7 @@ const PLATFORMS: PlatformConfig[] = [
       { name: 'read:pullrequest:bitbucket', reason: 'View pull requests and CI' },
       { name: 'write:pullrequest:bitbucket', reason: 'Merge pull requests' },
     ],
+    supportsSelfHosted: false,
   },
 ];
 
@@ -77,6 +93,8 @@ export default function Setup({ onComplete }: SetupProps) {
   const [connectingPlatform, setConnectingPlatform] = useState<Platform | null>(null);
   const [token, setToken] = useState('');
   const [bbEmail, setBbEmail] = useState('');
+  const [selfHosted, setSelfHosted] = useState(false);
+  const [instanceUrl, setInstanceUrl] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [connectedPlatforms, setConnectedPlatforms] = useState<Map<Platform, string>>(new Map());
@@ -87,21 +105,58 @@ export default function Setup({ onComplete }: SetupProps) {
     });
   }, []);
 
+  function resetForm() {
+    setToken('');
+    setBbEmail('');
+    setSelfHosted(false);
+    setInstanceUrl('');
+    setError('');
+  }
+
   async function handleConnect(platform: Platform) {
     if (!token.trim()) return;
+
+    let normalizedInstance: string | undefined;
+    if (selfHosted) {
+      const trimmed = instanceUrl.trim();
+      if (!trimmed) {
+        setError('Enter a valid HTTPS instance URL (e.g. https://gitlab.example.com).');
+        return;
+      }
+      const normalized = normalizeInstanceUrl(trimmed, platform);
+      if (!normalized) {
+        // Distinguish "this is just the canonical" from "this is invalid"
+        const isCanonical = normalizeInstanceUrl(trimmed) !== null;
+        setError(isCanonical
+          ? `That's the public ${PLATFORM_LABELS[platform]} URL — untoggle "Self-hosted instance" to use the public service.`
+          : 'Enter a valid HTTPS instance URL (e.g. https://gitlab.example.com).');
+        return;
+      }
+      normalizedInstance = normalized;
+    }
 
     setLoading(true);
     setError('');
 
     try {
+      // Request runtime host permission for self-hosted instances before any API call.
+      if (normalizedInstance) {
+        const granted = await requestInstanceHostPermission(normalizedInstance);
+        if (!granted) {
+          setError('Permission to access this instance was denied. Connection cancelled.');
+          setLoading(false);
+          return;
+        }
+      }
+
       let account: PlatformAccount;
 
       if (platform === 'github') {
-        const user = await github.getAuthenticatedUser(token.trim());
-        account = { platform, token: token.trim(), username: user.login, avatarUrl: user.avatar_url };
+        const user = await github.getAuthenticatedUser(token.trim(), normalizedInstance);
+        account = { platform, token: token.trim(), username: user.login, avatarUrl: user.avatar_url, instanceUrl: normalizedInstance };
       } else if (platform === 'gitlab') {
-        const user = await gitlab.getAuthenticatedUser(token.trim());
-        account = { platform, token: token.trim(), username: user.username, avatarUrl: user.avatar_url };
+        const user = await gitlab.getAuthenticatedUser(token.trim(), normalizedInstance);
+        account = { platform, token: token.trim(), username: user.username, avatarUrl: user.avatar_url, instanceUrl: normalizedInstance };
       } else {
         if (!bbEmail.trim()) {
           setError('Email is required for Bitbucket.');
@@ -137,6 +192,10 @@ export default function Setup({ onComplete }: SetupProps) {
           const isExpanded = connectingPlatform === cfg.platform;
           const connectedUser = connectedPlatforms.get(cfg.platform);
           const isConnected = !!connectedUser;
+          const normalizedInstance = selfHosted ? normalizeInstanceUrl(instanceUrl) : null;
+          const helpUrl = isExpanded && cfg.supportsSelfHosted && cfg.buildTokenUrl && normalizedInstance
+            ? cfg.buildTokenUrl(normalizedInstance)
+            : cfg.helpUrl;
 
           return (
             <div
@@ -154,9 +213,7 @@ export default function Setup({ onComplete }: SetupProps) {
                 onClick={() => {
                   if (cfg.comingSoon || isConnected) return;
                   setConnectingPlatform(isExpanded ? null : cfg.platform);
-                  setToken('');
-                  setBbEmail('');
-                  setError('');
+                  resetForm();
                 }}
                 disabled={cfg.comingSoon || isConnected}
               >
@@ -192,6 +249,34 @@ export default function Setup({ onComplete }: SetupProps) {
 
               {isExpanded && !cfg.comingSoon && (
                 <div className="px-4 pb-4 space-y-2">
+                  {cfg.supportsSelfHosted && (
+                    <label className="flex items-center gap-2 cursor-pointer select-none py-1">
+                      <input
+                        type="checkbox"
+                        checked={selfHosted}
+                        onChange={(e) => {
+                          setSelfHosted(e.target.checked);
+                          setError('');
+                          if (!e.target.checked) setInstanceUrl('');
+                        }}
+                        className="rounded border-gray-300 dark:border-gray-700 text-radar-600 focus:ring-radar-500"
+                      />
+                      <span className="text-[12px] text-gray-700 dark:text-gray-300">
+                        Self-hosted instance
+                      </span>
+                    </label>
+                  )}
+                  {cfg.supportsSelfHosted && selfHosted && (
+                    <input
+                      type="url"
+                      value={instanceUrl}
+                      onChange={(e) => setInstanceUrl(e.target.value)}
+                      placeholder={cfg.instancePlaceholder ?? 'https://your-instance.example.com'}
+                      aria-label="Instance URL"
+                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
+                      autoFocus
+                    />
+                  )}
                   {cfg.platform === 'bitbucket' && (
                     <input
                       type="email"
@@ -210,10 +295,10 @@ export default function Setup({ onComplete }: SetupProps) {
                     placeholder={cfg.placeholder}
                     aria-label={`${PLATFORM_LABELS[cfg.platform]} personal access token`}
                     className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
-                    autoFocus={cfg.platform !== 'bitbucket'}
+                    autoFocus={cfg.platform !== 'bitbucket' && !(cfg.supportsSelfHosted && selfHosted)}
                   />
                   <a
-                    href={cfg.helpUrl}
+                    href={helpUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[11px] text-radar-400 hover:underline block"
@@ -238,7 +323,7 @@ export default function Setup({ onComplete }: SetupProps) {
                   {error && <p className="text-[11px] text-red-400" role="alert">{error}</p>}
                   <button
                     onClick={() => handleConnect(cfg.platform)}
-                    disabled={loading || !token.trim() || (cfg.platform === 'bitbucket' && !bbEmail.trim())}
+                    disabled={loading || !token.trim() || (cfg.platform === 'bitbucket' && !bbEmail.trim()) || (selfHosted && !instanceUrl.trim())}
                     className="w-full py-2 bg-radar-600 hover:bg-radar-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     {loading ? 'Verifying...' : 'Connect'}

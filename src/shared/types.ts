@@ -7,6 +7,8 @@ export interface PlatformAccount {
   token: string;
   username: string;
   avatarUrl?: string;
+  /** Set for self-hosted instances (GitHub Enterprise Server, GitLab self-managed). Absent ⇒ canonical service. */
+  instanceUrl?: string;
 }
 
 // === Pull Requests ===

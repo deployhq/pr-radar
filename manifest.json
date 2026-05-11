@@ -27,6 +27,12 @@
     "https://id.atlassian.com/*",
     "https://*.deployhq.com/*"
   ],
+  "{{chrome}}.optional_host_permissions": [
+    "https://*/*"
+  ],
+  "{{firefox}}.optional_permissions": [
+    "https://*/*"
+  ],
   "{{chrome}}.background": {
     "service_worker": "src/background/service-worker.ts",
     "type": "module"

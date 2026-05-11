@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   mapGLPipelineStatus,
   deriveGLReviewStatus,
+  getAuthenticatedUser,
   getUserProjects,
   fetchMergeRequests,
   checkIfMerged,
@@ -256,3 +257,57 @@ function glJsonResponse(body: unknown): Response {
     headers: { get: () => null },
   } as unknown as Response;
 }
+
+describe('GitLab self-managed URL routing', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('getAuthenticatedUser hits gitlab.com/api/v4 when no instanceUrl is provided', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glJsonResponse({ username: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://gitlab.com/api/v4/user');
+  });
+
+  it('getAuthenticatedUser routes to {instanceUrl}/api/v4 for self-managed', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glJsonResponse({ username: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://gitlab.example.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://gitlab.example.com/api/v4/user');
+  });
+
+  it('getAuthenticatedUser strips trailing slashes from instanceUrl', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glJsonResponse({ username: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://gitlab.example.com/');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://gitlab.example.com/api/v4/user');
+  });
+
+  it('getUserProjects routes to the self-managed base', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glResponse([{ path_with_namespace: 'team/proj' }], null));
+    await getUserProjects('token', 'https://gitlab.example.com');
+    const url = vi.mocked(globalThis.fetch).mock.calls[0][0] as string;
+    expect(url.startsWith('https://gitlab.example.com/api/v4/projects?')).toBe(true);
+  });
+
+  it('mergeMergeRequest routes to the self-managed base', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: true } as Response);
+    await mergeMergeRequest('token', 'team/proj', 42, 'https://gitlab.example.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://gitlab.example.com/api/v4/projects/team%2Fproj/merge_requests/42/merge');
+  });
+
+  it('checkIfMerged routes to the self-managed base', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glJsonResponse({ state: 'merged' }));
+    const merged = await checkIfMerged('token', 'team/proj', 42, 'https://gitlab.example.com');
+    expect(merged).toBe(true);
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://gitlab.example.com/api/v4/projects/team%2Fproj/merge_requests/42');
+  });
+});

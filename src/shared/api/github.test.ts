@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   checkHasReviewed,
   deriveReviewStatus,
+  getAuthenticatedUser,
   getNextPagePath,
   getUserRepos,
   mapWithConcurrencyLimit,
+  mergePullRequest,
   type GHReview,
 } from './github';
 
@@ -120,6 +122,18 @@ describe('getNextPagePath', () => {
   it('returns null when there is no next page', () => {
     expect(getNextPagePath('<https://api.github.com/resource?page=4>; rel="last"')).toBeNull();
   });
+
+  it('strips the /api/v3 prefix on GitHub Enterprise Server links', () => {
+    const linkHeader = '<https://github.example.com/api/v3/user/repos?page=2>; rel="next"';
+    expect(getNextPagePath(linkHeader, 'https://github.example.com/api/v3'))
+      .toBe('/user/repos?page=2');
+  });
+
+  it('returns null when the link origin differs from the configured base URL', () => {
+    // GHES base configured but the link points at api.github.com (mismatched origin)
+    const linkHeader = '<https://api.github.com/resource?page=2>; rel="next"';
+    expect(getNextPagePath(linkHeader, 'https://github.example.com/api/v3')).toBeNull();
+  });
 });
 
 describe('mapWithConcurrencyLimit', () => {
@@ -190,3 +204,82 @@ function jsonResponse(body: unknown, linkHeader?: string): Response {
     },
   } as unknown as Response;
 }
+
+describe('GitHub Enterprise Server URL routing', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('getAuthenticatedUser hits api.github.com when no instanceUrl is provided', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://api.github.com/user');
+  });
+
+  it('getAuthenticatedUser routes to {instanceUrl}/api/v3 for GHES', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.example.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://github.example.com/api/v3/user');
+  });
+
+  it('getAuthenticatedUser strips trailing slashes from instanceUrl', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.example.com/');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://github.example.com/api/v3/user');
+  });
+
+  it('getUserRepos routes pagination to the GHES base', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+
+    // Personal repos page 1 with link to page 2 on the GHES host. Real GitHub
+    // URL-encodes commas in affiliation, so we mirror that here (literal commas
+    // inside the URL would confuse the comma-delimited Link-header parser).
+    fetchMock.mockResolvedValueOnce(jsonResponse(
+      [{ full_name: 'acme/alpha' }],
+      '<https://github.example.com/api/v3/user/repos?sort=pushed&per_page=100&affiliation=owner%2Ccollaborator%2Corganization_member&page=2>; rel="next"',
+    ));
+    fetchMock.mockResolvedValueOnce(jsonResponse([{ full_name: 'acme/beta' }]));
+    // Orgs list (empty so we don't have to mock org repo fetches)
+    fetchMock.mockResolvedValueOnce(jsonResponse([]));
+
+    const repos = await getUserRepos('token', 'https://github.example.com');
+
+    expect(repos).toEqual([
+      { full_name: 'acme/alpha' },
+      { full_name: 'acme/beta' },
+    ]);
+    // Every call should target the GHES /api/v3 base
+    for (const call of fetchMock.mock.calls) {
+      expect(call[0]).toMatch(/^https:\/\/github\.example\.com\/api\/v3\//);
+    }
+  });
+
+  it('mergePullRequest routes to the GHES instance', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: true } as Response);
+    await mergePullRequest('token', 'acme/alpha', 7, 'https://github.example.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0])
+      .toBe('https://github.example.com/api/v3/repos/acme/alpha/pulls/7/merge');
+  });
+
+  it('routes to api.github.com when instanceUrl is the canonical github.com', async () => {
+    // Defensive: legacy or accidentally-persisted instanceUrl='https://github.com'
+    // must not become 'https://github.com/api/v3' (which is not the cloud REST API).
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.com');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://api.github.com/user');
+  });
+
+  it('handles trailing slash on canonical github.com', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(jsonResponse({ login: 'me', avatar_url: '' }));
+    await getAuthenticatedUser('token', 'https://github.com/');
+    expect(vi.mocked(globalThis.fetch).mock.calls[0][0]).toBe('https://api.github.com/user');
+  });
+});

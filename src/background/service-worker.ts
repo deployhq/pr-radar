@@ -276,10 +276,17 @@ async function pollPRs() {
     for (const account of accounts) {
       const repos = enabledRepos.filter((r) => r.platform === account.platform);
 
+      // Fetch user's GitHub teams once per poll so we can detect team-based
+      // review requests (CODEOWNERS, team assignments) — PR API's
+      // requested_reviewers only lists individual users.
+      const githubTeams = account.platform === 'github'
+        ? await github.getUserTeams(account.token).catch(() => [])
+        : [];
+
       for (const repo of repos) {
         try {
           if (account.platform === 'github') {
-            const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username);
+            const prs = await github.fetchPullRequests(account.token, repo.fullName, account.username, githubTeams);
             allPRs.push(...prs);
           } else if (account.platform === 'gitlab') {
             const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);

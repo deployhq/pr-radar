@@ -225,6 +225,8 @@ async function hydratePR(
     hasReviewed,
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: pr.source.commit?.hash,
+    headRef: pr.source.branch.name,
+    baseBranch: pr.destination.branch.name,
   };
 }
 

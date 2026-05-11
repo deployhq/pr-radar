@@ -133,7 +133,7 @@ interface GHPullRequest {
   created_at: string;
   updated_at: string;
   head: { sha: string; ref: string; repo: { full_name: string } | null };
-  base: { repo: { full_name: string } };
+  base: { ref: string; repo: { full_name: string } };
   mergeable_state?: string;
   requested_reviewers?: GHUser[];
 }
@@ -339,6 +339,7 @@ async function hydratePR(
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: pr.head.sha,
     headRef: pr.head.ref,
+    baseBranch: pr.base.ref,
     deployment,
   };
 }

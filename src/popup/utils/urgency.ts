@@ -4,6 +4,7 @@ export function getUrgencyCategories(
   pr: PullRequest,
   stalePRDays: number,
   longWaitDays: number,
+  stackBlocked = false,
 ): Set<UrgencyCategory> {
   const categories = new Set<UrgencyCategory>();
 
@@ -23,6 +24,7 @@ export function getUrgencyCategories(
   if (pr.unresolvedCommentCount > 0) categories.add('unresolved_comments');
   if (pr.isReviewRequested && !pr.hasReviewed) categories.add('review_requested');
   if (pr.hasConflicts) categories.add('conflicts');
+  if (stackBlocked) categories.add('stack_blocked');
 
   const isLongWait =
     longWaitDays > 0 &&
@@ -38,8 +40,9 @@ export function matchesUrgencyFilter(
   filter: UrgencyCategory,
   stalePRDays: number,
   longWaitDays: number,
+  stackBlocked = false,
 ): boolean {
-  return getUrgencyCategories(pr, stalePRDays, longWaitDays).has(filter);
+  return getUrgencyCategories(pr, stalePRDays, longWaitDays, stackBlocked).has(filter);
 }
 
 const CATEGORY_ORDER: UrgencyCategory[] = [
@@ -48,6 +51,7 @@ const CATEGORY_ORDER: UrgencyCategory[] = [
   'unresolved_comments',
   'review_requested',
   'conflicts',
+  'stack_blocked',
   'stale',
   'long_wait',
 ];
@@ -56,13 +60,14 @@ export function computeUrgencyCounts(
   prs: PullRequest[],
   stalePRDays: number,
   longWaitDays: number,
+  blockedIds?: Set<string>,
 ): Map<UrgencyCategory, number> {
   const counts = new Map<UrgencyCategory, number>(
     CATEGORY_ORDER.map((c) => [c, 0]),
   );
 
   for (const pr of prs) {
-    const cats = getUrgencyCategories(pr, stalePRDays, longWaitDays);
+    const cats = getUrgencyCategories(pr, stalePRDays, longWaitDays, blockedIds?.has(pr.id));
     for (const cat of cats) {
       counts.set(cat, (counts.get(cat) ?? 0) + 1);
     }
@@ -116,5 +121,11 @@ export const URGENCY_META: Record<
     icon: '\u{1F550}',
     colorClasses: 'bg-orange-50 dark:bg-orange-900/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/20',
     activeColorClasses: 'bg-orange-100 dark:bg-orange-900/25 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-500/50 ring-1 ring-orange-300/30 dark:ring-orange-500/15',
+  },
+  stack_blocked: {
+    label: 'Stack blocked',
+    icon: '\u{1F95E}',
+    colorClasses: 'bg-indigo-50 dark:bg-indigo-900/10 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/20',
+    activeColorClasses: 'bg-indigo-100 dark:bg-indigo-900/25 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-500/50 ring-1 ring-indigo-300/30 dark:ring-indigo-500/15',
   },
 };

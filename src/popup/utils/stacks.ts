@@ -15,6 +15,37 @@ function stackKey(pr: PullRequest): string {
   return `${pr.platform}:${pr.repoFullName}`;
 }
 
+// Long-lived integration branches. Treating a PR like `staging → main` as a stack
+// root would fold every PR targeting `staging` into a "stack" of dozens. These
+// are sinks for PRs, not stack rungs, so we skip parent lookup when a PR's base
+// is one of these.
+const INTEGRATION_BRANCH_PATTERNS: RegExp[] = [
+  /^main$/i,
+  /^master$/i,
+  /^trunk$/i,
+  /^develop(ment)?$/i,
+  /^dev$/i,
+  /^staging$/i,
+  /^stage$/i,
+  /^production$/i,
+  /^prod$/i,
+  /^next$/i,
+  /^qa$/i,
+  /^uat$/i,
+  /^releases?$/i,
+  /^releases?\//i,
+  /^hotfix\//i,
+];
+
+function isIntegrationBranch(ref: string): boolean {
+  return INTEGRATION_BRANCH_PATTERNS.some((p) => p.test(ref));
+}
+
+// Cap on children per parent. Real stacks are short chains; if many PRs share a
+// parent branch, it's almost certainly an integration branch we missed by name,
+// not an actual stack.
+const MAX_CHILDREN_PER_STACK_PARENT = 4;
+
 export function detectStacks(prs: PullRequest[]): Map<string, StackInfo> {
   // Index PRs by repo+platform key, then by head branch.
   // Used to resolve a PR's parent (the PR whose head is this PR's base).
@@ -35,12 +66,22 @@ export function detectStacks(prs: PullRequest[]): Map<string, StackInfo> {
   const childrenOf = new Map<string, PullRequest[]>();
   for (const pr of prs) {
     if (!pr.baseBranch) continue;
+    if (isIntegrationBranch(pr.baseBranch)) continue;
     const parent = byHead.get(stackKey(pr))?.get(pr.baseBranch);
     if (!parent || parent.id === pr.id) continue;
     parentOf.set(pr.id, parent);
     const list = childrenOf.get(parent.id) ?? [];
     list.push(pr);
     childrenOf.set(parent.id, list);
+  }
+
+  // Dissolve "stacks" where a parent has too many children — almost certainly an
+  // integration branch we didn't catch by name.
+  for (const [parentId, children] of childrenOf) {
+    if (children.length > MAX_CHILDREN_PER_STACK_PARENT) {
+      for (const child of children) parentOf.delete(child.id);
+      childrenOf.delete(parentId);
+    }
   }
 
   // Walk each PR to its root and collect connected component members.

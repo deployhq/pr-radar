@@ -61,6 +61,7 @@ src/
       TriageSummary.tsx          # Urgency filter chip bar (icon+count chips with tooltips)
     utils/
       urgency.ts                 # Urgency classification, filter predicate, count computation, display metadata
+      stacks.ts                  # Stack detection: parent/child graph from baseBranch→headRef, position, blocked-by-parent check
     index.css                    # Tailwind imports + dark scrollbar styles
   shared/
     types.ts                     # TypeScript types (PullRequest, Platform, Message, UrgencyCategory, etc.)
@@ -134,6 +135,7 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **Stale PR exclusion** — Configurable threshold; stale PRs are dimmed in UI, excluded from badge count and notifications
 - **Merge from dashboard** — Merge button in PR title row for all platforms; disabled when CI failing, conflicts, or draft; confirm step prevents accidental merges; respects branch protection rules; shows Merged (purple) state until poll refreshes
 - **Urgency filters as chips, not tabs** — Compact icon+count chips in a triage bar (not a new tab) keep the UI lightweight; single-select toggle; counts computed from tab-filtered list so summary always shows full picture; stale is exclusive (no other urgency flags); filter state is ephemeral (resets on tab switch, no persistence)
+- **Stacked PR detection** — Parent/child relationships derived by matching each PR's `baseBranch` to other open PRs' `headRef` within the same repo+platform; works across all three platforms with no platform-specific API (universal heuristic, not e.g. GitLab MR dependencies); stack grouping applies only in default sort mode (recent/oldest/long_wait stay chronological); a `stack_blocked` urgency flags PRs whose ancestor chain has any unmerged parent in the list
 
 ## Features
 
@@ -155,7 +157,8 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **Token guidance** — Pre-filled token links, required scopes panel, platform-specific "Missing repos?" callouts
 - **Dark scrollbar** — Themed to match dark UI
 - **Merge PRs** — Merge button with confirm/cancel for GitHub, GitLab, and Bitbucket; disabled for drafts, conflicts, CI failures
-- **Urgency filters** — Triage chip bar above PR list with icon+count chips (CI failing, Changes requested, Review requested, Conflicts, Stale) plus All chip; single-select toggle filters the list; counts scoped to active tab; resets on tab switch
+- **Urgency filters** — Triage chip bar above PR list with icon+count chips (CI failing, Changes requested, Review requested, Conflicts, Stack blocked, Stale) plus All chip; single-select toggle filters the list; counts scoped to active tab; resets on tab switch
+- **Stacked PRs** — Detected by matching `baseBranch` to other PRs' `headRef` per repo; stack members group together with parents above children, child rows indent and share an indigo left accent bar; `🥞 N/M` position chip with tooltip carrying parent status; "Stack blocked" urgency chip appears when a PR waits on an unmerged ancestor
 - **Diff stats** — Shows `+N -N` additions/deletions per PR; GitHub via GraphQL, GitLab via changes endpoint (with overflow detection), Bitbucket via paginated diffstat API
 - **PR description preview** — Expandable "Show description" toggle below each PR row; truncated at 500 chars with scrollable container; whitespace-only descriptions are hidden
 - **Pending reviewers** — Badge showing count of reviewers who haven't submitted a review yet

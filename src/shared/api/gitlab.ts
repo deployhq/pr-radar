@@ -63,6 +63,7 @@ interface GLMergeRequest {
   created_at: string;
   updated_at: string;
   source_branch: string;
+  target_branch: string;
   sha: string;
   has_conflicts: boolean;
   reviewers?: GLUser[];
@@ -249,6 +250,8 @@ async function hydrateMR(
     hasReviewed,
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
     headSha: mr.sha,
+    headRef: mr.source_branch,
+    baseBranch: mr.target_branch,
     deployment,
   };
 }

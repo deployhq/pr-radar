@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { PullRequest, Message, DeployHQServer } from '@/shared/types';
+import type { StackInfo } from '../utils/stacks';
 import CIBadge from './CIBadge';
 import PlatformIcon from './PlatformIcon';
 
@@ -9,9 +10,12 @@ interface PRItemProps {
   pinned?: boolean;
   onMerged?: () => void;
   focused?: boolean;
+  stackInfo?: StackInfo;
+  parentUnmerged?: boolean;
+  parentNumber?: number;
 }
 
-export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: PRItemProps) {
+export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, stackInfo, parentUnmerged, parentNumber }: PRItemProps) {
   const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'merged' | 'error'>('idle');
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
@@ -110,8 +114,19 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
     }
   }
 
+  const stackDepth = stackInfo?.depth ?? 0;
+  const inStack = Boolean(stackInfo && stackInfo.total > 1);
+  // Stack members share a left accent bar and children indent so dependency
+  // direction reads top-down at a glance.
+  const stackPaddingClass = inStack && stackDepth > 0 ? 'pl-8 pr-4' : 'px-4';
+  const stackBorderClass = inStack
+    ? 'border-l-[3px] border-indigo-400/70 dark:border-indigo-500/70'
+    : '';
+
   return (
-    <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors ${isDimmed ? 'opacity-50' : ''} ${focused ? 'ring-1 ring-inset ring-radar-500/60 bg-gray-50 dark:bg-gray-800/40' : ''}`}>
+    <div
+      className={`${stackPaddingClass} py-3 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors ${stackBorderClass} ${isDimmed ? 'opacity-50' : ''} ${focused ? 'ring-1 ring-inset ring-radar-500/60 bg-gray-50 dark:bg-gray-800/40' : ''}`}
+    >
       <a
         href={pr.url}
         target="_blank"
@@ -232,6 +247,19 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused }: P
             <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
               <span>{pr.repoFullName} #{pr.number}</span>
               <span className="text-gray-400 dark:text-gray-500">by {pr.author}</span>
+              {stackInfo && stackInfo.total > 1 && (
+                <span
+                  className="text-[9px] px-1.5 py-px rounded bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium"
+                  title={parentUnmerged && parentNumber
+                    ? `Stack ${stackInfo.position}/${stackInfo.total} — waiting on #${parentNumber}`
+                    : parentNumber
+                      ? `Stack ${stackInfo.position}/${stackInfo.total} — based on #${parentNumber}`
+                      : `Stack ${stackInfo.position}/${stackInfo.total} — base of stack`}
+                  aria-label={`Stack position ${stackInfo.position} of ${stackInfo.total}${parentUnmerged && parentNumber ? `, waiting on PR ${parentNumber}` : ''}`}
+                >
+                  <span aria-hidden="true">&#x1F95E;</span> {stackInfo.position}/{stackInfo.total}
+                </span>
+              )}
               {pr.isAuthor && (
                 <span className="text-[9px] px-1.5 py-px rounded bg-radar-100 dark:bg-radar-900/50 text-radar-700 dark:text-radar-400 font-medium">
                   Author

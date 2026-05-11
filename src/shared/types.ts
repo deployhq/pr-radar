@@ -53,6 +53,7 @@ export interface PullRequest {
   mergedAt?: number;
   headSha?: string;
   headRef?: string;
+  baseBranch?: string;
   deployment?: {
     environment: string;
     status: 'success' | 'failure' | 'pending' | 'inactive';
@@ -143,7 +144,8 @@ export type UrgencyCategory =
   | 'review_requested'
   | 'conflicts'
   | 'stale'
-  | 'long_wait';
+  | 'long_wait'
+  | 'stack_blocked';
 
 export type SortMode = 'default' | 'recent' | 'oldest';
 

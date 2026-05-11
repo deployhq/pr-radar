@@ -3,6 +3,7 @@ import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } fr
 import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
+import { detectStacks, isStackBlocked } from '../utils/stacks';
 import PRItem from '../components/PRItem';
 import TriageSummary from '../components/TriageSummary';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
@@ -156,6 +157,17 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   // Reset focused index when list changes
   useEffect(() => { setFocusedIndex(-1); }, [tab, urgencyFilter, search]);
 
+  // Stack detection runs over the full PR list so parents on other tabs still resolve.
+  const stacks = useMemo(() => detectStacks(prs), [prs]);
+  const prById = useMemo(() => new Map(prs.map((p) => [p.id, p])), [prs]);
+  const blockedIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const pr of prs) {
+      if (isStackBlocked(pr.id, stacks, prById)) ids.add(pr.id);
+    }
+    return ids;
+  }, [prs, stacks, prById]);
+
   // Filter PRs by tab
   const filteredByTab = prs.filter((pr) => {
     if (tab === 'mine') return pr.isAuthor;
@@ -165,13 +177,13 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   // Compute urgency counts from tab-filtered list (before urgency filter)
   const urgencyCounts = useMemo(
-    () => computeUrgencyCounts(filteredByTab, stalePRDays, longWaitDays),
-    [filteredByTab, stalePRDays, longWaitDays],
+    () => computeUrgencyCounts(filteredByTab, stalePRDays, longWaitDays, blockedIds),
+    [filteredByTab, stalePRDays, longWaitDays, blockedIds],
   );
 
   // Filter by urgency
   const filteredByUrgency = urgencyFilter
-    ? filteredByTab.filter((pr) => matchesUrgencyFilter(pr, urgencyFilter, stalePRDays, longWaitDays))
+    ? filteredByTab.filter((pr) => matchesUrgencyFilter(pr, urgencyFilter, stalePRDays, longWaitDays, blockedIds.has(pr.id)))
     : filteredByTab;
 
   // Filter by search
@@ -189,7 +201,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   // Sort by priority first, then pinned within same priority tier, then date.
   // Explicit sort mode overrides default ordering. When long_wait filter is active,
   // surface the longest-waiting PRs first.
-  const filtered = [...searched].sort((a, b) => {
+  const sorted = [...searched].sort((a, b) => {
     if (sortMode === 'recent') {
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     }
@@ -207,6 +219,12 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     if (aPinned !== bPinned) return aPinned - bPinned;
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
+
+  // Group stack members together in default sort mode: anchor each stack at its
+  // highest-priority member's position, then list members root-first.
+  const filtered = (sortMode === 'default' && urgencyFilter !== 'long_wait')
+    ? groupStacks(sorted, stacks)
+    : sorted;
 
   // Keyboard navigation
   const filteredRef = useRef(filtered);
@@ -469,22 +487,66 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </div>
         ) : (
           <div ref={listRef}>
-            {filtered.map((pr, i) => (
-              <PRItem
-                key={pr.id}
-                pr={pr}
-                stalePRDays={stalePRDays}
-                pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
-                onMerged={triggerBackgroundRefresh}
-                focused={i === focusedIndex}
-              />
-            ))}
+            {filtered.map((pr, i) => {
+              const stackInfo = stacks.get(pr.id);
+              const parentPr = stackInfo?.parentId ? prById.get(stackInfo.parentId) : undefined;
+              return (
+                <PRItem
+                  key={pr.id}
+                  pr={pr}
+                  stalePRDays={stalePRDays}
+                  pinned={pinnedRepos.has(`${pr.platform}:${pr.repoFullName}`)}
+                  onMerged={triggerBackgroundRefresh}
+                  focused={i === focusedIndex}
+                  stackInfo={stackInfo}
+                  parentUnmerged={blockedIds.has(pr.id)}
+                  parentNumber={parentPr?.number}
+                />
+              );
+            })}
           </div>
         )}
       </div>
       {showShortcuts && <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />}
     </div>
   );
+}
+
+function groupStacks(
+  sorted: PullRequest[],
+  stacks: Map<string, import('../utils/stacks').StackInfo>,
+): PullRequest[] {
+  const result: PullRequest[] = [];
+  const consumed = new Set<string>();
+
+  for (const pr of sorted) {
+    if (consumed.has(pr.id)) continue;
+    const info = stacks.get(pr.id);
+    if (!info) {
+      result.push(pr);
+      consumed.add(pr.id);
+      continue;
+    }
+
+    const members = sorted
+      .filter((p) => {
+        const i = stacks.get(p.id);
+        return i?.stackId === info.stackId && !consumed.has(p.id);
+      })
+      .sort((a, b) => {
+        const da = stacks.get(a.id)?.depth ?? 0;
+        const db = stacks.get(b.id)?.depth ?? 0;
+        if (da !== db) return da - db;
+        return a.number - b.number;
+      });
+
+    for (const m of members) {
+      result.push(m);
+      consumed.add(m.id);
+    }
+  }
+
+  return result;
 }
 
 function prPriority(pr: PullRequest, stalePRDays: number): number {

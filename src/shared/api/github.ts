@@ -136,6 +136,12 @@ interface GHPullRequest {
   base: { ref: string; repo: { full_name: string } };
   mergeable_state?: string;
   requested_reviewers?: GHUser[];
+  requested_teams?: { slug: string; name: string }[];
+}
+
+export interface GHUserTeam {
+  org: string;
+  slug: string;
 }
 
 export interface GHReview {
@@ -146,6 +152,21 @@ export interface GHReview {
 
 export async function getAuthenticatedUser(token: string): Promise<{ login: string; avatar_url: string }> {
   return ghFetch('/user', token);
+}
+
+// Teams the authenticated user is a member of. Used to detect team-based review
+// requests (CODEOWNERS, team assignments) — GitHub's PR API only populates
+// requested_reviewers with individual users; team members aren't included there.
+export async function getUserTeams(token: string): Promise<GHUserTeam[]> {
+  try {
+    const teams = await ghPaginate<{ slug: string; organization: { login: string } }>(
+      '/user/teams?per_page=100',
+      token,
+    );
+    return teams.map((t) => ({ org: t.organization.login, slug: t.slug }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getUserRepos(token: string): Promise<{ full_name: string }[]> {
@@ -262,16 +283,24 @@ export async function fetchPullRequests(
   token: string,
   repoFullName: string,
   username: string,
+  userTeams: GHUserTeam[] = [],
 ): Promise<PullRequest[]> {
   const prs = await ghPaginate<GHPullRequest>(
     `/repos/${repoFullName}/pulls?state=open&per_page=100`,
     token,
   );
 
+  // A team-based review request only applies if the team is in the repo's owner
+  // org. Pre-filter to the relevant teams once per repo.
+  const repoOrg = repoFullName.split('/')[0];
+  const relevantTeamSlugs = new Set(
+    userTeams.filter((t) => t.org.toLowerCase() === repoOrg.toLowerCase()).map((t) => t.slug),
+  );
+
   const results = await mapWithConcurrencyLimit(
     prs,
     HYDRATE_CONCURRENCY,
-    (pr) => hydratePR(token, repoFullName, pr, username),
+    (pr) => hydratePR(token, repoFullName, pr, username, relevantTeamSlugs),
   );
 
   return results;
@@ -282,6 +311,7 @@ async function hydratePR(
   repoFullName: string,
   pr: GHPullRequest,
   username: string,
+  relevantTeamSlugs: Set<string>,
 ): Promise<PullRequest> {
   // Fetch CI status, reviews, unresolved threads, and deployments in parallel
   const [ciResult, reviews, graphqlDetails, deployment] = await Promise.all([
@@ -301,7 +331,12 @@ async function hydratePR(
       .filter((r) => !pr.head?.sha || r.commit_id === pr.head.sha)
       .map((r) => r.user.login),
   )];
-  const isReviewRequested = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
+  // Review can be requested directly (requested_reviewers) or via a team the
+  // user belongs to (requested_teams). The PR API doesn't expand team members
+  // into requested_reviewers, so check both.
+  const isReviewRequestedDirectly = pr.requested_reviewers?.some((r) => r.login === username) ?? false;
+  const isReviewRequestedViaTeam = pr.requested_teams?.some((t) => relevantTeamSlugs.has(t.slug)) ?? false;
+  const isReviewRequested = isReviewRequestedDirectly || isReviewRequestedViaTeam;
   const pendingReviewers = pr.requested_reviewers?.map((r) => r.login) ?? [];
   const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 

@@ -150,6 +150,12 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
             Test
           </button>
         </SettingRow>
+        {isMacOS() && (
+          <div className="mt-1 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800/40 text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
+            <strong>macOS:</strong> if the test plays a sound but you don&apos;t see a popup, open{' '}
+            <em>System Settings &rsaquo; Notifications &rsaquo; Google Chrome</em> and make sure notifications are allowed with an alert style of <em>Banner</em> or <em>Alert</em> (not <em>None</em>). Also check that <em>Focus / Do Not Disturb</em> is off.
+          </div>
+        )}
       </Section>
 
       {/* Appearance */}
@@ -481,6 +487,11 @@ function SettingRow({
   );
 }
 
+
+function isMacOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Mac/i.test(navigator.userAgent);
+}
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (

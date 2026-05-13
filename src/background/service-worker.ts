@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message, PollError, PollErrorKind, Platform, RateLimitInfo } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -283,6 +283,21 @@ async function pollPRs() {
         ? await github.getUserTeams(account.token).catch(() => [])
         : [];
 
+      // Backfill Bitbucket userUuid for accounts saved before 0.5.3. Nicknames
+      // are user-editable and can drift between /user and PR reviewer payloads,
+      // so we match on uuid instead. Persist once so we don't re-fetch each poll.
+      if (account.platform === 'bitbucket' && !account.userUuid) {
+        try {
+          const user = await bitbucket.getAuthenticatedUser(account.token);
+          if (user.uuid) {
+            account.userUuid = user.uuid;
+            await saveAccount(account);
+          }
+        } catch {
+          // Backfill is best-effort; fall through to nickname matching this poll.
+        }
+      }
+
       for (const repo of repos) {
         try {
           if (account.platform === 'github') {
@@ -292,7 +307,7 @@ async function pollPRs() {
             const prs = await gitlab.fetchMergeRequests(account.token, repo.fullName, account.username);
             allPRs.push(...prs);
           } else if (account.platform === 'bitbucket') {
-            const prs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username);
+            const prs = await bitbucket.fetchPullRequests(account.token, repo.fullName, account.username, account.userUuid);
             allPRs.push(...prs);
           }
         } catch (err) {

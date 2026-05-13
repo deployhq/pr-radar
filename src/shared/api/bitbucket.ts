@@ -42,6 +42,7 @@ async function bbFetchPaginated<T>(path: string, token: string, maxPages = 10): 
 }
 
 interface BBUser {
+  uuid: string;
   display_name: string;
   nickname: string;
   links: { avatar: { href: string } };
@@ -75,12 +76,12 @@ interface BBComment {
   content: { raw: string };
   parent?: { id: number };
   resolved?: boolean;
-  user?: { nickname: string; display_name: string };
+  user?: { uuid?: string; nickname: string; display_name: string };
 }
 
-export async function getAuthenticatedUser(token: string): Promise<{ nickname: string; display_name: string; avatar: string }> {
-  const user = await bbFetch<{ nickname: string; display_name: string; links: { avatar: { href: string } } }>('/user', token);
-  return { nickname: user.nickname, display_name: user.display_name, avatar: user.links.avatar.href };
+export async function getAuthenticatedUser(token: string): Promise<{ uuid: string; nickname: string; display_name: string; avatar: string }> {
+  const user = await bbFetch<{ uuid: string; nickname: string; display_name: string; links: { avatar: { href: string } } }>('/user', token);
+  return { uuid: user.uuid, nickname: user.nickname, display_name: user.display_name, avatar: user.links.avatar.href };
 }
 
 export async function getUserRepositories(token: string): Promise<{ full_name: string }[]> {
@@ -145,6 +146,7 @@ export async function fetchPullRequests(
   token: string,
   repoFullName: string,
   username: string,
+  userUuid?: string,
 ): Promise<PullRequest[]> {
   const result = await bbFetch<{ values: BBPullRequest[] }>(
     `/repositories/${repoFullName}/pullrequests?state=OPEN&pagelen=50`,
@@ -152,10 +154,24 @@ export async function fetchPullRequests(
   );
 
   const results = await Promise.all(
-    result.values.map((pr) => hydratePR(token, repoFullName, pr, username)),
+    result.values.map((pr) => hydratePR(token, repoFullName, pr, username, userUuid)),
   );
 
   return results;
+}
+
+// Bitbucket nicknames are user-editable and can drift out of sync between the
+// /user endpoint and snapshots embedded in PR responses, causing reviewer
+// matches to silently miss. Prefer uuid (immutable, set by Atlassian) and fall
+// back to nickname only for accounts saved before 0.5.3 that haven't been
+// backfilled yet.
+function userMatches(
+  user: { uuid?: string; nickname: string },
+  username: string,
+  userUuid: string | undefined,
+): boolean {
+  if (userUuid && user.uuid) return user.uuid === userUuid;
+  return user.nickname === username;
 }
 
 async function hydratePR(
@@ -163,6 +179,7 @@ async function hydratePR(
   repoFullName: string,
   pr: BBPullRequest,
   username: string,
+  userUuid: string | undefined,
 ): Promise<PullRequest> {
   const [ciResult, commentsResult, diffStats] = await Promise.all([
     fetchCIStatus(token, repoFullName, pr),
@@ -186,9 +203,9 @@ async function hydratePR(
   const unresolvedCommentAuthors = [...new Set(
     unresolvedComments.map((c) => c.user?.nickname).filter((n): n is string => !!n),
   )];
-  const isReviewRequested = reviewers.some((r) => r.nickname === username);
+  const isReviewRequested = reviewers.some((r) => userMatches(r, username, userUuid));
   const hasReviewed = participants.some(
-    (p) => p.user.nickname === username && p.role === 'REVIEWER' && p.state !== null,
+    (p) => userMatches(p.user, username, userUuid) && p.role === 'REVIEWER' && p.state !== null,
   );
   const pendingReviewers = participants
     .filter((p) => p.role === 'REVIEWER' && p.state === null && !p.approved)
@@ -219,7 +236,7 @@ async function hydratePR(
     deletions: diffStats?.deletions,
     description: pr.description || undefined,
     hasConflicts: false, // Would need separate merge check
-    isAuthor: pr.author.nickname === username,
+    isAuthor: userMatches(pr.author, username, userUuid),
     isBot: false,
     isReviewRequested,
     hasReviewed,

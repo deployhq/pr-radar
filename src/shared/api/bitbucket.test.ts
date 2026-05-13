@@ -9,10 +9,10 @@ import {
 
 // === Pure function tests ===
 
-function participant(overrides: Partial<{ nickname: string; role: string; approved: boolean; state: string | null }> = {}) {
-  const { nickname = 'user', role = 'REVIEWER', approved = false, state = null } = overrides;
+function participant(overrides: Partial<{ nickname: string; uuid: string; role: string; approved: boolean; state: string | null }> = {}) {
+  const { nickname = 'user', uuid = `{uuid-${nickname}}`, role = 'REVIEWER', approved = false, state = null } = overrides;
   return {
-    user: { display_name: nickname, nickname, links: { avatar: { href: '' } } },
+    user: { uuid, display_name: nickname, nickname, links: { avatar: { href: '' } } },
     role,
     approved,
     state,
@@ -206,13 +206,13 @@ describe('fetchPullRequests', () => {
       values: [{
         id: 1, title: 'Add feature', state: 'OPEN',
         links: { html: { href: 'https://bitbucket.org/pr/1' } },
-        author: { display_name: 'Alice', nickname: 'alice', links: { avatar: { href: 'https://avatar' } } },
+        author: { uuid: '{uuid-alice}', display_name: 'Alice', nickname: 'alice', links: { avatar: { href: 'https://avatar' } } },
         created_on: '2026-01-01T00:00:00Z', updated_on: '2026-01-02T00:00:00Z',
         source: { branch: { name: 'feature' }, commit: { hash: 'abc123' }, repository: { full_name: 'team/repo' } },
         destination: { branch: { name: 'main' }, repository: { full_name: 'team/repo' } },
-        reviewers: [{ display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }],
+        reviewers: [{ uuid: '{uuid-bob}', display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }],
         participants: [
-          { user: { display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }, role: 'REVIEWER', approved: true, state: 'approved' },
+          { user: { uuid: '{uuid-bob}', display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }, role: 'REVIEWER', approved: true, state: 'approved' },
         ],
         task_count: 0, comment_count: 2,
       }],
@@ -231,7 +231,7 @@ describe('fetchPullRequests', () => {
       ],
     }));
 
-    const prs = await fetchPullRequests('token', 'team/repo', 'bob');
+    const prs = await fetchPullRequests('token', 'team/repo', 'bob', '{uuid-bob}');
 
     expect(prs).toHaveLength(1);
     expect(prs[0].title).toBe('Add feature');
@@ -244,6 +244,59 @@ describe('fetchPullRequests', () => {
     expect(prs[0].hasReviewed).toBe(true);
     expect(prs[0].headSha).toBe('abc123');
     expect(prs[0].isDraft).toBe(false);
+  });
+
+  it('matches reviewer by uuid even when nickname has drifted', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+
+    // PR list — same person (uuid {uuid-bob}) but their PR-side nickname is the
+    // old value ('bob') while /user now returns 'bob-renamed'. The fix should
+    // still recognise them as the requested reviewer.
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({
+      values: [{
+        id: 2, title: 'Renamed user', state: 'OPEN',
+        links: { html: { href: 'https://bitbucket.org/pr/2' } },
+        author: { uuid: '{uuid-alice}', display_name: 'Alice', nickname: 'alice', links: { avatar: { href: '' } } },
+        created_on: '2026-01-01T00:00:00Z', updated_on: '2026-01-02T00:00:00Z',
+        source: { branch: { name: 'feature' }, commit: { hash: 'def456' }, repository: { full_name: 'team/repo' } },
+        destination: { branch: { name: 'main' }, repository: { full_name: 'team/repo' } },
+        reviewers: [{ uuid: '{uuid-bob}', display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }],
+        participants: [
+          { user: { uuid: '{uuid-bob}', display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }, role: 'REVIEWER', approved: false, state: null },
+        ],
+        task_count: 0, comment_count: 0,
+      }],
+    }));
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({ values: [] }));
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({ values: [] }));
+
+    const prs = await fetchPullRequests('token', 'team/repo', 'bob-renamed', '{uuid-bob}');
+
+    expect(prs[0].isReviewRequested).toBe(true);
+  });
+
+  it('falls back to nickname matching when uuid is not provided (legacy accounts)', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({
+      values: [{
+        id: 3, title: 'Legacy', state: 'OPEN',
+        links: { html: { href: 'https://bitbucket.org/pr/3' } },
+        author: { uuid: '{uuid-alice}', display_name: 'Alice', nickname: 'alice', links: { avatar: { href: '' } } },
+        created_on: '2026-01-01T00:00:00Z', updated_on: '2026-01-02T00:00:00Z',
+        source: { branch: { name: 'feature' }, commit: { hash: 'ghi789' }, repository: { full_name: 'team/repo' } },
+        destination: { branch: { name: 'main' }, repository: { full_name: 'team/repo' } },
+        reviewers: [{ uuid: '{uuid-bob}', display_name: 'Bob', nickname: 'bob', links: { avatar: { href: '' } } }],
+        participants: [],
+        task_count: 0, comment_count: 0,
+      }],
+    }));
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({ values: [] }));
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({ values: [] }));
+
+    const prs = await fetchPullRequests('token', 'team/repo', 'bob' /* no uuid */);
+
+    expect(prs[0].isReviewRequested).toBe(true);
   });
 });
 

@@ -6,6 +6,10 @@ export interface PlatformAccount {
   platform: Platform;
   token: string;
   username: string;
+  // Stable identifier used for reviewer matching where the human-readable
+  // username can drift (Bitbucket nicknames are user-editable). Optional for
+  // backward compat with accounts saved before 0.5.3 — backfilled on next poll.
+  userUuid?: string;
   avatarUrl?: string;
 }
 

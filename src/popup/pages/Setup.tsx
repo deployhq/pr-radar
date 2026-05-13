@@ -110,7 +110,7 @@ export default function Setup({ onComplete }: SetupProps) {
         }
         const encodedToken = btoa(`${bbEmail.trim()}:${token.trim()}`);
         const user = await bitbucket.getAuthenticatedUser(encodedToken);
-        account = { platform, token: encodedToken, username: user.nickname, avatarUrl: user.avatar };
+        account = { platform, token: encodedToken, username: user.nickname, userUuid: user.uuid, avatarUrl: user.avatar };
       }
 
       await saveAccount(account);

@@ -198,6 +198,19 @@ describe('fetchPullRequests', () => {
     globalThis.fetch = originalFetch;
   });
 
+  it('opts into reviewers and participants on the list endpoint', async () => {
+    // Bitbucket's PR collection endpoint omits `reviewers` and `participants`
+    // unless `fields=+values.X` is requested. Without this opt-in every reviewer
+    // assignment (default-rule or manual) silently looks unassigned.
+    const fetchMock = vi.mocked(globalThis.fetch);
+    fetchMock.mockResolvedValueOnce(bbJsonResponse({ values: [] }));
+
+    await fetchPullRequests('token', 'team/repo', 'bob', '{uuid-bob}');
+
+    const firstCallUrl = fetchMock.mock.calls[0][0] as string;
+    expect(firstCallUrl).toContain('fields=%2Bvalues.reviewers,%2Bvalues.participants');
+  });
+
   it('fetches and hydrates pull requests', async () => {
     const fetchMock = vi.mocked(globalThis.fetch);
 

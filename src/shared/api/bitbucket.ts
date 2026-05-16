@@ -148,8 +148,11 @@ export async function fetchPullRequests(
   username: string,
   userUuid?: string,
 ): Promise<PullRequest[]> {
+  // Bitbucket's PR collection endpoint omits `reviewers` and `participants`
+  // from each PR object by default — opt in via `?fields=` or every reviewer
+  // assignment (default-reviewer rule or manual) silently looks unassigned.
   const result = await bbFetch<{ values: BBPullRequest[] }>(
-    `/repositories/${repoFullName}/pullrequests?state=OPEN&pagelen=50`,
+    `/repositories/${repoFullName}/pullrequests?state=OPEN&pagelen=50&fields=%2Bvalues.reviewers,%2Bvalues.participants`,
     token,
   );
 

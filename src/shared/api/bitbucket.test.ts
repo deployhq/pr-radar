@@ -251,6 +251,7 @@ describe('fetchPullRequests', () => {
     expect(prs[0].platform).toBe('bitbucket');
     expect(prs[0].ciStatus).toBe('passed');
     expect(prs[0].unresolvedCommentCount).toBe(1);
+    expect(prs[0].unresolvedCommentCountKnown).toBe(true);
     expect(prs[0].reviewStatus).toBe('approved');
     expect(prs[0].approvalCount).toBe(1);
     expect(prs[0].isReviewRequested).toBe(true);

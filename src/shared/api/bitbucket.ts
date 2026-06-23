@@ -310,12 +310,22 @@ async function fetchComments(
   prId: number,
 ): Promise<{ comments: BBComment[]; available: boolean }> {
   try {
-    // Paginate — a PR can have >100 comments, and a partial fetch undercounts
-    // unresolved comments.
-    const comments = await bbFetchPaginated<BBComment>(
-      `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
-      token,
-    );
+    // Paginate inline (rather than via bbFetchPaginated) so we can detect
+    // truncation: hitting the page cap reports available:false, which flows to
+    // unresolvedCommentCountKnown so downstream doesn't trust a partial count.
+    const comments: BBComment[] = [];
+    let nextUrl: string | undefined = `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`;
+    let page = 0;
+    const maxPages = 10;
+    while (nextUrl) {
+      if (page >= maxPages) {
+        return { comments, available: false };
+      }
+      const result: { values: BBComment[]; next?: string } = await bbFetch<{ values: BBComment[]; next?: string }>(nextUrl, token);
+      comments.push(...result.values);
+      nextUrl = result.next;
+      page++;
+    }
     return { comments, available: true };
   } catch {
     return { comments: [], available: false };

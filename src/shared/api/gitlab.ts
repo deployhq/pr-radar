@@ -182,7 +182,7 @@ async function fetchAllDiscussions(
   token: string,
   encodedPath: string,
   mrIid: number,
-): Promise<GLDiscussion[]> {
+): Promise<{ discussions: GLDiscussion[]; complete: boolean }> {
   const all: GLDiscussion[] = [];
   let page = 1;
   const maxPages = 10;
@@ -192,10 +192,12 @@ async function fetchAllDiscussions(
       token,
     );
     all.push(...batch);
-    if (batch.length < 100) break;
+    // Full page → another may exist. Hitting the page cap mid-stream means we
+    // truncated, so the unresolved count below can't be trusted.
+    if (batch.length < 100) return { discussions: all, complete: true };
     page++;
   }
-  return all;
+  return { discussions: all, complete: false };
 }
 
 async function hydrateMR(
@@ -205,7 +207,7 @@ async function hydrateMR(
   mr: GLMergeRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [discussions, approvals, deployment, diffStats] = await Promise.all([
+  const [{ discussions, complete: discussionsComplete }, approvals, deployment, diffStats] = await Promise.all([
     fetchAllDiscussions(token, encodedPath, mr.iid),
     glFetch<GLApproval>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/approvals`,
@@ -258,6 +260,7 @@ async function hydrateMR(
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
+    unresolvedCommentCountKnown: discussionsComplete,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
     additions: diffStats?.additions,
     deletions: diffStats?.deletions,

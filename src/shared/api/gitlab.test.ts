@@ -169,6 +169,7 @@ describe('fetchMergeRequests', () => {
     expect(prs[0].platform).toBe('gitlab');
     expect(prs[0].ciStatus).toBe('passed');
     expect(prs[0].unresolvedCommentCount).toBe(1);
+    expect(prs[0].unresolvedCommentCountKnown).toBe(true);
     expect(prs[0].hasReviewed).toBe(true);
     expect(prs[0].isReviewRequested).toBe(true);
     expect(prs[0].reviewStatus).toBe('approved');

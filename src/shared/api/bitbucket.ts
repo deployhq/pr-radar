@@ -310,11 +310,13 @@ async function fetchComments(
   prId: number,
 ): Promise<{ comments: BBComment[]; available: boolean }> {
   try {
-    const result = await bbFetch<{ values: BBComment[] }>(
+    // Paginate — a PR can have >100 comments, and a partial fetch undercounts
+    // unresolved comments.
+    const comments = await bbFetchPaginated<BBComment>(
       `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
       token,
     );
-    return { comments: result.values, available: true };
+    return { comments, available: true };
   } catch {
     return { comments: [], available: false };
   }

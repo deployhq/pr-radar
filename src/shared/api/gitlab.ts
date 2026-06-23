@@ -176,6 +176,28 @@ export async function fetchMergeRequests(
   return results;
 }
 
+// The discussions endpoint defaults to 20 items per page; paginate so MRs with
+// many threads report accurate unresolved-comment counts.
+async function fetchAllDiscussions(
+  token: string,
+  encodedPath: string,
+  mrIid: number,
+): Promise<GLDiscussion[]> {
+  const all: GLDiscussion[] = [];
+  let page = 1;
+  const maxPages = 10;
+  while (page <= maxPages) {
+    const batch = await glFetch<GLDiscussion[]>(
+      `/projects/${encodedPath}/merge_requests/${mrIid}/discussions?per_page=100&page=${page}`,
+      token,
+    );
+    all.push(...batch);
+    if (batch.length < 100) break;
+    page++;
+  }
+  return all;
+}
+
 async function hydrateMR(
   token: string,
   encodedPath: string,
@@ -184,10 +206,7 @@ async function hydrateMR(
   username: string,
 ): Promise<PullRequest> {
   const [discussions, approvals, deployment, diffStats] = await Promise.all([
-    glFetch<GLDiscussion[]>(
-      `/projects/${encodedPath}/merge_requests/${mr.iid}/discussions`,
-      token,
-    ),
+    fetchAllDiscussions(token, encodedPath, mr.iid),
     glFetch<GLApproval>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/approvals`,
       token,

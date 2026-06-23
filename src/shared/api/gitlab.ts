@@ -1,4 +1,4 @@
-import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo, UnresolvedThread } from '../types';
 
 const BASE_URL = 'https://gitlab.com/api/v4';
 
@@ -174,6 +174,54 @@ export async function fetchMergeRequests(
   );
 
   return results;
+}
+
+// On-demand bodies of unresolved discussion notes for thread summarization.
+export async function fetchUnresolvedThreads(
+  token: string,
+  projectPath: string,
+  mrIid: number,
+): Promise<UnresolvedThread[]> {
+  const encodedPath = encodeURIComponent(projectPath);
+  try {
+    type GLDiscussionNotes = {
+      notes: Array<{
+        resolvable: boolean;
+        resolved?: boolean;
+        body?: string;
+        author: { username: string };
+        position?: { new_path?: string };
+      }>;
+    };
+
+    // The discussions endpoint defaults to 20 per page — paginate so MRs with
+    // many threads don't silently drop unresolved notes.
+    const discussions: GLDiscussionNotes[] = [];
+    let page = 1;
+    const maxPages = 10;
+    while (page <= maxPages) {
+      const batch = await glFetch<GLDiscussionNotes[]>(
+        `/projects/${encodedPath}/merge_requests/${mrIid}/discussions?per_page=100&page=${page}`,
+        token,
+      );
+      discussions.push(...batch);
+      if (batch.length < 100) break;
+      page++;
+    }
+
+    const threads: UnresolvedThread[] = [];
+    for (const discussion of discussions) {
+      for (const note of discussion.notes) {
+        if (!note.resolvable || note.resolved) continue;
+        const body = note.body?.trim();
+        if (!body) continue;
+        threads.push({ author: note.author.username, body, path: note.position?.new_path });
+      }
+    }
+    return threads;
+  } catch {
+    return [];
+  }
 }
 
 async function hydrateMR(

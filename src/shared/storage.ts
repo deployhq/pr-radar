@@ -1,5 +1,6 @@
 import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo, DashboardTab, SortMode } from './types';
 import type { SoundId } from './constants';
+import { AI_SUMMARY_CACHE_KEY } from './ai/summarizer';
 
 const ACCOUNTS_KEY = 'pr_radar_accounts';
 const SETTINGS_KEY = 'pr_radar_settings';
@@ -26,6 +27,10 @@ export interface Settings {
   theme: ThemeMode;
   lastTab: DashboardTab;
   sortMode: SortMode;
+  // Master switch for on-device AI features (Chrome built-in Summarizer):
+  // PR TL;DRs and unresolved-thread digests. Opt-in; only takes effect where
+  // the Summarizer API is available.
+  aiEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +46,7 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   lastTab: 'mine',
   sortMode: 'default',
+  aiEnabled: false,
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -187,6 +193,7 @@ export async function dismissRateLimitWarning(): Promise<void> {
 
 const INSTALL_DATE_KEY = 'pr_radar_install_date';
 const STAR_PROMPT_DISMISSED_KEY = 'pr_radar_star_dismissed';
+const WHATS_NEW_SEEN_VERSION_KEY = 'pr_radar_whats_new_seen_version';
 
 export async function clearAll(): Promise<void> {
   await chrome.storage.local.remove([
@@ -196,12 +203,14 @@ export async function clearAll(): Promise<void> {
     PR_CACHE_KEY,
     INSTALL_DATE_KEY,
     STAR_PROMPT_DISMISSED_KEY,
+    WHATS_NEW_SEEN_VERSION_KEY,
     DEPLOYHQ_ACCOUNT_KEY,
     DEPLOYHQ_MAPPING_KEY,
     POLL_ERRORS_KEY,
     RATE_LIMITS_KEY,
     POLL_ERRORS_DISMISSED_KEY,
     RATE_LIMIT_DISMISSED_KEY,
+    AI_SUMMARY_CACHE_KEY,
   ]);
 }
 
@@ -224,4 +233,18 @@ export async function isStarPromptDismissed(): Promise<boolean> {
 
 export async function dismissStarPrompt(): Promise<void> {
   await chrome.storage.local.set({ [STAR_PROMPT_DISMISSED_KEY]: true });
+}
+
+// === What's-new banner ===
+// The version the user last acknowledged. The banner shows when this differs
+// from the running extension version; fresh installs are stamped with the
+// current version so new users never see "what's new" for the release they
+// installed at.
+export async function getWhatsNewSeenVersion(): Promise<string | null> {
+  const result = await chrome.storage.local.get(WHATS_NEW_SEEN_VERSION_KEY);
+  return result[WHATS_NEW_SEEN_VERSION_KEY] ?? null;
+}
+
+export async function setWhatsNewSeenVersion(version: string): Promise<void> {
+  await chrome.storage.local.set({ [WHATS_NEW_SEEN_VERSION_KEY]: version });
 }

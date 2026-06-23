@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } from '@/shared/types';
-import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt } from '@/shared/storage';
+import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt, getWhatsNewSeenVersion, setWhatsNewSeenVersion } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import { detectStacks, isStackBlocked } from '../utils/stacks';
@@ -30,10 +30,12 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [pinnedRepos, setPinnedRepos] = useState<Set<string>>(new Set());
   const [stalePRDays, setStalePRDays] = useState(45);
   const [longWaitDays, setLongWaitDays] = useState(2);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [showStarBanner, setShowStarBanner] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -81,6 +83,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       setStalePRDays(settings.stalePRDays);
       setLongWaitDays(settings.longWaitDays);
       setSortMode(settings.sortMode);
+      setAiEnabled(settings.aiEnabled);
 
       const hadCache = await loadFromCache();
       setLoading(false);
@@ -135,6 +138,23 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     }
     checkStarBanner();
   }, []);
+
+  // Show the "what's new" banner to users who updated into a new release and
+  // haven't acknowledged it. Fresh installs are stamped on install, so they're
+  // excluded; the installDate guard also avoids a flash before install setup.
+  useEffect(() => {
+    async function checkWhatsNew() {
+      const [seenVersion, installDate] = await Promise.all([getWhatsNewSeenVersion(), getInstallDate()]);
+      const currentVersion = chrome.runtime.getManifest().version;
+      if (installDate && seenVersion !== currentVersion) setShowWhatsNew(true);
+    }
+    checkWhatsNew();
+  }, []);
+
+  function dismissWhatsNew() {
+    setShowWhatsNew(false);
+    setWhatsNewSeenVersion(chrome.runtime.getManifest().version);
+  }
 
   // Reset urgency filter on tab change and persist the active tab
   useEffect(() => {
@@ -393,6 +413,30 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
         ) : null}
       </div>
 
+      {/* What's-new banner — version-gated, shown to users who updated in */}
+      {showWhatsNew && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-2 px-4 py-2 border-b border-radar-200 dark:border-radar-900/50 bg-radar-50 dark:bg-radar-950/30"
+        >
+          <button
+            onClick={() => { dismissWhatsNew(); onNavigate({ type: 'settings' }); }}
+            className="text-left text-[11px] text-gray-500 dark:text-gray-400 hover:text-radar-600 dark:hover:text-radar-400 transition-colors"
+          >
+            <span aria-hidden="true">{'✨'}</span> New: AI summaries — <span className="text-radar-400">turn on in Settings &rsaquo;</span>
+          </button>
+          <button
+            onClick={dismissWhatsNew}
+            className="text-gray-400 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-400 text-xs leading-none flex-shrink-0"
+            title="Dismiss"
+            aria-label="Dismiss what's new banner"
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
+
       {/* Star banner */}
       {showStarBanner && (
         <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-radar-200 dark:border-radar-900/50 bg-radar-50 dark:bg-radar-950/30">
@@ -501,6 +545,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
                   stackInfo={stackInfo}
                   parentUnmerged={blockedIds.has(pr.id)}
                   parentNumber={parentPr?.number}
+                  aiEnabled={aiEnabled}
                 />
               );
             })}

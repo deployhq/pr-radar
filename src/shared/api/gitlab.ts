@@ -176,6 +176,30 @@ export async function fetchMergeRequests(
   return results;
 }
 
+// The discussions endpoint defaults to 20 items per page; paginate so MRs with
+// many threads report accurate unresolved-comment counts.
+async function fetchAllDiscussions(
+  token: string,
+  encodedPath: string,
+  mrIid: number,
+): Promise<{ discussions: GLDiscussion[]; complete: boolean }> {
+  const all: GLDiscussion[] = [];
+  let page = 1;
+  const maxPages = 10;
+  while (page <= maxPages) {
+    const batch = await glFetch<GLDiscussion[]>(
+      `/projects/${encodedPath}/merge_requests/${mrIid}/discussions?per_page=100&page=${page}`,
+      token,
+    );
+    all.push(...batch);
+    // Full page → another may exist. Hitting the page cap mid-stream means we
+    // truncated, so the unresolved count below can't be trusted.
+    if (batch.length < 100) return { discussions: all, complete: true };
+    page++;
+  }
+  return { discussions: all, complete: false };
+}
+
 // On-demand bodies of unresolved discussion notes for thread summarization.
 export async function fetchUnresolvedThreads(
   token: string,
@@ -231,11 +255,8 @@ async function hydrateMR(
   mr: GLMergeRequest,
   username: string,
 ): Promise<PullRequest> {
-  const [discussions, approvals, deployment, diffStats] = await Promise.all([
-    glFetch<GLDiscussion[]>(
-      `/projects/${encodedPath}/merge_requests/${mr.iid}/discussions`,
-      token,
-    ),
+  const [{ discussions, complete: discussionsComplete }, approvals, deployment, diffStats] = await Promise.all([
+    fetchAllDiscussions(token, encodedPath, mr.iid),
     glFetch<GLApproval>(
       `/projects/${encodedPath}/merge_requests/${mr.iid}/approvals`,
       token,
@@ -287,6 +308,7 @@ async function hydrateMR(
     reviewStatus,
     approvalCount: approvals.approved_by.length,
     unresolvedCommentCount,
+    unresolvedCommentCountKnown: discussionsComplete,
     unresolvedCommentAuthors: unresolvedCommentAuthors.length > 0 ? unresolvedCommentAuthors : undefined,
     additions: diffStats?.additions,
     deletions: diffStats?.deletions,

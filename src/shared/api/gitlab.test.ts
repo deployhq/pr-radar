@@ -170,10 +170,35 @@ describe('fetchMergeRequests', () => {
     expect(prs[0].platform).toBe('gitlab');
     expect(prs[0].ciStatus).toBe('passed');
     expect(prs[0].unresolvedCommentCount).toBe(1);
+    expect(prs[0].unresolvedCommentCountKnown).toBe(true);
     expect(prs[0].hasReviewed).toBe(true);
     expect(prs[0].isReviewRequested).toBe(true);
     expect(prs[0].reviewStatus).toBe('approved');
     expect(prs[0].headSha).toBe('abc123');
+  });
+
+  it('requests discussions with pagination params', async () => {
+    const fetchMock = vi.mocked(globalThis.fetch);
+
+    // MR list
+    fetchMock.mockResolvedValueOnce(glJsonResponse([{
+      id: 1, iid: 42, title: 'x',
+      author: { username: 'a', avatar_url: '' },
+      work_in_progress: false, draft: false,
+      created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
+      source_branch: 'b', sha: 'abc', has_conflicts: false,
+      reviewers: [], head_pipeline: { status: 'success', web_url: '' },
+    }]));
+    // Discussions (single page), approvals, deployments
+    fetchMock.mockResolvedValueOnce(glJsonResponse([]));
+    fetchMock.mockResolvedValueOnce(glJsonResponse({ approved: false, approved_by: [] }));
+    fetchMock.mockResolvedValueOnce(glJsonResponse([]));
+
+    await fetchMergeRequests('token', 'group/proj', 'a');
+
+    const discussionsCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('/discussions'));
+    expect(discussionsCall).toBeDefined();
+    expect(String(discussionsCall![0])).toContain('per_page=100&page=1');
   });
 });
 

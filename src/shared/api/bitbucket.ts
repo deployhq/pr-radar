@@ -335,11 +335,23 @@ async function fetchComments(
   prId: number,
 ): Promise<{ comments: BBComment[]; available: boolean }> {
   try {
-    const result = await bbFetch<{ values: BBComment[] }>(
-      `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
-      token,
-    );
-    return { comments: result.values, available: true };
+    // Paginate inline (rather than via bbFetchPaginated) so we can detect
+    // truncation: hitting the page cap reports available:false, which flows to
+    // unresolvedCommentCountKnown so downstream doesn't trust a partial count.
+    const comments: BBComment[] = [];
+    let nextUrl: string | undefined = `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`;
+    let page = 0;
+    const maxPages = 10;
+    while (nextUrl) {
+      if (page >= maxPages) {
+        return { comments, available: false };
+      }
+      const result: { values: BBComment[]; next?: string } = await bbFetch<{ values: BBComment[]; next?: string }>(nextUrl, token);
+      comments.push(...result.values);
+      nextUrl = result.next;
+      page++;
+    }
+    return { comments, available: true };
   } catch {
     return { comments: [], available: false };
   }

@@ -81,6 +81,24 @@ async function writeCached(key: string, summary: string): Promise<void> {
   await chrome.storage.local.set({ [AI_SUMMARY_CACHE_KEY]: cache });
 }
 
+const TLDR_OPTIONS: SummarizerCreateOptions = {
+  type: 'tldr',
+  format: 'plain-text',
+  length: 'short',
+  outputLanguage: OUTPUT_LANGUAGE,
+  sharedContext:
+    'Concise, factual one-line summaries of pull request descriptions for a developer dashboard.',
+};
+
+const KEY_POINTS_OPTIONS: SummarizerCreateOptions = {
+  type: 'key-points',
+  format: 'markdown',
+  length: 'short',
+  outputLanguage: OUTPUT_LANGUAGE,
+  sharedContext:
+    'Unresolved code-review comments on a pull request. Summarize what reviewers are asking for as a short bullet list of concrete action items.',
+};
+
 // Sessions are reused across PRs (cheaper than create/destroy per row) and kept
 // per config — the TL;DR and key-points modes need different create options.
 const sessions = new Map<string, Promise<Summarizer>>();
@@ -109,6 +127,23 @@ function runQueued<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
+// Create the on-device session (downloading the model if needed) from within a
+// user gesture. Chrome requires a transient user activation for
+// Summarizer.create() when the model still needs downloading — so calling these
+// synchronously from a click/toggle handler captures that activation, and later
+// async paths (mount effects, post-fetch callbacks) reuse the cached session
+// without a NotAllowedError. Fire-and-forget; failures are swallowed and simply
+// leave the session to be retried later.
+export function prewarmSummary(): void {
+  if (!isSummarizerSupported()) return;
+  void getSession('tldr', TLDR_OPTIONS).catch(() => undefined);
+}
+
+export function prewarmThreadSummary(): void {
+  if (!isSummarizerSupported()) return;
+  void getSession('key-points', KEY_POINTS_OPTIONS).catch(() => undefined);
+}
+
 /** 'unavailable' | 'downloadable' | 'downloading' | 'available'. */
 export async function summarizerAvailability(): Promise<SummarizerAvailability> {
   if (!isSummarizerSupported()) return 'unavailable';
@@ -130,14 +165,7 @@ export async function generateSummary(
   if (!text) return '';
 
   const summary = await runQueued(async () => {
-    const session = await getSession('tldr', {
-      type: 'tldr',
-      format: 'plain-text',
-      length: 'short',
-      outputLanguage: OUTPUT_LANGUAGE,
-      sharedContext:
-        'Concise, factual one-line summaries of pull request descriptions for a developer dashboard.',
-    });
+    const session = await getSession('tldr', TLDR_OPTIONS);
     return (await session.summarize(text)).trim();
   });
 
@@ -165,14 +193,7 @@ export async function generateThreadSummary(
   if (!text) return '';
 
   const summary = await runQueued(async () => {
-    const session = await getSession('key-points', {
-      type: 'key-points',
-      format: 'markdown',
-      length: 'short',
-      outputLanguage: OUTPUT_LANGUAGE,
-      sharedContext:
-        'Unresolved code-review comments on a pull request. Summarize what reviewers are asking for as a short bullet list of concrete action items.',
-    });
+    const session = await getSession('key-points', KEY_POINTS_OPTIONS);
     return (await session.summarize(text)).trim();
   });
 

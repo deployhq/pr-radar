@@ -3,7 +3,7 @@ import type { AppView, Platform, DeployHQAccount } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, getDeployHQAccount, removeDeployHQAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
-import { isSummarizerSupported } from '@/shared/ai/summarizer';
+import { isSummarizerSupported, summarizerAvailability, prewarmSummary, prewarmThreadSummary } from '@/shared/ai/summarizer';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -14,7 +14,17 @@ interface SettingsProps {
 export default function Settings({ onNavigate, theme, onThemeChange }: SettingsProps) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
-  const aiSupported = isSummarizerSupported();
+  // Show the AI section only where the API exists AND the on-device model can
+  // actually run — `unavailable` means the hardware/storage gate failed, so
+  // enabling it would just no-op. `downloadable`/`available` both qualify.
+  const [aiSupported, setAiSupported] = useState(false);
+
+  useEffect(() => {
+    if (!isSummarizerSupported()) return;
+    summarizerAvailability()
+      .then((availability) => setAiSupported(availability !== 'unavailable'))
+      .catch(() => setAiSupported(false));
+  }, []);
 
   // DeployHQ state
   const [dhqAccount, setDhqAccount] = useState<DeployHQAccount | null>(null);
@@ -234,7 +244,16 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
             label="Enable AI features"
             description="Adds a short TL;DR under each PR and a digest of unresolved review threads. Runs locally in Chrome — nothing leaves your browser. Downloads a model on first use."
           >
-            <Toggle checked={settings.aiEnabled} onChange={(v) => handleToggle('aiEnabled', v)} label="Enable AI features" />
+            <Toggle
+              checked={settings.aiEnabled}
+              onChange={(v) => {
+                // Prewarm under this user gesture so the first model download is
+                // activation-bound (Chrome requires it for Summarizer.create()).
+                if (v) { prewarmSummary(); prewarmThreadSummary(); }
+                handleToggle('aiEnabled', v);
+              }}
+              label="Enable AI features"
+            />
           </SettingRow>
         </Section>
       )}

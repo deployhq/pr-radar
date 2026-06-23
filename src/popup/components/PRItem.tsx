@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { PullRequest, Message, DeployHQServer, UnresolvedThread } from '@/shared/types';
 import type { StackInfo } from '../utils/stacks';
-import { isSummarizerSupported, getCachedSummary, generateSummary, summaryCacheKey, generateThreadSummary, threadSummaryCacheKey } from '@/shared/ai/summarizer';
+import { isSummarizerSupported, getCachedSummary, generateSummary, summaryCacheKey, generateThreadSummary, threadSummaryCacheKey, prewarmThreadSummary } from '@/shared/ai/summarizer';
 import CIBadge from './CIBadge';
 import PlatformIcon from './PlatformIcon';
 
@@ -42,6 +42,10 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
     setThreadsExpanded(next);
     // Only fetch+summarize on first open; later toggles just show/hide.
     if (!next || threadSummary || threadState === 'loading') return;
+
+    // Prewarm synchronously under this click gesture — create() must run during
+    // the activation, before we await the thread fetch below.
+    prewarmThreadSummary();
 
     const cacheKey = threadSummaryCacheKey(pr);
     const cached = await getCachedSummary(cacheKey);

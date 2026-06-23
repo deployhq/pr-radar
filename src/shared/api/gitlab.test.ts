@@ -6,6 +6,7 @@ import {
   fetchMergeRequests,
   checkIfMerged,
   mergeMergeRequest,
+  fetchUnresolvedThreads,
 } from './gitlab';
 
 // === Pure function tests ===
@@ -232,6 +233,55 @@ describe('mergeMergeRequest', () => {
 });
 
 // === Helpers ===
+
+describe('fetchUnresolvedThreads', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('returns unresolved notes, skipping resolved/non-resolvable/empty', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(glJsonResponse([
+      { notes: [{ resolvable: true, resolved: false, body: 'fix this', author: { username: 'alice' }, position: { new_path: 'src/a.ts' } }] },
+      { notes: [{ resolvable: true, resolved: true, body: 'done', author: { username: 'bob' } }] },
+      { notes: [{ resolvable: false, resolved: false, body: 'general comment', author: { username: 'carol' } }] },
+      { notes: [{ resolvable: true, resolved: false, body: '  ', author: { username: 'dave' } }] },
+    ]));
+
+    const threads = await fetchUnresolvedThreads('token', 'group/proj', 42);
+
+    expect(threads).toEqual([{ author: 'alice', body: 'fix this', path: 'src/a.ts' }]);
+  });
+
+  it('paginates discussions when a full page is returned', async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+      notes: [{ resolvable: true, resolved: false, body: `note ${i}`, author: { username: 'u' } }],
+    }));
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(glJsonResponse(fullPage))
+      .mockResolvedValueOnce(glJsonResponse([
+        { notes: [{ resolvable: true, resolved: false, body: 'last', author: { username: 'z' } }] },
+      ]));
+
+    const threads = await fetchUnresolvedThreads('token', 'group/proj', 42);
+
+    expect(threads).toHaveLength(101);
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns [] when the request fails', async () => {
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('network'));
+
+    const threads = await fetchUnresolvedThreads('token', 'group/proj', 42);
+
+    expect(threads).toEqual([]);
+  });
+});
 
 function glResponse(body: unknown, nextPage: string | null): Response {
   return {

@@ -5,6 +5,7 @@ import {
   getNextPagePath,
   getUserRepos,
   mapWithConcurrencyLimit,
+  fetchUnresolvedThreads,
   type GHReview,
 } from './github';
 
@@ -176,6 +177,75 @@ describe('getUserRepos', () => {
       { full_name: 'deployhq/launch' },
     ]);
     expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+});
+
+describe('fetchUnresolvedThreads', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  function threadsResponse(
+    nodes: unknown[],
+    hasNextPage = false,
+    endCursor: string | null = null,
+  ): Response {
+    return jsonResponse({
+      data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage, endCursor }, nodes } } } },
+    });
+  }
+
+  it('returns unresolved threads, skipping resolved and empty-body ones', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(threadsResponse([
+      { isResolved: false, path: 'src/a.ts', comments: { nodes: [{ author: { login: 'alice' }, body: 'add a test' }] } },
+      { isResolved: true, path: 'src/b.ts', comments: { nodes: [{ author: { login: 'bob' }, body: 'already resolved' }] } },
+      { isResolved: false, path: 'src/c.ts', comments: { nodes: [{ author: { login: 'carol' }, body: '   ' }] } },
+    ]));
+
+    const threads = await fetchUnresolvedThreads('token', 'owner/repo', 1);
+
+    expect(threads).toEqual([{ author: 'alice', body: 'add a test', path: 'src/a.ts' }]);
+  });
+
+  it('falls back to "someone" when the comment has no author', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(threadsResponse([
+      { isResolved: false, path: 'src/a.ts', comments: { nodes: [{ body: 'ghost comment' }] } },
+    ]));
+
+    const threads = await fetchUnresolvedThreads('token', 'owner/repo', 1);
+
+    expect(threads).toEqual([{ author: 'someone', body: 'ghost comment', path: 'src/a.ts' }]);
+  });
+
+  it('paginates across review-thread pages', async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(threadsResponse(
+        [{ isResolved: false, path: 'a.ts', comments: { nodes: [{ author: { login: 'alice' }, body: 'first' }] } }],
+        true,
+        'CURSOR1',
+      ))
+      .mockResolvedValueOnce(threadsResponse(
+        [{ isResolved: false, path: 'b.ts', comments: { nodes: [{ author: { login: 'bob' }, body: 'second' }] } }],
+      ));
+
+    const threads = await fetchUnresolvedThreads('token', 'owner/repo', 1);
+
+    expect(threads.map((t) => t.body)).toEqual(['first', 'second']);
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns [] when the request fails', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({ ok: false, status: 500 } as Response);
+
+    const threads = await fetchUnresolvedThreads('token', 'owner/repo', 1);
+
+    expect(threads).toEqual([]);
   });
 });
 

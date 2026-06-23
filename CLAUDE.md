@@ -1,3 +1,33 @@
+---
+tags:
+  - browser extension
+  - pull request dashboard
+  - CI/CD status
+  - notifications
+  - keyboard shortcuts
+tools:
+  - Vite
+  - React 18
+  - TypeScript
+  - Tailwind CSS
+  - ESLint
+technologies:
+  - Manifest V3
+  - REST API
+  - GraphQL
+  - Service Worker
+  - Chrome storage API
+companies:
+  - GitHub
+  - GitLab
+  - Bitbucket
+  - Atlassian
+  - DeployHQ
+platforms:
+  - Chrome
+  - Firefox
+  - Edge
+---
 # CLAUDE.md
 
 ## Overview
@@ -72,6 +102,9 @@ src/
       gitlab.ts                  # GitLab REST API (MRs, CI pipelines, discussions, approvals, deployments, merge)
       bitbucket.ts               # Bitbucket REST API (PRs, pipelines, comments, participants, merge, workspaces)
       deployhq.ts                # DeployHQ REST API (projects, servers, deployments — opt-in integration)
+    ai/
+      summarizer.ts              # Chrome built-in Summarizer (Gemini Nano): on-device PR TL;DR + unresolved-thread digest; session registry, serial queue, gesture prewarm, capped chrome.storage cache
+      summarizer-api.d.ts        # Ambient TS types for the Summarizer API (not yet in the DOM lib)
 public/
   offscreen.html                 # Offscreen document for audio playback (references offscreen.js)
   offscreen.js                   # Audio player (separate file required by MV3 CSP - no inline scripts)
@@ -145,6 +178,7 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **Unresolved comments** — GitHub: GraphQL reviewThreads; GitLab: discussion notes; Bitbucket: inline comments
 - **Deployment status** — GitHub: deployments API; GitLab: deployments by SHA
 - **Review tracking** — Author/Review/Reviewed badges; reviewed PRs dimmed
+- **AI summaries (Chrome, opt-in)** — On-device PR description TL;DR (`✨` line under each PR, clamped to 2 lines) and an unresolved-thread digest (expand the 💬 badge → key-points list) via Chrome's built-in Summarizer API (Gemini Nano). One "Enable AI features" toggle; feature-detected with `isSummarizerSupported()` so the option is disabled with an explanation on Firefox/Edge or unsupported hardware. `Summarizer.create()` prewarmed from the enable/expand gesture (activation-bound download); summaries cached in `chrome.storage` by `headSha`; thread bodies fetched on demand via the `GET_PR_THREADS` service-worker message. Nothing leaves the browser
 - **Pinned repos** — Star toggle in Repos page; pinned repo PRs sort to top of Dashboard with ★ indicator
 - **Stale PR detection** — Configurable threshold (default 45 days), dimmed with 💤 tooltip
 - **Desktop notifications** — On CI status changes (persisted across SW restarts)

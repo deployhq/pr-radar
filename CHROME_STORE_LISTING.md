@@ -1,3 +1,24 @@
+---
+tags:
+  - Chrome extension
+  - pull request dashboard
+  - CI/CD status monitoring
+  - desktop notifications
+  - keyboard shortcuts
+tools:
+  - Manifest V3
+  - GitHub Actions
+  - GitLab CI
+  - Bitbucket Pipelines
+  - GraphQL
+companies:
+  - DeployHQ
+platforms:
+  - GitHub
+  - GitLab
+  - Bitbucket
+  - Chrome Web Store
+---
 # Chrome Web Store Listing Copy
 
 Exact copy to paste into the CWS developer dashboard. Each section matches a field in the dashboard.
@@ -39,6 +60,7 @@ Features:
 - Deployment status and environment URLs from GitHub Deployments and GitLab Deployments APIs
 - Pull request notifications — desktop alerts and sound when CI finishes (ding, bell, or chime)
 - Code review tracking — see which PRs need your review, which you've reviewed, and who approved
+- AI summaries (optional) — an on-device TL;DR under each PR and a digest of unresolved review threads, powered by Chrome's built-in AI; runs locally with nothing sent to a server
 - Merge from the dashboard — merge pull requests and merge requests directly with a confirm step
 - Pinned repos — star your most important repos so their PRs always sort to the top
 - Stale PR detection — old PRs are dimmed with a configurable threshold

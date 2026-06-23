@@ -1,3 +1,30 @@
+---
+tags:
+  - pull request
+  - CI/CD
+  - code review
+  - notifications
+  - deployment
+companies:
+  - DeployHQ
+platforms:
+  - GitHub
+  - GitLab
+  - Bitbucket
+  - Chrome
+  - Firefox
+frameworks:
+  - React
+  - TypeScript
+  - Tailwind CSS
+  - Vite
+technologies:
+  - TypeScript
+  - React
+  - Tailwind CSS
+  - Vite
+  - GraphQL
+---
 # PR Radar
 
 [![GitHub stars](https://img.shields.io/github/stars/deployhq/pr-radar?style=social)](https://github.com/deployhq/pr-radar)
@@ -33,6 +60,7 @@ Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-rada
 - **Deployment previews** — See deployment status and click through to environment URLs
 - **Sound & desktop notifications** — Get alerted when CI finishes, no tab required
 - **Review tracking** — See which PRs need your review, and which you've already reviewed
+- **AI summaries** *(Chrome)* — Optional on-device TL;DR under each PR and a digest of unresolved review threads, powered by Chrome's built-in AI. Runs locally — nothing leaves your browser. Firefox and Edge aren't affected (the option appears disabled with an explanation)
 - **Merge from dashboard** — Merge PRs directly with a confirm step (all platforms)
 - **Pinned repos** — Star your favorite repos so their PRs always appear at the top
 - **Stale PR detection** — Old PRs are dimmed with a nudge to close them (configurable)

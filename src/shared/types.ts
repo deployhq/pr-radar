@@ -70,6 +70,14 @@ export interface PullRequest {
   };
 }
 
+// An unresolved review thread's leading comment, fetched on demand for
+// on-device summarization. Platform-agnostic shape.
+export interface UnresolvedThread {
+  author: string;
+  body: string;
+  path?: string; // file path for inline comments, when available
+}
+
 // === DeployHQ ===
 
 export interface DeployHQAccount {
@@ -164,4 +172,5 @@ export type Message =
   | { type: 'DELETE_BRANCH'; payload: { platform: Platform; repoFullName: string; branch: string } }
   | { type: 'TEST_DEPLOYHQ'; payload: { slug: string; email: string; apiKey: string } }
   | { type: 'GET_DEPLOYHQ_SERVERS'; payload: { repoFullName: string } }
-  | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string } };
+  | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string } }
+  | { type: 'GET_PR_THREADS'; payload: { platform: Platform; repoFullName: string; prNumber: number } };

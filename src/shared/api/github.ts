@@ -1,4 +1,4 @@
-import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo, UnresolvedThread } from '../types';
 
 const BASE_URL = 'https://api.github.com';
 const HYDRATE_CONCURRENCY = 5;
@@ -582,6 +582,77 @@ async function ghGraphQL<T>(token: string, query: string, variables: Record<stri
 
   const data = await res.json() as GraphQLResponse<T>;
   return data.data ?? null;
+}
+
+interface ReviewThreadPage {
+  pageInfo?: { hasNextPage?: boolean; endCursor?: string | null };
+  nodes?: Array<{
+    isResolved: boolean;
+    path?: string;
+    comments?: { nodes?: Array<{ author?: { login: string }; body?: string }> };
+  }>;
+}
+
+interface UnresolvedThreadsData {
+  repository?: { pullRequest?: { reviewThreads?: ReviewThreadPage } };
+}
+
+// On-demand: the leading comment of each unresolved review thread, with body
+// text (the polling path only counts threads, it doesn't keep bodies).
+export async function fetchUnresolvedThreads(
+  token: string,
+  repoFullName: string,
+  prNumber: number,
+): Promise<UnresolvedThread[]> {
+  const [owner, repo] = repoFullName.split('/');
+  const query = `query UnresolvedThreads($owner: String!, $repo: String!, $prNumber: Int!, $after: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $prNumber) {
+        reviewThreads(first: 100, after: $after) {
+          pageInfo { hasNextPage endCursor }
+          nodes {
+            isResolved
+            path
+            comments(first: 1) { nodes { author { login } body } }
+          }
+        }
+      }
+    }
+  }`;
+
+  try {
+    const threads: UnresolvedThread[] = [];
+    let after: string | null = null;
+    let pageCount = 0;
+
+    // Paginate — large PRs can exceed 100 review threads, and a single page
+    // would silently drop the rest from the digest.
+    while (pageCount < MAX_PAGINATED_PAGES) {
+      const data: UnresolvedThreadsData | null = await ghGraphQL<UnresolvedThreadsData>(
+        token,
+        query,
+        { owner, repo, prNumber, after },
+      );
+
+      const threadPage: ReviewThreadPage | undefined = data?.repository?.pullRequest?.reviewThreads;
+      for (const node of threadPage?.nodes ?? []) {
+        if (node.isResolved) continue;
+        const comment = node.comments?.nodes?.[0];
+        const body = comment?.body?.trim();
+        if (!body) continue;
+        threads.push({ author: comment?.author?.login ?? 'someone', body, path: node.path });
+      }
+
+      const pageInfo: ReviewThreadPage['pageInfo'] = threadPage?.pageInfo;
+      if (!pageInfo?.hasNextPage || !pageInfo.endCursor) break;
+      after = pageInfo.endCursor;
+      pageCount += 1;
+    }
+
+    return threads;
+  } catch {
+    return [];
+  }
 }
 
 async function fetchGraphQLDetails(token: string, repoFullName: string, prNumber: number): Promise<GraphQLPRDetails> {

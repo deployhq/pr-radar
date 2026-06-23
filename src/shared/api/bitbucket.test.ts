@@ -5,6 +5,7 @@ import {
   checkIfMerged,
   mergePullRequest,
   fetchPullRequests,
+  fetchUnresolvedThreads,
 } from './bitbucket';
 
 // === Pure function tests ===
@@ -315,6 +316,57 @@ describe('fetchPullRequests', () => {
 });
 
 // === Helpers ===
+
+describe('fetchUnresolvedThreads', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    globalThis.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('returns unresolved inline comments, skipping non-inline/resolved/empty', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce(bbJsonResponse({
+      values: [
+        { id: 1, inline: { path: 'src/a.ts' }, resolved: false, content: { raw: 'fix this' }, user: { display_name: 'Alice', nickname: 'alice' } },
+        { id: 2, inline: { path: 'src/a.ts' }, resolved: true, content: { raw: 'done' }, user: { display_name: 'Bob', nickname: 'bob' } },
+        { id: 3, content: { raw: 'general (not inline)' }, user: { display_name: 'Carol', nickname: 'carol' } },
+        { id: 4, inline: { path: 'src/b.ts' }, resolved: false, content: { raw: '  ' }, user: { display_name: 'Dave', nickname: 'dave' } },
+      ],
+    }));
+
+    const threads = await fetchUnresolvedThreads('token', 'team/repo', 7);
+
+    expect(threads).toEqual([{ author: 'Alice', body: 'fix this', path: 'src/a.ts' }]);
+  });
+
+  it('paginates comments when a next link is present', async () => {
+    vi.mocked(globalThis.fetch)
+      .mockResolvedValueOnce(bbJsonResponse({
+        values: [{ id: 1, inline: { path: 'a.ts' }, resolved: false, content: { raw: 'first' }, user: { display_name: 'Alice', nickname: 'alice' } }],
+        next: 'https://api.bitbucket.org/2.0/repositories/team/repo/pullrequests/7/comments?page=2',
+      }))
+      .mockResolvedValueOnce(bbJsonResponse({
+        values: [{ id: 2, inline: { path: 'b.ts' }, resolved: false, content: { raw: 'second' }, user: { display_name: 'Bob', nickname: 'bob' } }],
+      }));
+
+    const threads = await fetchUnresolvedThreads('token', 'team/repo', 7);
+
+    expect(threads.map((t) => t.body)).toEqual(['first', 'second']);
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns [] when the request fails', async () => {
+    vi.mocked(globalThis.fetch).mockRejectedValueOnce(new Error('network'));
+
+    const threads = await fetchUnresolvedThreads('token', 'team/repo', 7);
+
+    expect(threads).toEqual([]);
+  });
+});
 
 function bbJsonResponse(body: unknown): Response {
   return {

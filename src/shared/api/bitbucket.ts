@@ -311,11 +311,13 @@ export async function fetchUnresolvedThreads(
   prId: number,
 ): Promise<UnresolvedThread[]> {
   try {
-    const result = await bbFetch<{ values: BBComment[] }>(
+    // Paginate — a PR can have >100 comments, and a partial fetch silently
+    // drops unresolved threads from the digest.
+    const comments = await bbFetchPaginated<BBComment>(
       `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
       token,
     );
-    return result.values
+    return comments
       .filter((c) => c.inline && !c.resolved && c.content?.raw?.trim())
       .map((c) => ({
         author: c.user?.display_name || c.user?.nickname || 'someone',

@@ -184,7 +184,7 @@ export async function fetchUnresolvedThreads(
 ): Promise<UnresolvedThread[]> {
   const encodedPath = encodeURIComponent(projectPath);
   try {
-    const discussions = await glFetch<Array<{
+    type GLDiscussionNotes = {
       notes: Array<{
         resolvable: boolean;
         resolved?: boolean;
@@ -192,7 +192,22 @@ export async function fetchUnresolvedThreads(
         author: { username: string };
         position?: { new_path?: string };
       }>;
-    }>>(`/projects/${encodedPath}/merge_requests/${mrIid}/discussions`, token);
+    };
+
+    // The discussions endpoint defaults to 20 per page — paginate so MRs with
+    // many threads don't silently drop unresolved notes.
+    const discussions: GLDiscussionNotes[] = [];
+    let page = 1;
+    const maxPages = 10;
+    while (page <= maxPages) {
+      const batch = await glFetch<GLDiscussionNotes[]>(
+        `/projects/${encodedPath}/merge_requests/${mrIid}/discussions?per_page=100&page=${page}`,
+        token,
+      );
+      discussions.push(...batch);
+      if (batch.length < 100) break;
+      page++;
+    }
 
     const threads: UnresolvedThread[] = [];
     for (const discussion of discussions) {

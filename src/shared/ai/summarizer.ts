@@ -41,7 +41,9 @@ export function isSummarizerSupported(): boolean {
  * invalidates the old summary; falls back to a hash of the description.
  */
 export function summaryCacheKey(pr: Pick<PullRequest, 'id' | 'headSha' | 'description'>): string {
-  const version = pr.headSha || hashString(pr.description ?? '');
+  // Include the description hash even when headSha is present, so editing a PR
+  // description without pushing code still invalidates the cached TL;DR.
+  const version = `${pr.headSha || '?'}:${hashString(pr.description ?? '')}`;
   return `${pr.id}@${version}`;
 }
 

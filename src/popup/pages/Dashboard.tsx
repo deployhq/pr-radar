@@ -415,7 +415,11 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
       {/* What's-new banner — version-gated, shown to users who updated in */}
       {showWhatsNew && (
-        <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-radar-200 dark:border-radar-900/50 bg-radar-50 dark:bg-radar-950/30">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-2 px-4 py-2 border-b border-radar-200 dark:border-radar-900/50 bg-radar-50 dark:bg-radar-950/30"
+        >
           <button
             onClick={() => { dismissWhatsNew(); onNavigate({ type: 'settings' }); }}
             className="text-left text-[11px] text-gray-500 dark:text-gray-400 hover:text-radar-600 dark:hover:text-radar-400 transition-colors"

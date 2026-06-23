@@ -109,7 +109,16 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tldrEnabled, pr.id, pr.headSha]);
+  }, [tldrEnabled, pr.id, pr.headSha, description]);
+
+  // Reset the thread digest when the PR identity changes (a new push, or a
+  // change in unresolved count). Dashboard reuses the row component by pr.id,
+  // so without this a stale digest could persist across updates.
+  useEffect(() => {
+    setThreadsExpanded(false);
+    setThreadSummary(null);
+    setThreadState('idle');
+  }, [pr.id, pr.headSha, pr.unresolvedCommentCount]);
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -458,6 +467,7 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleThreads(); }}
                 aria-expanded={threadsExpanded}
+                aria-controls={`thread-summary-${pr.id}`}
                 title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')} — click to summarize` : 'Click to summarize unresolved threads'}
                 aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}, click to summarize`}
               >
@@ -577,10 +587,14 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
       )}
 
       {threadsExpanded && (
-        <div className="ml-[30px] mt-1 rounded-md bg-amber-50/50 dark:bg-gray-800/40 border border-amber-100 dark:border-gray-700/50 px-2.5 py-1.5">
+        <div
+          id={`thread-summary-${pr.id}`}
+          aria-live="polite"
+          className="ml-[30px] mt-1 rounded-md bg-amber-50/50 dark:bg-gray-800/40 border border-amber-100 dark:border-gray-700/50 px-2.5 py-1.5"
+        >
           {threadState === 'loading' && (
             <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 italic" role="status" aria-label="Summarizing unresolved threads">
-              <span className="inline-block w-2.5 h-2.5 border-[1.5px] border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
+              <span aria-hidden="true" className="inline-block w-2.5 h-2.5 border-[1.5px] border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
               Reading threads&hellip;
             </div>
           )}

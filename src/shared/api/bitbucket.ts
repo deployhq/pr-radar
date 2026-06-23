@@ -1,4 +1,4 @@
-import type { PullRequest, CIStatus, ReviewStatus } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, UnresolvedThread } from '../types';
 
 const BASE_URL = 'https://api.bitbucket.org/2.0';
 
@@ -301,6 +301,29 @@ async function fetchCIStatus(token: string, repoFullName: string, pr: BBPullRequ
     }
   } catch {
     return { status: 'unknown' };
+  }
+}
+
+// On-demand bodies of unresolved inline comments for thread summarization.
+export async function fetchUnresolvedThreads(
+  token: string,
+  repoFullName: string,
+  prId: number,
+): Promise<UnresolvedThread[]> {
+  try {
+    const result = await bbFetch<{ values: BBComment[] }>(
+      `/repositories/${repoFullName}/pullrequests/${prId}/comments?pagelen=100`,
+      token,
+    );
+    return result.values
+      .filter((c) => c.inline && !c.resolved && c.content?.raw?.trim())
+      .map((c) => ({
+        author: c.user?.display_name || c.user?.nickname || 'someone',
+        body: c.content.raw.trim(),
+        path: c.inline?.path,
+      }));
+  } catch {
+    return [];
   }
 }
 

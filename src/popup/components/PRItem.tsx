@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import type { PullRequest, Message, DeployHQServer } from '@/shared/types';
+import { useState, useEffect } from 'react';
+import type { PullRequest, Message, DeployHQServer, UnresolvedThread } from '@/shared/types';
 import type { StackInfo } from '../utils/stacks';
+import { isSummarizerSupported, getCachedSummary, generateSummary, summaryCacheKey, generateThreadSummary, threadSummaryCacheKey } from '@/shared/ai/summarizer';
 import CIBadge from './CIBadge';
 import PlatformIcon from './PlatformIcon';
 
@@ -13,9 +14,10 @@ interface PRItemProps {
   stackInfo?: StackInfo;
   parentUnmerged?: boolean;
   parentNumber?: number;
+  aiEnabled?: boolean;
 }
 
-export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, stackInfo, parentUnmerged, parentNumber }: PRItemProps) {
+export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, stackInfo, parentUnmerged, parentNumber, aiEnabled }: PRItemProps) {
   const [mergeState, setMergeState] = useState<'idle' | 'confirm' | 'merging' | 'merged' | 'error'>('idle');
   const [mergeError, setMergeError] = useState('');
   const [branchState, setBranchState] = useState<'idle' | 'confirm' | 'deleting' | 'deleted' | 'error'>('idle');
@@ -25,7 +27,85 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
   const [servers, setServers] = useState<DeployHQServer[]>([]);
   const [selectedServer, setSelectedServer] = useState('');
   const [expanded, setExpanded] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [threadsExpanded, setThreadsExpanded] = useState(false);
+  const [threadSummary, setThreadSummary] = useState<string | null>(null);
+  const [threadState, setThreadState] = useState<'idle' | 'loading' | 'done' | 'error' | 'empty'>('idle');
   const description = pr.description?.trim();
+  const aiAvailable = Boolean(aiEnabled) && isSummarizerSupported();
+  const tldrEnabled = aiAvailable && Boolean(description);
+  const threadsAvailable = aiAvailable && pr.unresolvedCommentCount > 0;
+
+  async function toggleThreads() {
+    const next = !threadsExpanded;
+    setThreadsExpanded(next);
+    // Only fetch+summarize on first open; later toggles just show/hide.
+    if (!next || threadSummary || threadState === 'loading') return;
+
+    const cacheKey = threadSummaryCacheKey(pr);
+    const cached = await getCachedSummary(cacheKey);
+    if (cached) {
+      setThreadSummary(cached);
+      setThreadState('done');
+      return;
+    }
+
+    setThreadState('loading');
+    try {
+      const msg: Message = { type: 'GET_PR_THREADS', payload: { platform: pr.platform, repoFullName: pr.repoFullName, prNumber: pr.number } };
+      const res = await chrome.runtime.sendMessage(msg) as { success: boolean; threads: UnresolvedThread[]; message?: string };
+      if (!res.success || !res.threads?.length) {
+        setThreadState('empty');
+        return;
+      }
+      const result = await generateThreadSummary(cacheKey, res.threads);
+      if (result) {
+        setThreadSummary(result);
+        setThreadState('done');
+      } else {
+        setThreadState('empty');
+      }
+    } catch {
+      setThreadState('error');
+    }
+  }
+
+  // Fetch the on-device TL;DR, cache-first. Effect re-runs when the PR or its
+  // head SHA changes so a new push refreshes the summary. Degrades silently:
+  // on any failure the line simply doesn't render.
+  useEffect(() => {
+    if (!tldrEnabled) {
+      setSummary(null);
+      setSummaryState('idle');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const cached = await getCachedSummary(summaryCacheKey(pr));
+      if (cancelled) return;
+      if (cached) {
+        setSummary(cached);
+        setSummaryState('done');
+        return;
+      }
+      setSummaryState('loading');
+      try {
+        const result = await generateSummary(pr);
+        if (cancelled) return;
+        if (result) {
+          setSummary(result);
+          setSummaryState('done');
+        } else {
+          setSummaryState('idle');
+        }
+      } catch {
+        if (!cancelled) setSummaryState('error');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tldrEnabled, pr.id, pr.headSha]);
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
   const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
@@ -370,12 +450,26 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
           )}
 
           {pr.unresolvedCommentCount > 0 && (
-            <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}
-              aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}${pr.unresolvedCommentAuthors ? ` from ${pr.unresolvedCommentAuthors.join(', ')}` : ''}`}>
-              <Badge className="bg-amber-50 dark:bg-gray-800 text-amber-600 dark:text-amber-400">
-                <span aria-hidden="true">&#x1F4AC;</span> {pr.unresolvedCommentCount}
-              </Badge>
-            </span>
+            threadsAvailable ? (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleThreads(); }}
+                aria-expanded={threadsExpanded}
+                title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')} — click to summarize` : 'Click to summarize unresolved threads'}
+                aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}, click to summarize`}
+              >
+                <Badge className="bg-amber-50 dark:bg-gray-800 text-amber-600 dark:text-amber-400 cursor-pointer hover:bg-amber-100 dark:hover:bg-gray-700 transition-colors">
+                  <span aria-hidden="true">&#x1F4AC;</span> {pr.unresolvedCommentCount}
+                  <span aria-hidden="true" className="text-[8px] ml-0.5">{threadsExpanded ? '▴' : '▾'}</span>
+                </Badge>
+              </button>
+            ) : (
+              <span title={pr.unresolvedCommentAuthors ? `Unresolved from: ${pr.unresolvedCommentAuthors.join(', ')}` : undefined}
+                aria-label={`${pr.unresolvedCommentCount} unresolved comment${pr.unresolvedCommentCount > 1 ? 's' : ''}${pr.unresolvedCommentAuthors ? ` from ${pr.unresolvedCommentAuthors.join(', ')}` : ''}`}>
+                <Badge className="bg-amber-50 dark:bg-gray-800 text-amber-600 dark:text-amber-400">
+                  <span aria-hidden="true">&#x1F4AC;</span> {pr.unresolvedCommentCount}
+                </Badge>
+              </span>
+            )
           )}
 
           {pr.pendingReviewers && pr.pendingReviewers.length > 0 && (
@@ -463,6 +557,51 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
         )}
       </a>
 
+      {tldrEnabled && (summaryState === 'loading' || (summaryState === 'done' && summary)) && (
+        <div className="ml-[30px] mt-1 flex items-start gap-1 text-[11px] leading-snug">
+          <span aria-hidden="true" className="mt-px text-radar-400">{'✨'}</span>
+          {summaryState === 'loading' ? (
+            <span className="text-gray-400 dark:text-gray-500 italic" role="status" aria-label="Summarizing pull request">
+              Summarizing&hellip;
+            </span>
+          ) : (
+            <span className="flex-1 min-w-0 text-gray-600 dark:text-gray-400 break-words line-clamp-2" title={summary ?? undefined}>
+              <span className="sr-only">AI summary: </span>{summary}
+            </span>
+          )}
+        </div>
+      )}
+
+      {threadsExpanded && (
+        <div className="ml-[30px] mt-1 rounded-md bg-amber-50/50 dark:bg-gray-800/40 border border-amber-100 dark:border-gray-700/50 px-2.5 py-1.5">
+          {threadState === 'loading' && (
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500 italic" role="status" aria-label="Summarizing unresolved threads">
+              <span className="inline-block w-2.5 h-2.5 border-[1.5px] border-gray-400/30 border-t-gray-400 rounded-full animate-spin" />
+              Reading threads&hellip;
+            </div>
+          )}
+          {threadState === 'done' && threadSummary && (
+            <div className="text-[11px]">
+              <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 font-medium mb-1">
+                <span aria-hidden="true" className="text-radar-400">{'✨'}</span>
+                {pr.unresolvedCommentCount} unresolved {pr.unresolvedCommentCount === 1 ? 'thread' : 'threads'}
+              </div>
+              <ul className="list-disc pl-4 space-y-0.5 text-gray-600 dark:text-gray-400">
+                {toBullets(threadSummary).map((bullet, i) => (
+                  <li key={i} className="break-words">{bullet}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {threadState === 'empty' && (
+            <div className="text-[11px] text-gray-400 dark:text-gray-500 italic">Nothing to summarize.</div>
+          )}
+          {threadState === 'error' && (
+            <div className="text-[11px] text-gray-400 dark:text-gray-500 italic">Couldn&apos;t summarize threads.</div>
+          )}
+        </div>
+      )}
+
       {description && (
         <div className="ml-[30px] mt-1">
           <button
@@ -490,6 +629,16 @@ function Badge({ children, className }: { children: React.ReactNode; className: 
       {children}
     </span>
   );
+}
+
+// Split the model's key-points output (markdown bullets, or a plain paragraph
+// if it didn't bullet) into clean list items.
+function toBullets(text: string): string[] {
+  const lines = text
+    .split('\n')
+    .map((line) => line.replace(/^\s*[-*•]\s*/, '').trim())
+    .filter(Boolean);
+  return lines.length > 0 ? lines : [text.trim()];
 }
 
 function getTimeAgo(dateStr: string): string {

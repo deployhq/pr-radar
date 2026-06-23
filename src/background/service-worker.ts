@@ -200,6 +200,30 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
       if (result.success) pollPRs();
     })();
     return true;
+  } else if (message.type === 'GET_PR_THREADS') {
+    const { platform, repoFullName, prNumber } = message.payload;
+    (async () => {
+      const accounts = await getAccounts();
+      const account = accounts.find((a) => a.platform === platform);
+      if (!account) {
+        sendResponse({ success: false, threads: [], message: 'Account not found' });
+        return;
+      }
+      try {
+        let threads;
+        if (platform === 'github') {
+          threads = await github.fetchUnresolvedThreads(account.token, repoFullName, prNumber);
+        } else if (platform === 'gitlab') {
+          threads = await gitlab.fetchUnresolvedThreads(account.token, repoFullName, prNumber);
+        } else {
+          threads = await bitbucket.fetchUnresolvedThreads(account.token, repoFullName, prNumber);
+        }
+        sendResponse({ success: true, threads });
+      } catch (err) {
+        sendResponse({ success: false, threads: [], message: err instanceof Error ? err.message : 'Failed to fetch threads' });
+      }
+    })();
+    return true;
   }
 });
 

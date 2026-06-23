@@ -1,5 +1,6 @@
 import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo, DashboardTab, SortMode } from './types';
 import type { SoundId } from './constants';
+import { AI_SUMMARY_CACHE_KEY } from './ai/summarizer';
 
 const ACCOUNTS_KEY = 'pr_radar_accounts';
 const SETTINGS_KEY = 'pr_radar_settings';
@@ -26,6 +27,10 @@ export interface Settings {
   theme: ThemeMode;
   lastTab: DashboardTab;
   sortMode: SortMode;
+  // Master switch for on-device AI features (Chrome built-in Summarizer):
+  // PR TL;DRs and unresolved-thread digests. Opt-in; only takes effect where
+  // the Summarizer API is available.
+  aiEnabled: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -41,6 +46,7 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   lastTab: 'mine',
   sortMode: 'default',
+  aiEnabled: false,
 };
 
 export async function getSettings(): Promise<Settings> {
@@ -202,6 +208,7 @@ export async function clearAll(): Promise<void> {
     RATE_LIMITS_KEY,
     POLL_ERRORS_DISMISSED_KEY,
     RATE_LIMIT_DISMISSED_KEY,
+    AI_SUMMARY_CACHE_KEY,
   ]);
 }
 

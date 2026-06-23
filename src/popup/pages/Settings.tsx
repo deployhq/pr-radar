@@ -3,6 +3,7 @@ import type { AppView, Platform, DeployHQAccount } from '@/shared/types';
 import { PLATFORM_LABELS, SOUND_OPTIONS } from '@/shared/constants';
 import { getSettings, saveSettings, getAccounts, removeAccount, getDeployHQAccount, removeDeployHQAccount, type Settings as SettingsType, type ThemeMode } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL, GITHUB_ISSUES_URL } from '@/shared/constants';
+import { isSummarizerSupported } from '@/shared/ai/summarizer';
 
 interface SettingsProps {
   onNavigate: (view: AppView) => void;
@@ -13,6 +14,7 @@ interface SettingsProps {
 export default function Settings({ onNavigate, theme, onThemeChange }: SettingsProps) {
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
+  const aiSupported = isSummarizerSupported();
 
   // DeployHQ state
   const [dhqAccount, setDhqAccount] = useState<DeployHQAccount | null>(null);
@@ -224,6 +226,18 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
           </select>
         </SettingRow>
       </Section>
+
+      {/* AI — only where Chrome's built-in Summarizer API is available */}
+      {aiSupported && (
+        <Section title="AI">
+          <SettingRow
+            label="Enable AI features"
+            description="Adds a short TL;DR under each PR and a digest of unresolved review threads. Runs locally in Chrome — nothing leaves your browser. Downloads a model on first use."
+          >
+            <Toggle checked={settings.aiEnabled} onChange={(v) => handleToggle('aiEnabled', v)} label="Enable AI features" />
+          </SettingRow>
+        </Section>
+      )}
 
       {/* Polling */}
       <Section title="Polling">
@@ -477,8 +491,8 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between py-2.5 border-b border-gray-200 dark:border-gray-800">
-      <div>
+    <div className="flex items-center justify-between gap-3 py-2.5 border-b border-gray-200 dark:border-gray-800">
+      <div className="min-w-0">
         <div className="text-[13px] text-gray-800 dark:text-gray-200">{label}</div>
         {description && <div className="text-[11px] text-gray-500 mt-0.5">{description}</div>}
       </div>
@@ -500,7 +514,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative w-9 h-5 rounded-full transition-colors ${
+      className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${
         checked ? 'bg-radar-600' : 'bg-gray-300 dark:bg-gray-700'
       }`}
     >

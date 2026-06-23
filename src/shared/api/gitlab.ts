@@ -1,4 +1,4 @@
-import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo } from '../types';
+import type { PullRequest, CIStatus, ReviewStatus, RateLimitInfo, UnresolvedThread } from '../types';
 
 const BASE_URL = 'https://gitlab.com/api/v4';
 
@@ -174,6 +174,39 @@ export async function fetchMergeRequests(
   );
 
   return results;
+}
+
+// On-demand bodies of unresolved discussion notes for thread summarization.
+export async function fetchUnresolvedThreads(
+  token: string,
+  projectPath: string,
+  mrIid: number,
+): Promise<UnresolvedThread[]> {
+  const encodedPath = encodeURIComponent(projectPath);
+  try {
+    const discussions = await glFetch<Array<{
+      notes: Array<{
+        resolvable: boolean;
+        resolved?: boolean;
+        body?: string;
+        author: { username: string };
+        position?: { new_path?: string };
+      }>;
+    }>>(`/projects/${encodedPath}/merge_requests/${mrIid}/discussions`, token);
+
+    const threads: UnresolvedThread[] = [];
+    for (const discussion of discussions) {
+      for (const note of discussion.notes) {
+        if (!note.resolvable || note.resolved) continue;
+        const body = note.body?.trim();
+        if (!body) continue;
+        threads.push({ author: note.author.username, body, path: note.position?.new_path });
+      }
+    }
+    return threads;
+  } catch {
+    return [];
+  }
 }
 
 async function hydrateMR(

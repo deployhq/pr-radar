@@ -30,6 +30,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [pinnedRepos, setPinnedRepos] = useState<Set<string>>(new Set());
   const [stalePRDays, setStalePRDays] = useState(45);
   const [longWaitDays, setLongWaitDays] = useState(2);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
@@ -81,6 +82,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       setStalePRDays(settings.stalePRDays);
       setLongWaitDays(settings.longWaitDays);
       setSortMode(settings.sortMode);
+      setAiEnabled(settings.aiEnabled);
 
       const hadCache = await loadFromCache();
       setLoading(false);
@@ -501,6 +503,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
                   stackInfo={stackInfo}
                   parentUnmerged={blockedIds.has(pr.id)}
                   parentNumber={parentPr?.number}
+                  aiEnabled={aiEnabled}
                 />
               );
             })}

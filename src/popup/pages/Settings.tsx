@@ -15,15 +15,22 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
   const [settings, setSettings] = useState<SettingsType | null>(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState<{ platform: Platform; username: string }[]>([]);
   // Show the AI section only where the API exists AND the on-device model can
-  // actually run — `unavailable` means the hardware/storage gate failed, so
-  // enabling it would just no-op. `downloadable`/`available` both qualify.
-  const [aiSupported, setAiSupported] = useState(false);
+  // AI availability:
+  //  - 'unsupported': no Summarizer API (Firefox, Edge, or older Chrome)
+  //  - 'unavailable': API exists but the hardware/storage gate failed
+  //  - 'checking'/'available': API present and the model can run
+  // We always render the AI row, but disable the toggle (with an explanation)
+  // unless it can actually run, so non-Chrome users understand why.
+  const [aiState, setAiState] = useState<'checking' | 'available' | 'unsupported' | 'unavailable'>(
+    isSummarizerSupported() ? 'checking' : 'unsupported',
+  );
+  const aiInteractive = aiState === 'available' || aiState === 'checking';
 
   useEffect(() => {
     if (!isSummarizerSupported()) return;
     summarizerAvailability()
-      .then((availability) => setAiSupported(availability !== 'unavailable'))
-      .catch(() => setAiSupported(false));
+      .then((availability) => setAiState(availability === 'unavailable' ? 'unavailable' : 'available'))
+      .catch(() => setAiState('unavailable'));
   }, []);
 
   // DeployHQ state
@@ -237,26 +244,36 @@ export default function Settings({ onNavigate, theme, onThemeChange }: SettingsP
         </SettingRow>
       </Section>
 
-      {/* AI — only where Chrome's built-in Summarizer API is available */}
-      {aiSupported && (
-        <Section title="AI">
-          <SettingRow
+      {/* AI — always shown; disabled with an explanation where the on-device
+          model can't run (Firefox, Edge, or unsupported Chrome hardware) */}
+      <Section title="AI">
+        <SettingRow
+          label="Enable AI features"
+          description="Adds a short TL;DR under each PR and a digest of unresolved review threads. Runs locally in Chrome — nothing leaves your browser. Downloads a model on first use."
+        >
+          <Toggle
+            checked={settings.aiEnabled && aiInteractive}
+            disabled={!aiInteractive}
+            onChange={(v) => {
+              // Prewarm under this user gesture so the first model download is
+              // activation-bound (Chrome requires it for Summarizer.create()).
+              if (v) { prewarmSummary(); prewarmThreadSummary(); }
+              handleToggle('aiEnabled', v);
+            }}
             label="Enable AI features"
-            description="Adds a short TL;DR under each PR and a digest of unresolved review threads. Runs locally in Chrome — nothing leaves your browser. Downloads a model on first use."
-          >
-            <Toggle
-              checked={settings.aiEnabled}
-              onChange={(v) => {
-                // Prewarm under this user gesture so the first model download is
-                // activation-bound (Chrome requires it for Summarizer.create()).
-                if (v) { prewarmSummary(); prewarmThreadSummary(); }
-                handleToggle('aiEnabled', v);
-              }}
-              label="Enable AI features"
-            />
-          </SettingRow>
-        </Section>
-      )}
+          />
+        </SettingRow>
+        {aiState === 'unsupported' && (
+          <div className="mt-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/40 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            Only available in Google Chrome — it uses Chrome&apos;s built-in on-device AI, which Firefox and Edge don&apos;t provide.
+          </div>
+        )}
+        {aiState === 'unavailable' && (
+          <div className="mt-1 px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/40 text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
+            Not available on this device — Chrome&apos;s on-device model needs a recent version with enough free storage and memory.
+          </div>
+        )}
+      </Section>
 
       {/* Polling */}
       <Section title="Polling">
@@ -526,16 +543,18 @@ function isMacOS(): boolean {
   return /Mac/i.test(navigator.userAgent);
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
+function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label?: string; disabled?: boolean }) {
   return (
     <button
       role="switch"
       aria-checked={checked}
+      aria-disabled={disabled}
+      disabled={disabled}
       aria-label={label}
-      onClick={() => onChange(!checked)}
+      onClick={() => { if (!disabled) onChange(!checked); }}
       className={`relative flex-shrink-0 w-9 h-5 rounded-full transition-colors ${
-        checked ? 'bg-radar-600' : 'bg-gray-300 dark:bg-gray-700'
-      }`}
+        disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+      } ${checked ? 'bg-radar-600' : 'bg-gray-300 dark:bg-gray-700'}`}
     >
       <span
         className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${

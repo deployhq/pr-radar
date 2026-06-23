@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt, getWhatsNewSeenVersion, setWhatsNewSeenVersion } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
+import { isSummarizerSupported } from '@/shared/ai/summarizer';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import { detectStacks, isStackBlocked } from '../utils/stacks';
 import PRItem from '../components/PRItem';
@@ -143,6 +144,9 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   // haven't acknowledged it. Fresh installs are stamped on install, so they're
   // excluded; the installDate guard also avoids a flash before install setup.
   useEffect(() => {
+    // This release's banner is about the AI features, so only nudge where
+    // they're usable — Firefox/Edge (no Summarizer API) shouldn't see it.
+    if (!isSummarizerSupported()) return;
     async function checkWhatsNew() {
       const [seenVersion, installDate] = await Promise.all([getWhatsNewSeenVersion(), getInstallDate()]);
       const currentVersion = chrome.runtime.getManifest().version;

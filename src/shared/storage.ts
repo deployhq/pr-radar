@@ -193,6 +193,7 @@ export async function dismissRateLimitWarning(): Promise<void> {
 
 const INSTALL_DATE_KEY = 'pr_radar_install_date';
 const STAR_PROMPT_DISMISSED_KEY = 'pr_radar_star_dismissed';
+const WHATS_NEW_SEEN_VERSION_KEY = 'pr_radar_whats_new_seen_version';
 
 export async function clearAll(): Promise<void> {
   await chrome.storage.local.remove([
@@ -202,6 +203,7 @@ export async function clearAll(): Promise<void> {
     PR_CACHE_KEY,
     INSTALL_DATE_KEY,
     STAR_PROMPT_DISMISSED_KEY,
+    WHATS_NEW_SEEN_VERSION_KEY,
     DEPLOYHQ_ACCOUNT_KEY,
     DEPLOYHQ_MAPPING_KEY,
     POLL_ERRORS_KEY,
@@ -231,4 +233,18 @@ export async function isStarPromptDismissed(): Promise<boolean> {
 
 export async function dismissStarPrompt(): Promise<void> {
   await chrome.storage.local.set({ [STAR_PROMPT_DISMISSED_KEY]: true });
+}
+
+// === What's-new banner ===
+// The version the user last acknowledged. The banner shows when this differs
+// from the running extension version; fresh installs are stamped with the
+// current version so new users never see "what's new" for the release they
+// installed at.
+export async function getWhatsNewSeenVersion(): Promise<string | null> {
+  const result = await chrome.storage.local.get(WHATS_NEW_SEEN_VERSION_KEY);
+  return result[WHATS_NEW_SEEN_VERSION_KEY] ?? null;
+}
+
+export async function setWhatsNewSeenVersion(version: string): Promise<void> {
+  await chrome.storage.local.set({ [WHATS_NEW_SEEN_VERSION_KEY]: version });
 }

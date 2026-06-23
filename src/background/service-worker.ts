@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message, PollError, PollErrorKind, Platform, RateLimitInfo } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount, setWhatsNewSeenVersion } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -63,9 +63,14 @@ async function saveLastCommentCounts(counts: Record<string, number>): Promise<vo
 
 // === Lifecycle ===
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   setInstallDate();
   setupPolling();
+  // Suppress the "what's new" banner for brand-new users — only people who
+  // *update* into a release should see it.
+  if (details.reason === 'install') {
+    setWhatsNewSeenVersion(chrome.runtime.getManifest().version);
+  }
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {

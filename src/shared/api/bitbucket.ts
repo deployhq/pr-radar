@@ -84,6 +84,18 @@ export async function getAuthenticatedUser(token: string): Promise<{ uuid: strin
   return { uuid: user.uuid, nickname: user.nickname, display_name: user.display_name, avatar: user.links.avatar.href };
 }
 
+// Verify a single repo by its "workspace/repo" slug. Used by "add repo by name"
+// so users can watch repos beyond the paginated list. Returns null if the repo
+// doesn't exist or isn't accessible with this token.
+export async function getRepository(token: string, fullName: string): Promise<{ full_name: string } | null> {
+  try {
+    return await bbFetch<{ full_name: string }>(`/repositories/${fullName}`, token);
+  } catch (err) {
+    if (err instanceof BitbucketAPIError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function getUserRepositories(token: string): Promise<{ full_name: string }[]> {
   // /2.0/workspaces was sunset on 2026-04-14 (CHANGE-2770).
   // Replacement: /2.0/user/workspaces returns workspace_access objects.

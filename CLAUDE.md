@@ -81,7 +81,7 @@ src/
       Setup.tsx                  # Multi-platform connection (GitHub/GitLab/Bitbucket PAT auth, scope guide, connected state)
       Dashboard.tsx              # PR list with tabs (Mine/Review/All), cache-first rendering
       Settings.tsx               # Notifications, sound, polling, stale PR config, accounts, test button
-      Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts; cache-first, refreshes via background service worker
+      Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts, add-repo-by-name (large orgs); cache-first, refreshes via background service worker
     components/
       Header.tsx                 # Navigation header with extension icon + "by DeployHQ"
       PRItem.tsx                 # PR row: badges, diff stats, description preview, deployment URL, pinned star, stale/reviewed dimming
@@ -159,6 +159,7 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **No tab required** — Background polling via service worker + `chrome.alarms`
 - **Cache-first rendering** — PR data cached in `chrome.storage`; popup shows cache instantly, refreshes in background with "Updating..." indicator
 - **Background available-repo fetch** — The Repos page's list of watchable repos (personal + every org's repos, per platform) is slow to fetch, so the service worker fetches it (`FETCH_AVAILABLE_REPOS` message, dedup'd via an in-flight promise) and caches it in `chrome.storage`. The popup renders cache-first and shows "Updating…"; because the fetch runs in the SW it survives the popup closing. A refresh that loads zero repos across all accounts caches an error the page surfaces instead of an endless spinner (issue #23)
+- **Add repo by name** — The enumerated list is paginated (GitHub caps at ~2000 repos/list), so in very large orgs a repo may never appear. The Repos page has an "Add a repo by name" form: enter `owner/repo` (or a pasted URL), which is verified with a single API call via the `VERIFY_REPO` message (`github.getRepo` / `gitlab.getProject` / `bitbucket.getRepository`) and added straight to the watched list. `buildRepoList` unions watched-but-not-enumerated repos (enabled or pinned only) so added repos survive cache refreshes and don't resurrect stale disabled entries (issue #23)
 - **Persisted CI statuses** — Stored in `chrome.storage` (not in-memory) so status change detection survives service worker restarts
 - **Offscreen API for audio** — MV3 service workers can't play audio; uses `public/offscreen.html` + `public/offscreen.js` (no inline scripts due to CSP)
 - **GraphQL for comments** — REST API doesn't expose thread resolution; GraphQL `reviewThreads.isResolved` is accurate
@@ -189,6 +190,7 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **Manual refresh** — ↻ button in dashboard
 - **Last updated** — Timestamp shown below search bar
 - **Select all/deselect all** — In watched repo selector (entire row clickable)
+- **Add repo by name** — Form in the repo selector to watch a repo by typing `owner/repo` (or pasting its URL); verified with one API call. Lets users in very large orgs watch repos that fall beyond the paginated list
 - **Token guidance** — Pre-filled token links, required scopes panel, platform-specific "Missing repos?" callouts
 - **Dark scrollbar** — Themed to match dark UI
 - **Merge PRs** — Merge button with confirm/cancel for GitHub, GitLab, and Bitbucket; disabled for drafts, conflicts, CI failures

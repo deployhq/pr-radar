@@ -169,6 +169,18 @@ export async function getUserTeams(token: string): Promise<GHUserTeam[]> {
   }
 }
 
+// Verify a single repo by "owner/name". Used by "add repo by name" so users in
+// very large orgs can watch repos that fall beyond the paginated list. Returns
+// null if the repo doesn't exist or isn't accessible with this token.
+export async function getRepo(token: string, fullName: string): Promise<{ full_name: string } | null> {
+  try {
+    return await ghFetch<{ full_name: string }>(`/repos/${fullName}`, token);
+  } catch (err) {
+    if (err instanceof GitHubAPIError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function getUserRepos(token: string): Promise<{ full_name: string }[]> {
   // Fetch personal repos
   const userRepos = await ghPaginate<{ full_name: string }>(

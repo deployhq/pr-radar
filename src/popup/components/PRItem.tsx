@@ -121,7 +121,10 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
   }, [pr.id, pr.headSha, pr.unresolvedCommentCount]);
   const timeAgo = getTimeAgo(pr.updatedAt);
   const isStale = stalePRDays > 0 && (Date.now() - new Date(pr.updatedAt).getTime()) > stalePRDays * 86400000;
-  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged || pr.isDraft;
+  // Drafts are NOT dimmed: a draft is your own active work-in-progress, not a
+  // de-prioritized PR like stale/reviewed/merged ones. The ✍️ marker already
+  // flags it, and dimming made users think their drafts weren't listed (#25).
+  const isDimmed = (pr.hasReviewed && !pr.isAuthor) || isStale || pr.isBot || pr.isMerged;
   const isMergeable = !pr.isDraft && !pr.isMerged && !pr.hasConflicts && pr.ciStatus !== 'failed';
 
   async function handleMerge() {

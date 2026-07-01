@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react';
 import type { Platform, WatchedRepo } from '@/shared/types';
-import type { AvailableRepo } from '@/shared/storage';
-import { getAccounts, getWatchedRepos, saveWatchedRepos, getCachedAvailableRepos } from '@/shared/storage';
+import type { AvailableRepo, AvailableReposProgress } from '@/shared/storage';
+import {
+  getAccounts,
+  getWatchedRepos,
+  saveWatchedRepos,
+  getCachedAvailableRepos,
+  getAvailableReposProgress,
+  AVAILABLE_REPOS_PROGRESS_KEY,
+} from '@/shared/storage';
 import PlatformIcon from '../components/PlatformIcon';
+
+function formatProgress(p: AvailableReposProgress): string {
+  const label = p.platform === 'github' ? 'GitHub' : p.platform === 'gitlab' ? 'GitLab' : 'Bitbucket';
+  return p.detail ? `Loading ${label} repos… (${p.detail})` : `Loading ${label} repos…`;
+}
 
 // Merge the cached available-repo list with saved watch state, then sort:
 // pinned+enabled first, then enabled, then the rest — alphabetical within each group.
@@ -57,6 +69,7 @@ export default function Repos() {
   const [repos, setRepos] = useState<WatchedRepo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [progress, setProgress] = useState<AvailableReposProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
@@ -70,16 +83,28 @@ export default function Repos() {
   useEffect(() => {
     let cancelled = false;
 
+    // Live progress from the background fetch ("Loading GitHub repos… (org)").
+    function onStorageChange(
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ) {
+      if (area !== 'local' || !changes[AVAILABLE_REPOS_PROGRESS_KEY]) return;
+      setProgress((changes[AVAILABLE_REPOS_PROGRESS_KEY].newValue as AvailableReposProgress) ?? null);
+    }
+    chrome.storage.onChanged.addListener(onStorageChange);
+
     async function run() {
       // Cache-first: render whatever we have instantly so reopening the popup is
       // never a blank spinner.
-      const [accounts, cache, watched] = await Promise.all([
+      const [accounts, cache, watched, initialProgress] = await Promise.all([
         getAccounts(),
         getCachedAvailableRepos(),
         getWatchedRepos(),
+        getAvailableReposProgress(),
       ]);
       if (cancelled) return;
       setConnectedPlatforms(new Set(accounts.map((a) => a.platform)));
+      setProgress(initialProgress);
       if (cache) {
         setRepos(buildRepoList(cache.repos, watched));
         setError(cache.error ?? null);
@@ -107,11 +132,13 @@ export default function Repos() {
       }
       setLoading(false);
       setRefreshing(false);
+      setProgress(null);
     }
 
     run();
     return () => {
       cancelled = true;
+      chrome.storage.onChanged.removeListener(onStorageChange);
     };
   }, []);
 
@@ -253,11 +280,8 @@ export default function Repos() {
           </div>
         )}
         <div className="flex items-center justify-between mt-2">
-          <p className="text-[11px] text-gray-500" aria-live="polite">
+          <p className="text-[11px] text-gray-500">
             {enabledCount} of {repos.length} repos watched
-            {refreshing && repos.length > 0 && (
-              <span className="ml-1.5 text-gray-400">· Updating…</span>
-            )}
           </p>
           {filtered.length > 0 && (
             <button
@@ -268,6 +292,11 @@ export default function Repos() {
             </button>
           )}
         </div>
+        {refreshing && repos.length > 0 && (
+          <p className="text-[11px] text-gray-400 mt-1 truncate" aria-live="polite">
+            {progress ? formatProgress(progress) : 'Updating…'}
+          </p>
+        )}
 
         {connectedPlatforms.size > 0 && (
           <div className="mt-2">
@@ -350,8 +379,11 @@ export default function Repos() {
 
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-16" role="status" aria-label="Loading repositories">
+          <div className="flex flex-col items-center justify-center gap-2 py-16" role="status" aria-label="Loading repositories">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
+            <p className="text-[11px] text-gray-500 truncate max-w-[80%]" aria-live="polite">
+              {progress ? formatProgress(progress) : 'Loading repositories…'}
+            </p>
           </div>
         ) : error && repos.length === 0 ? (
           <div className="px-4 py-8 text-center text-xs text-red-500 dark:text-red-400">

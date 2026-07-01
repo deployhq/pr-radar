@@ -134,6 +134,30 @@ export async function saveCachedAvailableRepos(cache: AvailableReposCache): Prom
   await chrome.storage.local.set({ [AVAILABLE_REPOS_CACHE_KEY]: cache });
 }
 
+// Live progress for the background available-repos fetch, so the Repos page can
+// show "Loading GitHub repos… (some-org)" instead of an opaque spinner. Written
+// by the service worker and watched by the popup via chrome.storage.onChanged.
+export const AVAILABLE_REPOS_PROGRESS_KEY = 'pr_radar_available_repos_progress';
+
+export interface AvailableReposProgress {
+  platform: Platform;
+  // Optional finer-grained context, e.g. the org currently being fetched.
+  detail?: string;
+}
+
+export async function setAvailableReposProgress(progress: AvailableReposProgress | null): Promise<void> {
+  if (progress) {
+    await chrome.storage.local.set({ [AVAILABLE_REPOS_PROGRESS_KEY]: progress });
+  } else {
+    await chrome.storage.local.remove(AVAILABLE_REPOS_PROGRESS_KEY);
+  }
+}
+
+export async function getAvailableReposProgress(): Promise<AvailableReposProgress | null> {
+  const result = await chrome.storage.local.get(AVAILABLE_REPOS_PROGRESS_KEY);
+  return result[AVAILABLE_REPOS_PROGRESS_KEY] ?? null;
+}
+
 // === PR cache ===
 
 import type { PullRequest } from './types';
@@ -244,6 +268,7 @@ export async function clearAll(): Promise<void> {
     RATE_LIMIT_DISMISSED_KEY,
     AI_SUMMARY_CACHE_KEY,
     AVAILABLE_REPOS_CACHE_KEY,
+    AVAILABLE_REPOS_PROGRESS_KEY,
   ]);
 }
 

@@ -8,15 +8,31 @@ import PlatformIcon from '../components/PlatformIcon';
 // pinned+enabled first, then enabled, then the rest — alphabetical within each group.
 function buildRepoList(available: AvailableRepo[], watched: WatchedRepo[]): WatchedRepo[] {
   const watchedMap = new Map(watched.map((r) => [`${r.platform}:${r.fullName}`, r]));
-  const list = available.map((r) => {
-    const saved = watchedMap.get(`${r.platform}:${r.fullName}`);
-    return {
+  const seen = new Set<string>();
+  const list: WatchedRepo[] = [];
+
+  for (const r of available) {
+    const key = `${r.platform}:${r.fullName}`;
+    seen.add(key);
+    const saved = watchedMap.get(key);
+    list.push({
       platform: r.platform,
       fullName: r.fullName,
       enabled: saved?.enabled ?? false,
       pinned: saved?.pinned ?? false,
-    } satisfies WatchedRepo;
-  });
+    });
+  }
+
+  // Include watched repos missing from the available list — repos added by name,
+  // or ones beyond the pagination cap in a very large org. Only surface enabled
+  // or pinned ones so we don't resurrect stale, no-longer-accessible entries.
+  for (const w of watched) {
+    const key = `${w.platform}:${w.fullName}`;
+    if (seen.has(key) || (!w.enabled && !w.pinned)) continue;
+    seen.add(key);
+    list.push({ platform: w.platform, fullName: w.fullName, enabled: w.enabled, pinned: w.pinned ?? false });
+  }
+
   list.sort((a, b) => {
     const aRank = a.enabled && a.pinned ? 0 : a.enabled ? 1 : 2;
     const bRank = b.enabled && b.pinned ? 0 : b.enabled ? 1 : 2;
@@ -24,6 +40,17 @@ function buildRepoList(available: AvailableRepo[], watched: WatchedRepo[]): Watc
     return a.fullName.localeCompare(b.fullName);
   });
   return list;
+}
+
+// Accepts "owner/repo", a pasted web URL, or a ".git" clone URL and reduces it
+// to the platform's path form (owner/repo, group/sub/project, workspace/repo).
+function normalizeRepoInput(raw: string): string {
+  return raw
+    .trim()
+    .replace(/^https?:\/\/[^/]+\//i, '') // scheme + host
+    .replace(/^(www\.)?(github\.com|gitlab\.com|bitbucket\.org)\//i, '') // bare host
+    .replace(/\.git$/i, '')
+    .replace(/^\/+|\/+$/g, ''); // stray slashes
 }
 
 export default function Repos() {
@@ -34,6 +61,11 @@ export default function Repos() {
   const [filter, setFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(new Set());
+  const [showAdd, setShowAdd] = useState(false);
+  const [addPlatform, setAddPlatform] = useState<Platform>('github');
+  const [addValue, setAddValue] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +114,53 @@ export default function Repos() {
       cancelled = true;
     };
   }, []);
+
+  // Keep the "add by name" platform pointed at a connected platform.
+  useEffect(() => {
+    const first = (['github', 'gitlab', 'bitbucket'] as Platform[]).find((p) =>
+      connectedPlatforms.has(p),
+    );
+    if (first && !connectedPlatforms.has(addPlatform)) setAddPlatform(first);
+  }, [connectedPlatforms, addPlatform]);
+
+  async function handleAddRepo(e: React.FormEvent) {
+    e.preventDefault();
+    const fullName = normalizeRepoInput(addValue);
+    if (!fullName.includes('/')) {
+      setAddError('Enter a repo as owner/name');
+      return;
+    }
+    setAdding(true);
+    setAddError(null);
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: 'VERIFY_REPO',
+        payload: { platform: addPlatform, fullName },
+      });
+      if (!res?.success) {
+        setAddError(res?.message ?? 'Could not add repo');
+        return;
+      }
+      const canonical: string = res.fullName;
+      const key = `${addPlatform}:${canonical}`;
+      const exists = repos.some((r) => `${r.platform}:${r.fullName}` === key);
+      const updated = exists
+        ? repos.map((r) => (`${r.platform}:${r.fullName}` === key ? { ...r, enabled: true } : r))
+        : [
+            { platform: addPlatform, fullName: canonical, enabled: true, pinned: false } satisfies WatchedRepo,
+            ...repos,
+          ];
+      setRepos(updated);
+      await saveWatchedRepos(updated);
+      chrome.runtime.sendMessage({ type: 'POLL_NOW' });
+      setAddValue('');
+      setShowAdd(false);
+    } catch {
+      setAddError('Could not reach the extension background');
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function handleToggle(fullName: string, platform: string) {
     const updated = repos.map((r) =>
@@ -189,6 +268,84 @@ export default function Repos() {
             </button>
           )}
         </div>
+
+        {connectedPlatforms.size > 0 && (
+          <div className="mt-2">
+            {!showAdd ? (
+              <button
+                onClick={() => {
+                  setShowAdd(true);
+                  setAddError(null);
+                }}
+                className="text-[11px] text-radar-400 hover:underline"
+              >
+                + Add a repo by name
+              </button>
+            ) : (
+              <form onSubmit={handleAddRepo} className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  {connectedPlatforms.size > 1 && (
+                    <select
+                      value={addPlatform}
+                      onChange={(e) => setAddPlatform(e.target.value as Platform)}
+                      aria-label="Platform for the repo to add"
+                      className="bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-1.5 py-1.5 text-xs text-gray-900 dark:text-gray-200 outline-none focus:border-radar-500"
+                    >
+                      {(['github', 'gitlab', 'bitbucket'] as Platform[])
+                        .filter((p) => connectedPlatforms.has(p))
+                        .map((p) => (
+                          <option key={p} value={p}>
+                            {p === 'github' ? 'GitHub' : p === 'gitlab' ? 'GitLab' : 'Bitbucket'}
+                          </option>
+                        ))}
+                    </select>
+                  )}
+                  <input
+                    type="text"
+                    autoFocus
+                    value={addValue}
+                    onChange={(e) => setAddValue(e.target.value)}
+                    placeholder={
+                      addPlatform === 'bitbucket'
+                        ? 'workspace/repo'
+                        : addPlatform === 'gitlab'
+                          ? 'group/project'
+                          : 'owner/repo'
+                    }
+                    aria-label="Repository name to add"
+                    className="flex-1 min-w-0 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md px-2.5 py-1.5 text-xs text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-600 outline-none focus:border-radar-500"
+                  />
+                  <button
+                    type="submit"
+                    disabled={adding || !addValue.trim()}
+                    className="flex-shrink-0 text-[11px] px-2.5 py-1.5 rounded-md bg-radar-600 text-white disabled:opacity-50 hover:bg-radar-500 transition-colors"
+                  >
+                    {adding ? 'Adding…' : 'Add'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdd(false);
+                      setAddValue('');
+                      setAddError(null);
+                    }}
+                    className="flex-shrink-0 text-[11px] px-1.5 py-1.5 text-gray-500 hover:text-gray-400"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {addError && (
+                  <p className="text-[11px] text-red-500 dark:text-red-400" role="alert">
+                    {addError}
+                  </p>
+                )}
+                <p className="text-[11px] text-gray-500">
+                  For large orgs where a repo may not appear in the list above.
+                </p>
+              </form>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">

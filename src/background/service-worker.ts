@@ -137,6 +137,34 @@ chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) =
   } else if (message.type === 'FETCH_AVAILABLE_REPOS') {
     refreshAvailableRepos().then(() => sendResponse({ done: true }));
     return true; // keep channel open for async sendResponse
+  } else if (message.type === 'VERIFY_REPO') {
+    const { platform, fullName } = message.payload;
+    (async () => {
+      const accounts = await getAccounts();
+      const account = accounts.find((a) => a.platform === platform);
+      if (!account) {
+        sendResponse({ success: false, message: `Not connected to ${platform}` });
+        return;
+      }
+      try {
+        let canonical: string | null = null;
+        if (platform === 'github') {
+          canonical = (await github.getRepo(account.token, fullName))?.full_name ?? null;
+        } else if (platform === 'gitlab') {
+          canonical = (await gitlab.getProject(account.token, fullName))?.path_with_namespace ?? null;
+        } else {
+          canonical = (await bitbucket.getRepository(account.token, fullName))?.full_name ?? null;
+        }
+        if (!canonical) {
+          sendResponse({ success: false, message: 'Repo not found or not accessible with your token' });
+          return;
+        }
+        sendResponse({ success: true, fullName: canonical });
+      } catch (err) {
+        sendResponse({ success: false, message: err instanceof Error ? err.message : 'Verification failed' });
+      }
+    })();
+    return true; // keep channel open for async sendResponse
   } else if (message.type === 'REFRESH_SETTINGS') {
     setupPolling();
   } else if (message.type === 'MERGE_PR') {

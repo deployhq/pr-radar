@@ -98,6 +98,18 @@ export async function getAuthenticatedUser(token: string): Promise<{ username: s
   return glFetch('/user', token);
 }
 
+// Verify a single project by its "group/project" path. Used by "add repo by
+// name" so users can watch projects beyond the paginated list. Returns null if
+// the project doesn't exist or isn't accessible with this token.
+export async function getProject(token: string, path: string): Promise<{ path_with_namespace: string } | null> {
+  try {
+    return await glFetch<{ path_with_namespace: string }>(`/projects/${encodeURIComponent(path)}`, token);
+  } catch (err) {
+    if (err instanceof GitLabAPIError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function getUserProjects(token: string): Promise<{ path_with_namespace: string }[]> {
   // Paginate through all projects (GitLab returns x-next-page header)
   const allProjects: { path_with_namespace: string }[] = [];

@@ -74,14 +74,14 @@ To update: rebuild, then click refresh on the extension card (or remove + re-add
 ```
 src/
   background/
-    service-worker.ts            # Polling, badge updates, notifications, sound trigger
+    service-worker.ts            # Polling, badge updates, notifications, sound trigger, background available-repo fetch (cached, dedup'd)
   popup/
     App.tsx                      # Main app shell with routing
     pages/
       Setup.tsx                  # Multi-platform connection (GitHub/GitLab/Bitbucket PAT auth, scope guide, connected state)
       Dashboard.tsx              # PR list with tabs (Mine/Review/All), cache-first rendering
       Settings.tsx               # Notifications, sound, polling, stale PR config, accounts, test button
-      Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts
+      Repos.tsx                  # Watched repo selector with platform filter, select all, pin/fav stars, token scope callouts; cache-first, refreshes via background service worker
     components/
       Header.tsx                 # Navigation header with extension icon + "by DeployHQ"
       PRItem.tsx                 # PR row: badges, diff stats, description preview, deployment URL, pinned star, stale/reviewed dimming
@@ -96,7 +96,7 @@ src/
   shared/
     types.ts                     # TypeScript types (PullRequest, Platform, Message, UrgencyCategory, etc.)
     constants.ts                 # Status colors, platform labels, sound options
-    storage.ts                   # Chrome storage wrapper (accounts, settings, repos, PR cache, CI statuses)
+    storage.ts                   # Chrome storage wrapper (accounts, settings, repos, PR cache, available-repos cache, CI statuses)
     api/
       github.ts                  # GitHub REST + GraphQL API (PRs, CI, reviews, threads, deployments, orgs, merge)
       gitlab.ts                  # GitLab REST API (MRs, CI pipelines, discussions, approvals, deployments, merge)
@@ -158,6 +158,7 @@ The extension works fully without DeployHQ. This integration is entirely opt-in 
 - **No backend** — PATs stored in `chrome.storage.local`, all API calls direct from browser
 - **No tab required** — Background polling via service worker + `chrome.alarms`
 - **Cache-first rendering** — PR data cached in `chrome.storage`; popup shows cache instantly, refreshes in background with "Updating..." indicator
+- **Background available-repo fetch** — The Repos page's list of watchable repos (personal + every org's repos, per platform) is slow to fetch, so the service worker fetches it (`FETCH_AVAILABLE_REPOS` message, dedup'd via an in-flight promise) and caches it in `chrome.storage`. The popup renders cache-first and shows "Updating…"; because the fetch runs in the SW it survives the popup closing. A refresh that loads zero repos across all accounts caches an error the page surfaces instead of an endless spinner (issue #23)
 - **Persisted CI statuses** — Stored in `chrome.storage` (not in-memory) so status change detection survives service worker restarts
 - **Offscreen API for audio** — MV3 service workers can't play audio; uses `public/offscreen.html` + `public/offscreen.js` (no inline scripts due to CSP)
 - **GraphQL for comments** — REST API doesn't expose thread resolution; GraphQL `reviewThreads.isResolved` is accurate

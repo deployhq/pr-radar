@@ -1,82 +1,86 @@
 import { useState, useEffect } from 'react';
 import type { Platform, WatchedRepo } from '@/shared/types';
-import { getAccounts, getWatchedRepos, saveWatchedRepos } from '@/shared/storage';
-import * as github from '@/shared/api/github';
-import * as gitlab from '@/shared/api/gitlab';
-import * as bitbucket from '@/shared/api/bitbucket';
+import type { AvailableRepo } from '@/shared/storage';
+import { getAccounts, getWatchedRepos, saveWatchedRepos, getCachedAvailableRepos } from '@/shared/storage';
 import PlatformIcon from '../components/PlatformIcon';
+
+// Merge the cached available-repo list with saved watch state, then sort:
+// pinned+enabled first, then enabled, then the rest — alphabetical within each group.
+function buildRepoList(available: AvailableRepo[], watched: WatchedRepo[]): WatchedRepo[] {
+  const watchedMap = new Map(watched.map((r) => [`${r.platform}:${r.fullName}`, r]));
+  const list = available.map((r) => {
+    const saved = watchedMap.get(`${r.platform}:${r.fullName}`);
+    return {
+      platform: r.platform,
+      fullName: r.fullName,
+      enabled: saved?.enabled ?? false,
+      pinned: saved?.pinned ?? false,
+    } satisfies WatchedRepo;
+  });
+  list.sort((a, b) => {
+    const aRank = a.enabled && a.pinned ? 0 : a.enabled ? 1 : 2;
+    const bRank = b.enabled && b.pinned ? 0 : b.enabled ? 1 : 2;
+    if (aRank !== bRank) return aRank - bRank;
+    return a.fullName.localeCompare(b.fullName);
+  });
+  return list;
+}
 
 export default function Repos() {
   const [repos, setRepos] = useState<WatchedRepo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [platformFilter, setPlatformFilter] = useState<Platform | 'all'>('all');
   const [connectedPlatforms, setConnectedPlatforms] = useState<Set<Platform>>(new Set());
 
   useEffect(() => {
-    async function load() {
-      const [accounts, watched] = await Promise.all([getAccounts(), getWatchedRepos()]);
-      const watchedMap = new Map(watched.map((r) => [`${r.platform}:${r.fullName}`, r]));
+    let cancelled = false;
 
-      const allRepos: WatchedRepo[] = [];
-
-      for (const account of accounts) {
-        try {
-          if (account.platform === 'github') {
-            const ghRepos = await github.getUserRepos(account.token);
-            for (const r of ghRepos) {
-              const key = `github:${r.full_name}`;
-              const saved = watchedMap.get(key);
-              allRepos.push({
-                platform: 'github',
-                fullName: r.full_name,
-                enabled: saved?.enabled ?? false,
-                pinned: saved?.pinned ?? false,
-              });
-            }
-          } else if (account.platform === 'gitlab') {
-            const glRepos = await gitlab.getUserProjects(account.token);
-            for (const r of glRepos) {
-              const key = `gitlab:${r.path_with_namespace}`;
-              const saved = watchedMap.get(key);
-              allRepos.push({
-                platform: 'gitlab',
-                fullName: r.path_with_namespace,
-                enabled: saved?.enabled ?? false,
-                pinned: saved?.pinned ?? false,
-              });
-            }
-          } else if (account.platform === 'bitbucket') {
-            const bbRepos = await bitbucket.getUserRepositories(account.token);
-            for (const r of bbRepos) {
-              const key = `bitbucket:${r.full_name}`;
-              const saved = watchedMap.get(key);
-              allRepos.push({
-                platform: 'bitbucket',
-                fullName: r.full_name,
-                enabled: saved?.enabled ?? false,
-                pinned: saved?.pinned ?? false,
-              });
-            }
-          }
-        } catch (err) {
-          console.error(`Failed to fetch repos for ${account.platform}:`, err);
-        }
+    async function run() {
+      // Cache-first: render whatever we have instantly so reopening the popup is
+      // never a blank spinner.
+      const [accounts, cache, watched] = await Promise.all([
+        getAccounts(),
+        getCachedAvailableRepos(),
+        getWatchedRepos(),
+      ]);
+      if (cancelled) return;
+      setConnectedPlatforms(new Set(accounts.map((a) => a.platform)));
+      if (cache) {
+        setRepos(buildRepoList(cache.repos, watched));
+        setError(cache.error ?? null);
+        setLoading(false);
       }
 
-      // Sort: pinned+enabled first, then enabled, then disabled — alphabetical within each group
-      allRepos.sort((a, b) => {
-        const aRank = a.enabled && a.pinned ? 0 : a.enabled ? 1 : 2;
-        const bRank = b.enabled && b.pinned ? 0 : b.enabled ? 1 : 2;
-        if (aRank !== bRank) return aRank - bRank;
-        return a.fullName.localeCompare(b.fullName);
-      });
-
-      setRepos(allRepos);
-      setConnectedPlatforms(new Set(accounts.map((a) => a.platform)));
+      // Refresh via the service worker so the (slow) fetch survives the popup
+      // being closed — it keeps running in the background and writes to the
+      // cache, which we re-read once it resolves. See issue #23.
+      setRefreshing(true);
+      try {
+        await chrome.runtime.sendMessage({ type: 'FETCH_AVAILABLE_REPOS' });
+      } catch {
+        // Service worker unreachable; fall back to whatever cache we rendered.
+      }
+      if (cancelled) return;
+      const [freshCache, freshWatched] = await Promise.all([
+        getCachedAvailableRepos(),
+        getWatchedRepos(),
+      ]);
+      if (cancelled) return;
+      if (freshCache) {
+        setRepos(buildRepoList(freshCache.repos, freshWatched));
+        setError(freshCache.error ?? null);
+      }
       setLoading(false);
+      setRefreshing(false);
     }
-    load();
+
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function handleToggle(fullName: string, platform: string) {
@@ -170,8 +174,11 @@ export default function Repos() {
           </div>
         )}
         <div className="flex items-center justify-between mt-2">
-          <p className="text-[11px] text-gray-500">
+          <p className="text-[11px] text-gray-500" aria-live="polite">
             {enabledCount} of {repos.length} repos watched
+            {refreshing && repos.length > 0 && (
+              <span className="ml-1.5 text-gray-400">· Updating…</span>
+            )}
           </p>
           {filtered.length > 0 && (
             <button
@@ -188,6 +195,10 @@ export default function Repos() {
         {loading ? (
           <div className="flex items-center justify-center py-16" role="status" aria-label="Loading repositories">
             <div className="animate-spin rounded-full h-6 w-6 border-2 border-radar-500 border-t-transparent" />
+          </div>
+        ) : error && repos.length === 0 ? (
+          <div className="px-4 py-8 text-center text-xs text-red-500 dark:text-red-400">
+            {error}
           </div>
         ) : filtered.length === 0 ? (
           <div className="px-4 py-8 text-center text-xs text-gray-500">

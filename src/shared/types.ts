@@ -173,4 +173,5 @@ export type Message =
   | { type: 'TEST_DEPLOYHQ'; payload: { slug: string; email: string; apiKey: string } }
   | { type: 'GET_DEPLOYHQ_SERVERS'; payload: { repoFullName: string } }
   | { type: 'CREATE_DEPLOYHQ_DEPLOYMENT'; payload: { repoFullName: string; serverIdentifier: string } }
-  | { type: 'GET_PR_THREADS'; payload: { platform: Platform; repoFullName: string; prNumber: number } };
+  | { type: 'GET_PR_THREADS'; payload: { platform: Platform; repoFullName: string; prNumber: number } }
+  | { type: 'FETCH_AVAILABLE_REPOS' };

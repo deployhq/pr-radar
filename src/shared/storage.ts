@@ -102,6 +102,38 @@ export async function saveWatchedRepos(repos: WatchedRepo[]): Promise<void> {
   await chrome.storage.local.set({ [REPOS_KEY]: repos });
 }
 
+// === Available repos cache ===
+// The full list of repos the user *could* watch. Fetching it is slow (personal
+// repos + every org's repos, across each connected platform), so the background
+// service worker fetches it and caches the result here. The Repos page renders
+// from this cache instantly and lets the refresh run in the background — which
+// means it survives the popup being closed. See issue #23.
+
+export const AVAILABLE_REPOS_CACHE_KEY = 'pr_radar_available_repos';
+
+export interface AvailableRepo {
+  platform: Platform;
+  fullName: string;
+}
+
+export interface AvailableReposCache {
+  repos: AvailableRepo[];
+  updatedAt: number;
+  // Set only when nothing could be loaded (every connected account errored), so
+  // the popup can show an error instead of an endless spinner. A partial failure
+  // still caches the repos that did load and leaves this undefined.
+  error?: string;
+}
+
+export async function getCachedAvailableRepos(): Promise<AvailableReposCache | null> {
+  const result = await chrome.storage.local.get(AVAILABLE_REPOS_CACHE_KEY);
+  return result[AVAILABLE_REPOS_CACHE_KEY] ?? null;
+}
+
+export async function saveCachedAvailableRepos(cache: AvailableReposCache): Promise<void> {
+  await chrome.storage.local.set({ [AVAILABLE_REPOS_CACHE_KEY]: cache });
+}
+
 // === PR cache ===
 
 import type { PullRequest } from './types';
@@ -211,6 +243,7 @@ export async function clearAll(): Promise<void> {
     POLL_ERRORS_DISMISSED_KEY,
     RATE_LIMIT_DISMISSED_KEY,
     AI_SUMMARY_CACHE_KEY,
+    AVAILABLE_REPOS_CACHE_KEY,
   ]);
 }
 

@@ -48,7 +48,7 @@ export const CHROME_WEB_STORE_URL =
   'https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh';
 
 export const FIREFOX_ADDON_URL =
-  'https://addons.mozilla.org/en-US/firefox/addon/pr-radar/';
+  'https://addons.mozilla.org/en-US/firefox/addon/pr-radar-by-deployhq/';
 
 export const EDGE_ADDON_URL =
   'https://microsoftedge.microsoft.com/addons/detail/pr-radar/angljeebomgmgepfiglbedjljgjnenhl';

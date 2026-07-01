@@ -1,6 +1,7 @@
 import type { PullRequest, CIStatus, Message, PollError, PollErrorKind, Platform, RateLimitInfo } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount, setWhatsNewSeenVersion } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount, setWhatsNewSeenVersion, saveCachedAvailableRepos } from '@/shared/storage';
+import type { AvailableRepo } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
@@ -79,9 +80,62 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
+// === Available repos ===
+// Fetching the full list of watchable repos is slow, so we do it here in the
+// service worker (not the popup) and cache the result. Running it here means the
+// fetch keeps going even after the popup closes. See issue #23.
+
+let availableReposRefresh: Promise<void> | null = null;
+
+async function doRefreshAvailableRepos(): Promise<void> {
+  const accounts = await getAccounts();
+  const repos: AvailableRepo[] = [];
+  const failed: Platform[] = [];
+
+  for (const account of accounts) {
+    try {
+      if (account.platform === 'github') {
+        const ghRepos = await github.getUserRepos(account.token);
+        for (const r of ghRepos) repos.push({ platform: 'github', fullName: r.full_name });
+      } else if (account.platform === 'gitlab') {
+        const glRepos = await gitlab.getUserProjects(account.token);
+        for (const r of glRepos) repos.push({ platform: 'gitlab', fullName: r.path_with_namespace });
+      } else if (account.platform === 'bitbucket') {
+        const bbRepos = await bitbucket.getUserRepositories(account.token);
+        for (const r of bbRepos) repos.push({ platform: 'bitbucket', fullName: r.full_name });
+      }
+    } catch (err) {
+      console.error(`[PR Radar] Failed to fetch repos for ${account.platform}:`, err);
+      failed.push(account.platform);
+    }
+  }
+
+  // Only surface an error when nothing loaded — a partial failure still shows
+  // the repos we did get.
+  const error = repos.length === 0 && failed.length > 0
+    ? `Couldn't load repos for: ${failed.join(', ')}`
+    : undefined;
+
+  await saveCachedAvailableRepos({ repos, updatedAt: Date.now(), error });
+}
+
+// Deduplicate concurrent refreshes: a popup reopened mid-fetch awaits the same
+// in-flight run rather than kicking off a second one.
+function refreshAvailableRepos(): Promise<void> {
+  if (!availableReposRefresh) {
+    availableReposRefresh = doRefreshAvailableRepos().finally(() => {
+      availableReposRefresh = null;
+    });
+  }
+  return availableReposRefresh;
+}
+
 chrome.runtime.onMessage.addListener((message: Message, _sender, sendResponse) => {
   if (message.type === 'POLL_NOW') {
     pollPRs().then(() => sendResponse({ done: true }));
+    return true; // keep channel open for async sendResponse
+  } else if (message.type === 'FETCH_AVAILABLE_REPOS') {
+    refreshAvailableRepos().then(() => sendResponse({ done: true }));
     return true; // keep channel open for async sendResponse
   } else if (message.type === 'REFRESH_SETTINGS') {
     setupPolling();

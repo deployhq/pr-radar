@@ -29,14 +29,14 @@ technologies:
 
 [![GitHub stars](https://img.shields.io/github/stars/deployhq/pr-radar?style=social)](https://github.com/deployhq/pr-radar)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/users/hkombgibegjffiadmekpiabdakkoidmh?label=Chrome%20users)](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh)
-[![Firefox Add-on](https://img.shields.io/amo/users/pr-radar?label=Firefox%20users)](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/)
+[![Firefox Add-on](https://img.shields.io/amo/users/pr-radar-by-deployhq?label=Firefox%20users)](https://addons.mozilla.org/en-US/firefox/addon/pr-radar-by-deployhq/)
 [![License: MIT](https://img.shields.io/github/license/deployhq/pr-radar)](LICENSE)
 
 **One dashboard for every pull request across GitHub, GitLab, and Bitbucket.** CI status, code reviews, deployments, and notifications — right from your browser toolbar. No tab required.
 
 <p>
   <a href="https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh"><img src="https://img.shields.io/badge/Install_for_Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Install for Chrome" /></a>
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/pr-radar/"><img src="https://img.shields.io/badge/Install_for_Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Install for Firefox" /></a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/pr-radar-by-deployhq/"><img src="https://img.shields.io/badge/Install_for_Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Install for Firefox" /></a>
   <a href="https://microsoftedge.microsoft.com/addons/detail/pr-radar-pr-dashboard-/angljeebomgmgepfiglbedjljgjnenhl"><img src="https://img.shields.io/badge/Install_for_Edge-0078D4?style=for-the-badge&logo=microsoftedge&logoColor=white" alt="Install for Edge" /></a>
 </p>
 
@@ -79,7 +79,7 @@ Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-rada
 
 ### Firefox
 
-[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/pr-radar/) — free, no account required.
+[Install from Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/pr-radar-by-deployhq/) — free, no account required.
 
 ### Edge
 

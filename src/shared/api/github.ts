@@ -181,7 +181,10 @@ export async function getRepo(token: string, fullName: string): Promise<{ full_n
   }
 }
 
-export async function getUserRepos(token: string): Promise<{ full_name: string }[]> {
+export async function getUserRepos(
+  token: string,
+  onProgress?: (detail: string) => void,
+): Promise<{ full_name: string }[]> {
   // Fetch personal repos
   const userRepos = await ghPaginate<{ full_name: string }>(
     '/user/repos?sort=pushed&per_page=100&affiliation=owner,collaborator,organization_member',
@@ -196,6 +199,7 @@ export async function getUserRepos(token: string): Promise<{ full_name: string }
       orgs,
       ORG_FETCH_CONCURRENCY,
       async (org) => {
+        onProgress?.(org.login);
         const [memberRepos, publicRepos] = await Promise.all([
           ghPaginate<{ full_name: string }>(
             `/orgs/${org.login}/repos?sort=pushed&per_page=100&type=member`,

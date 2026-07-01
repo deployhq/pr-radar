@@ -1,6 +1,6 @@
 import type { PullRequest, CIStatus, Message, PollError, PollErrorKind, Platform, RateLimitInfo } from '@/shared/types';
 import { CI_STATUS_LABELS } from '@/shared/constants';
-import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount, setWhatsNewSeenVersion, saveCachedAvailableRepos } from '@/shared/storage';
+import { getSettings, getAccounts, getWatchedRepos, getCachedPRs, saveCachedPRs, setInstallDate, getDeployHQAccount, saveDeployHQAccount, getDeployHQRepoMapping, saveDeployHQRepoMapping, savePollErrors, saveRateLimits, getRateLimits, saveAccount, setWhatsNewSeenVersion, saveCachedAvailableRepos, setAvailableReposProgress } from '@/shared/storage';
 import type { AvailableRepo } from '@/shared/storage';
 import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
@@ -92,31 +92,40 @@ async function doRefreshAvailableRepos(): Promise<void> {
   const repos: AvailableRepo[] = [];
   const failed: Platform[] = [];
 
-  for (const account of accounts) {
-    try {
-      if (account.platform === 'github') {
-        const ghRepos = await github.getUserRepos(account.token);
-        for (const r of ghRepos) repos.push({ platform: 'github', fullName: r.full_name });
-      } else if (account.platform === 'gitlab') {
-        const glRepos = await gitlab.getUserProjects(account.token);
-        for (const r of glRepos) repos.push({ platform: 'gitlab', fullName: r.path_with_namespace });
-      } else if (account.platform === 'bitbucket') {
-        const bbRepos = await bitbucket.getUserRepositories(account.token);
-        for (const r of bbRepos) repos.push({ platform: 'bitbucket', fullName: r.full_name });
+  try {
+    for (const account of accounts) {
+      try {
+        if (account.platform === 'github') {
+          await setAvailableReposProgress({ platform: 'github' });
+          const ghRepos = await github.getUserRepos(account.token, (org) =>
+            setAvailableReposProgress({ platform: 'github', detail: org }),
+          );
+          for (const r of ghRepos) repos.push({ platform: 'github', fullName: r.full_name });
+        } else if (account.platform === 'gitlab') {
+          await setAvailableReposProgress({ platform: 'gitlab' });
+          const glRepos = await gitlab.getUserProjects(account.token);
+          for (const r of glRepos) repos.push({ platform: 'gitlab', fullName: r.path_with_namespace });
+        } else if (account.platform === 'bitbucket') {
+          await setAvailableReposProgress({ platform: 'bitbucket' });
+          const bbRepos = await bitbucket.getUserRepositories(account.token);
+          for (const r of bbRepos) repos.push({ platform: 'bitbucket', fullName: r.full_name });
+        }
+      } catch (err) {
+        console.error(`[PR Radar] Failed to fetch repos for ${account.platform}:`, err);
+        failed.push(account.platform);
       }
-    } catch (err) {
-      console.error(`[PR Radar] Failed to fetch repos for ${account.platform}:`, err);
-      failed.push(account.platform);
     }
+
+    // Only surface an error when nothing loaded — a partial failure still shows
+    // the repos we did get.
+    const error = repos.length === 0 && failed.length > 0
+      ? `Couldn't load repos for: ${failed.join(', ')}`
+      : undefined;
+
+    await saveCachedAvailableRepos({ repos, updatedAt: Date.now(), error });
+  } finally {
+    await setAvailableReposProgress(null);
   }
-
-  // Only surface an error when nothing loaded — a partial failure still shows
-  // the repos we did get.
-  const error = repos.length === 0 && failed.length > 0
-    ? `Couldn't load repos for: ${failed.join(', ')}`
-    : undefined;
-
-  await saveCachedAvailableRepos({ repos, updatedAt: Date.now(), error });
 }
 
 // Deduplicate concurrent refreshes: a popup reopened mid-fetch awaits the same

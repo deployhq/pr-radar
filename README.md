@@ -28,6 +28,7 @@ technologies:
 # PR Radar
 
 [![GitHub stars](https://img.shields.io/github/stars/deployhq/pr-radar?style=social)](https://github.com/deployhq/pr-radar)
+[![Featured on Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Featured-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh)
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/users/hkombgibegjffiadmekpiabdakkoidmh?label=Chrome%20users)](https://chromewebstore.google.com/detail/hkombgibegjffiadmekpiabdakkoidmh)
 [![Firefox Add-on](https://img.shields.io/amo/users/pr-radar-by-deployhq?label=Firefox%20users)](https://addons.mozilla.org/en-US/firefox/addon/pr-radar-by-deployhq/)
 [![License: MIT](https://img.shields.io/github/license/deployhq/pr-radar)](LICENSE)

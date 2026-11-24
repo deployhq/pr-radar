@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { AppView, DashboardTab, PullRequest, SortMode, UrgencyCategory } from '@/shared/types';
+import type { AppView, DashboardTab, PullRequest, ReviewScope, SortMode, UrgencyCategory } from '@/shared/types';
 import { getWatchedRepos, getCachedPRs, getSettings, saveSettings, getInstallDate, isStarPromptDismissed, dismissStarPrompt, getWhatsNewSeenVersion, setWhatsNewSeenVersion } from '@/shared/storage';
 import { STORE_URL, GITHUB_REPO_URL } from '@/shared/constants';
 import { isSummarizerSupported } from '@/shared/ai/summarizer';
+import { isInReviewTab, matchesReviewScope } from '@/shared/review';
 import { matchesUrgencyFilter, computeUrgencyCounts } from '../utils/urgency';
 import { detectStacks, isStackBlocked } from '../utils/stacks';
 import PRItem from '../components/PRItem';
@@ -21,6 +22,12 @@ const TABS: { id: DashboardTab; label: string }[] = [
   { id: 'all', label: 'All' },
 ];
 
+const REVIEW_SCOPES: { id: ReviewScope; label: string; title: string }[] = [
+  { id: 'all', label: 'All', title: 'Review requested from you or assigned to you' },
+  { id: 'assigned', label: 'Assigned to me', title: 'PRs you are an assignee on' },
+  { id: 'unassigned', label: 'Unassigned', title: 'PRs nobody has claimed as assignee yet' },
+];
+
 export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [prs, setPRs] = useState<PullRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +42,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [urgencyFilter, setUrgencyFilter] = useState<UrgencyCategory | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('default');
+  const [reviewScope, setReviewScope] = useState<ReviewScope>('all');
   const [showStarBanner, setShowStarBanner] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(-1);
@@ -84,6 +92,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       setStalePRDays(settings.stalePRDays);
       setLongWaitDays(settings.longWaitDays);
       setSortMode(settings.sortMode);
+      setReviewScope(settings.reviewScope);
       setAiEnabled(settings.aiEnabled);
 
       const hadCache = await loadFromCache();
@@ -170,6 +179,12 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     setUrgencyFilter(category);
   }, []);
 
+  const handleReviewScope = useCallback((scope: ReviewScope) => {
+    setReviewScope(scope);
+    setUrgencyFilter(null);
+    saveSettings({ reviewScope: scope });
+  }, []);
+
   const handleCycleSort = useCallback(() => {
     setSortMode((mode) => {
       const next: SortMode = mode === 'default' ? 'recent' : mode === 'recent' ? 'oldest' : 'default';
@@ -179,7 +194,7 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
   }, []);
 
   // Reset focused index when list changes
-  useEffect(() => { setFocusedIndex(-1); }, [tab, urgencyFilter, search]);
+  useEffect(() => { setFocusedIndex(-1); }, [tab, reviewScope, urgencyFilter, search]);
 
   // Stack detection runs over the full PR list so parents on other tabs still resolve.
   const stacks = useMemo(() => detectStacks(prs), [prs]);
@@ -192,12 +207,13 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
     return ids;
   }, [prs, stacks, prById]);
 
-  // Filter PRs by tab
-  const filteredByTab = prs.filter((pr) => {
-    if (tab === 'mine') return pr.isAuthor;
-    if (tab === 'review') return pr.isReviewRequested && !pr.isDraft;
-    return true;
-  });
+  // Filter PRs by tab (and, on the Review tab, by assignee scope)
+  const reviewPRs = prs.filter(isInReviewTab);
+  const filteredByTab = tab === 'mine'
+    ? prs.filter((pr) => pr.isAuthor)
+    : tab === 'review'
+      ? reviewPRs.filter((pr) => matchesReviewScope(pr, reviewScope))
+      : prs;
 
   // Compute urgency counts from tab-filtered list (before urgency filter)
   const urgencyCounts = useMemo(
@@ -333,8 +349,14 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
 
   const tabCounts: Record<DashboardTab, number> = {
     mine: prs.filter((pr) => pr.isAuthor).length,
-    review: prs.filter((pr) => pr.isReviewRequested && !pr.isDraft).length,
+    review: reviewPRs.length,
     all: prs.length,
+  };
+
+  const reviewScopeCounts: Record<ReviewScope, number> = {
+    all: reviewPRs.length,
+    assigned: reviewPRs.filter((pr) => matchesReviewScope(pr, 'assigned')).length,
+    unassigned: reviewPRs.filter((pr) => matchesReviewScope(pr, 'unassigned')).length,
   };
 
   return (
@@ -366,6 +388,34 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
           </button>
         ))}
       </div>
+
+      {/* Review scope: narrow the Review tab by assignee */}
+      {tab === 'review' && (
+        <div className="flex items-center px-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5" role="radiogroup" aria-label="Filter reviews by assignee">
+            {REVIEW_SCOPES.map((s) => {
+              const active = reviewScope === s.id;
+              return (
+                <button
+                  key={s.id}
+                  role="radio"
+                  aria-checked={active}
+                  title={s.title}
+                  onClick={() => handleReviewScope(s.id)}
+                  className={`text-[11px] px-2.5 py-0.5 rounded transition-colors ${
+                    active
+                      ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-200 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  {s.label}
+                  <span className="ml-1 text-gray-400 dark:text-gray-500">{reviewScopeCounts[s.id]}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-200 dark:border-gray-800">
@@ -509,11 +559,21 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
               {tab === 'review' ? '\u{1F440}' : '\u{1F389}'}
             </div>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-              {tab === 'review' ? 'No reviews requested' : 'No open PRs'}
+              {tab === 'review'
+                ? reviewScope === 'assigned'
+                  ? 'Nothing assigned to you'
+                  : reviewScope === 'unassigned'
+                    ? 'No unassigned PRs'
+                    : 'No reviews requested'
+                : 'No open PRs'}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               {tab === 'review'
-                ? "You're all caught up!"
+                ? reviewScope === 'assigned'
+                  ? 'Check Unassigned for PRs to pick up'
+                  : reviewScope === 'unassigned'
+                    ? 'Every PR awaiting review has an assignee'
+                    : "You're all caught up!"
                 : search
                   ? 'Try a different search'
                   : "You're all clear — no open PRs on your watched repos"}

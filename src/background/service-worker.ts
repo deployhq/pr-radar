@@ -6,6 +6,7 @@ import * as github from '@/shared/api/github';
 import * as gitlab from '@/shared/api/gitlab';
 import * as bitbucket from '@/shared/api/bitbucket';
 import * as deployhq from '@/shared/api/deployhq';
+import { isInReviewTab } from '@/shared/review';
 
 const ALARM_NAME = 'pr-radar-poll';
 const STATUS_CACHE_KEY = 'pr_radar_last_statuses';
@@ -495,7 +496,7 @@ async function pollPRs() {
 
       for (const pr of allPRs) {
         const inMine = pr.isAuthor;
-        const inReview = pr.isReviewRequested && !pr.isDraft;
+        const inReview = isInReviewTab(pr);
         const shouldNotify =
           (commentTabs.includes('all')) ||
           (commentTabs.includes('mine') && inMine) ||
@@ -527,10 +528,10 @@ async function pollPRs() {
     const openIds = new Set(allPRs.map((pr) => pr.id));
 
     if (cached) {
-      // Find PRs that disappeared from the open list (authored, reviewed, or review-requested)
+      // Find PRs that disappeared from the open list (authored, reviewed, review-requested, or assigned)
       const disappeared = cached.prs.filter(
         (pr) => !pr.isMerged && !openIds.has(pr.id)
-          && (pr.isAuthor || pr.isReviewRequested || pr.hasReviewed),
+          && (pr.isAuthor || pr.isReviewRequested || pr.hasReviewed || pr.isAssignedToMe),
       );
 
       for (const pr of disappeared) {

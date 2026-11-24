@@ -145,6 +145,7 @@ describe('fetchMergeRequests', () => {
       created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z',
       source_branch: 'fix-bug', sha: 'abc123', has_conflicts: false,
       reviewers: [{ username: 'bob', avatar_url: '' }],
+      assignees: [{ username: 'bob', avatar_url: '' }, { username: 'carol', avatar_url: '' }],
       head_pipeline: { status: 'success', web_url: 'https://pipeline' },
     }]));
 
@@ -175,6 +176,8 @@ describe('fetchMergeRequests', () => {
     expect(prs[0].isReviewRequested).toBe(true);
     expect(prs[0].reviewStatus).toBe('approved');
     expect(prs[0].headSha).toBe('abc123');
+    expect(prs[0].assignees).toEqual(['bob', 'carol']);
+    expect(prs[0].isAssignedToMe).toBe(true);
   });
 
   it('requests discussions with pagination params', async () => {

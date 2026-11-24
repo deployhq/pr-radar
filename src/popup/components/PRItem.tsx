@@ -371,6 +371,21 @@ export default function PRItem({ pr, stalePRDays, pinned, onMerged, focused, sta
                   Reviewed
                 </span>
               )}
+              {pr.isAssignedToMe && !pr.isAuthor ? (
+                <span
+                  className="text-[9px] px-1.5 py-px rounded bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-400 font-medium"
+                  title={`Assigned to ${pr.assignees?.join(', ')}`}
+                >
+                  Assigned
+                </span>
+              ) : !pr.isAssignedToMe && pr.assignees && pr.assignees.length > 0 && (
+                <span
+                  className="text-[9px] px-1.5 py-px rounded bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 font-medium truncate max-w-[90px]"
+                  title={`Assigned to ${pr.assignees.join(', ')}`}
+                >
+                  &rarr; {pr.assignees[0]}{pr.assignees.length > 1 ? ` +${pr.assignees.length - 1}` : ''}
+                </span>
+              )}
               {pr.deployhqProjectId && (
                 <span className="ml-auto flex items-center gap-1">
                   {deployState === 'idle' && (

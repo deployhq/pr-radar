@@ -53,6 +53,9 @@ export interface PullRequest {
   isReviewRequested: boolean;
   hasReviewed: boolean;
   pendingReviewers?: string[];
+  // Assignee logins. Undefined on Bitbucket, which has no PR assignees.
+  assignees?: string[];
+  isAssignedToMe?: boolean;
   isMerged?: boolean;
   mergedAt?: number;
   headSha?: string;
@@ -148,6 +151,10 @@ export type AppView =
   | { type: 'repos' };
 
 export type DashboardTab = 'mine' | 'review' | 'all';
+
+// Narrows the Review tab: every PR in it, only those assigned to me, or only
+// those nobody has claimed as assignee yet.
+export type ReviewScope = 'all' | 'assigned' | 'unassigned';
 
 export type UrgencyCategory =
   | 'ci_failed'

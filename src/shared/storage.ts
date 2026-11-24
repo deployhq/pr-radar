@@ -1,4 +1,4 @@
-import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo, DashboardTab, SortMode } from './types';
+import type { PlatformAccount, WatchedRepo, Platform, DeployHQAccount, PollError, RateLimitInfo, DashboardTab, SortMode, ReviewScope } from './types';
 import type { SoundId } from './constants';
 import { AI_SUMMARY_CACHE_KEY } from './ai/summarizer';
 
@@ -27,6 +27,7 @@ export interface Settings {
   theme: ThemeMode;
   lastTab: DashboardTab;
   sortMode: SortMode;
+  reviewScope: ReviewScope;
   // Master switch for on-device AI features (Chrome built-in Summarizer):
   // PR TL;DRs and unresolved-thread digests. Opt-in; only takes effect where
   // the Summarizer API is available.
@@ -46,6 +47,7 @@ const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   lastTab: 'mine',
   sortMode: 'default',
+  reviewScope: 'all',
   aiEnabled: false,
 };
 

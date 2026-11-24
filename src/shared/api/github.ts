@@ -137,6 +137,7 @@ interface GHPullRequest {
   mergeable_state?: string;
   requested_reviewers?: GHUser[];
   requested_teams?: { slug: string; name: string }[];
+  assignees?: GHUser[];
 }
 
 export interface GHUserTeam {
@@ -354,6 +355,7 @@ async function hydratePR(
   const isReviewRequestedViaTeam = pr.requested_teams?.some((t) => relevantTeamSlugs.has(t.slug)) ?? false;
   const isReviewRequested = isReviewRequestedDirectly || isReviewRequestedViaTeam;
   const pendingReviewers = pr.requested_reviewers?.map((r) => r.login) ?? [];
+  const assignees = pr.assignees?.map((a) => a.login) ?? [];
   const hasReviewed = checkHasReviewed(reviews, username, pr.head.sha);
 
   return {
@@ -388,6 +390,8 @@ async function hydratePR(
     isReviewRequested,
     hasReviewed,
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
+    assignees,
+    isAssignedToMe: assignees.includes(username),
     headSha: pr.head.sha,
     headRef: pr.head.ref,
     baseBranch: pr.base.ref,

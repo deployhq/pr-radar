@@ -60,7 +60,7 @@ Free and open source, by [DeployHQ](https://www.deployhq.com/?utm_source=pr-rada
 - **Unresolved comments** — Accurate count of unresolved review threads
 - **Deployment previews** — See deployment status and click through to environment URLs
 - **Sound & desktop notifications** — Get alerted when CI finishes, no tab required
-- **Review tracking** — See which PRs need your review, and which you've already reviewed
+- **Review tracking** — See which PRs need your review, and which you've already reviewed. Narrow the Review tab to PRs assigned to you, or to unassigned PRs nobody has claimed yet
 - **AI summaries** *(Chrome)* — Optional on-device TL;DR under each PR and a digest of unresolved review threads, powered by Chrome's built-in AI. Runs locally — nothing leaves your browser. Firefox and Edge aren't affected (the option appears disabled with an explanation)
 - **Merge from dashboard** — Merge PRs directly with a confirm step (all platforms)
 - **Pinned repos** — Star your favorite repos so their PRs always appear at the top

@@ -67,6 +67,7 @@ interface GLMergeRequest {
   sha: string;
   has_conflicts: boolean;
   reviewers?: GLUser[];
+  assignees?: GLUser[];
   head_pipeline?: {
     status: string;
     web_url: string;
@@ -300,6 +301,7 @@ async function hydrateMR(
   const pendingReviewers = (mr.reviewers ?? [])
     .filter((r) => !approvedUsernames.has(r.username))
     .map((r) => r.username);
+  const assignees = mr.assignees?.map((a) => a.username) ?? [];
 
   return {
     id: `gitlab-${projectPath}-${mr.iid}`,
@@ -331,6 +333,8 @@ async function hydrateMR(
     isReviewRequested,
     hasReviewed,
     pendingReviewers: pendingReviewers.length > 0 ? pendingReviewers : undefined,
+    assignees,
+    isAssignedToMe: assignees.includes(username),
     headSha: mr.sha,
     headRef: mr.source_branch,
     baseBranch: mr.target_branch,

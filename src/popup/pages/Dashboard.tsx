@@ -392,14 +392,13 @@ export default function Dashboard({ tab, onNavigate }: DashboardProps) {
       {/* Review scope: narrow the Review tab by assignee */}
       {tab === 'review' && (
         <div className="flex items-center px-4 py-1.5 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5" role="radiogroup" aria-label="Filter reviews by assignee">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-md p-0.5" role="group" aria-label="Filter reviews by assignee">
             {REVIEW_SCOPES.map((s) => {
               const active = reviewScope === s.id;
               return (
                 <button
                   key={s.id}
-                  role="radio"
-                  aria-checked={active}
+                  aria-pressed={active}
                   title={s.title}
                   onClick={() => handleReviewScope(s.id)}
                   className={`text-[11px] px-2.5 py-0.5 rounded transition-colors ${
